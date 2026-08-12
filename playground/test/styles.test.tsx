@@ -1,9 +1,9 @@
 import { cleanup, render } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { Catalog } from "@/catalog";
+import { Catalog } from "../src/catalog";
 import { AgentChat } from "@/components/agent-chat";
-import { replies } from "@/demo-chat";
+import { replies } from "../src/demo-chat";
 
 afterEach(cleanup);
 

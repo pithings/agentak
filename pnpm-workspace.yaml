@@ -1,3 +1,6 @@
+packages:
+  - playground
+  - extension
 allowBuilds:
   "@google/genai": false
   protobufjs: false

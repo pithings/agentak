@@ -10,14 +10,17 @@
   "sideEffects": false,
   "exports": {
     ".": "./dist/lib/web-agent.js",
-    "./element": "./dist/lib/element.js"
+    "./element": "./dist/lib/element.js",
+    "./components": "./dist/lib/components.js",
+    "./pi": "./dist/lib/pi.js"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build && vite build --config vite.config.lib.ts",
-    "build:extension": "vite build --config vite.config.extension.ts",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "dev": "pnpm --filter @web-agent/playground dev",
+    "build": "vite build --config vite.config.lib.ts && pnpm --filter @web-agent/playground build",
+    "build:lib": "vite build --config vite.config.lib.ts",
+    "build:extension": "pnpm --filter @web-agent/extension build",
+    "preview": "pnpm --filter @web-agent/playground preview",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p playground && tsc --noEmit -p extension",
     "lint": "oxlint",
     "fmt": "oxfmt .",
     "test": "vitest"
@@ -34,7 +37,6 @@
   },
   "devDependencies": {
     "@testing-library/preact": "^3.2.4",
-    "@types/chrome": "^0.2.5",
     "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^30.0.1",
     "oxfmt": "^0.63.0",

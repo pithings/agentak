@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { AgentChat } from "@/components/agent-chat";
 import { ELEMENTS } from "@/components/elements";
-import { replies } from "@/demo-chat";
+import { replies } from "../src/demo-chat";
+// The demo renderers register themselves — half the registry is theirs.
+import "../src/demo-elements";
 import { CodeBlock } from "@/components/ai-elements/code-block";
 import { Image } from "@/components/ai-elements/image";
 import {
@@ -690,8 +692,8 @@ describe("Context", () => {
 
 describe("the demo transcript", () => {
   // Every ported element, driven by its own fixture. This is the only check
-  // that covers all of them together — the two tests below see just the parts
-  // the chat happens to render.
+  // that covers all of them together — the chat tests above see just the parts
+  // a turn happens to render.
   const parts = replies.flatMap((reply) => reply(0));
 
   it("resolves every element name in the registry", () => {
@@ -699,34 +701,5 @@ describe("the demo transcript", () => {
 
     expect(names.length).toBeGreaterThan(20);
     expect(names.filter((name) => !ELEMENTS[name])).toEqual([]);
-  });
-});
-
-describe("styles", () => {
-  it("ships no stylesheet", () => {
-    // There is no sheet to adopt any more, and nothing injects one. A component
-    // that grows a `*Styles` block has nowhere to put it, so it would render
-    // dead text — this is what catches that, since the old manifest that used
-    // to is gone. Tokens are the exception and live in `styles/base.ts`, which
-    // this glob does not reach.
-    const modules = import.meta.glob<Record<string, unknown>>("../src/components/**/*.tsx", {
-      eager: true,
-    });
-
-    const blocks = Object.values(modules)
-      .flatMap((module) => Object.entries(module))
-      .filter(([name, value]) => name.endsWith("Styles") && typeof value === "string")
-      .map(([name]) => name);
-
-    expect(blocks).toEqual([]);
-  });
-});
-
-describe("runtime", () => {
-  it("has no react package to resolve", async () => {
-    // The eject is only real if nothing can pull a second renderer in.
-    // Indirected through a variable so tsc does not try to resolve it.
-    const react = "react";
-    await expect(import(/* @vite-ignore */ react)).rejects.toThrow();
   });
 });

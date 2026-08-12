@@ -1,5 +1,5 @@
 import { render } from "preact";
-import { Playground } from "@/playground";
+import { Playground } from "./playground";
 
 /**
  * Playground entry: renders the UI directly (no shadow DOM) so styles and

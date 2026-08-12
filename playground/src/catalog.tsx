@@ -148,9 +148,11 @@ import {
 } from "@/components/ai-elements/tool";
 import { Markdown } from "@/components/markdown";
 import { Element } from "@/components/elements";
-import { replies } from "@/demo-chat";
+// Registers the demo renderers `Element` looks up. Side effect: import it.
+import "./demo-elements";
+import { replies } from "./demo-chat";
 import { BotIcon, CopyIcon, RotateCcwIcon, SearchIcon } from "@/lib/icons";
-import { css } from "@/lib/css";
+import { css } from "./css";
 import { useInteraction } from "@/lib/use-interaction";
 import { u } from "@/styles/base";
 import { sx, type Sx } from "@/styles/sx";

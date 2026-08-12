@@ -4,17 +4,26 @@ import { fileURLToPath } from "node:url";
 import preact from "@preact/preset-vite";
 import { defineConfig } from "vitest/config";
 
+/** The library's own tests, plus the playground package's, in one run. */
 export default defineConfig({
-  plugins: [preact({ reactAliasesEnabled: false })],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-    },
-  },
   test: {
-    environment: "jsdom",
-    include: ["test/**/*.test.{ts,tsx}"],
-    css: false,
+    projects: [
+      {
+        plugins: [preact({ reactAliasesEnabled: false })],
+        resolve: {
+          alias: {
+            "@": fileURLToPath(new URL("./src", import.meta.url)),
+          },
+        },
+        test: {
+          name: "lib",
+          environment: "jsdom",
+          include: ["test/**/*.test.{ts,tsx}"],
+          css: false,
+        },
+      },
+      "./playground/vitest.config.ts",
+    ],
     coverage: {
       include: ["src/components/**", "src/lib/**"],
     },

@@ -1,0 +1,22 @@
+{
+  "name": "@web-agent/extension",
+  "version": "0.0.0",
+  "private": true,
+  "description": "WIP MV3 side panel host for the <web-agent> element",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "preact": "^10.29.8",
+    "web-agent": "workspace:*"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "@types/chrome": "^0.2.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1"
+  }
+}

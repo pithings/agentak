@@ -1,7 +1,7 @@
 import { cleanup, render } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { CATALOG, Catalog } from "@/catalog";
+import { CATALOG, Catalog } from "../src/catalog";
 
 afterEach(cleanup);
 

@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useDemoChat } from "@/demo-chat";
+import { useDemoChat } from "../src/demo-chat";
 import type { ViewPart } from "@/types";
 
 const textOf = (part: ViewPart) =>

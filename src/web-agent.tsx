@@ -17,7 +17,6 @@ import { AgentChat } from "@/components/agent-chat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { useDemoChat } from "@/demo-chat";
 import { ExternalLinkIcon } from "@/lib/icons";
 import { u } from "@/styles/base";
 import { sx, type Sx } from "@/styles/sx";
@@ -77,40 +76,6 @@ export interface WebAgentProps {
   apiKey?: string | Record<string, string>;
   /** Which provider to open on. Default: the stored one, or Anthropic. */
   provider?: string;
-  /** Replay the canned turns instead of running the loop. Demo only. */
-  demo?: boolean;
-  /** Stream every canned turn on mount. Demo only — it goes with `demo`. */
-  autoStart?: boolean;
-}
-
-/**
- * Top-level container.
- *
- * `demo` picks the store, and the two live in separate components because a
- * hook cannot be called conditionally.
- */
-export function WebAgent({ className, style, apiKey, provider, demo, autoStart }: WebAgentProps) {
-  return demo ? (
-    <DemoAgent autoStart={autoStart} className={className} style={style} />
-  ) : (
-    <LiveAgent apiKey={apiKey} className={className} provider={provider} style={style} />
-  );
-}
-
-function DemoAgent({ className, style, autoStart }: Omit<WebAgentProps, "apiKey" | "demo">) {
-  const chat = useDemoChat({ autoStart });
-
-  return (
-    <AgentChat
-      className={className}
-      isStreaming={chat.isStreaming}
-      messages={chat.messages}
-      onReset={chat.reset}
-      onSend={chat.send}
-      onStop={chat.stop}
-      style={style}
-    />
-  );
 }
 
 /** Keys already in hand: what a host passed, over what the browser stored. */
@@ -125,13 +90,11 @@ function seedKeys(apiKey: WebAgentProps["apiKey"], providerId: string): Record<s
   return keys;
 }
 
-/** The real loop: pi's `Agent` over the page tools. */
-function LiveAgent({
-  className,
-  style,
-  apiKey,
-  provider: openOn,
-}: Omit<WebAgentProps, "demo" | "autoStart">) {
+/**
+ * Top-level container: the key gate, then the loop — pi's `Agent` over the page
+ * tools — driving `AgentChat`.
+ */
+export function WebAgent({ className, style, apiKey, provider: openOn }: WebAgentProps) {
   const [providerId, setProviderId] = useState(
     () => openOn ?? storedProviderId() ?? DEFAULT_PROVIDER_ID,
   );

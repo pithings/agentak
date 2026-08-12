@@ -1,7 +1,7 @@
-import { Catalog, catalogStyles } from "@/catalog";
+import { Catalog, catalogStyles } from "./catalog";
 import { WebAgent } from "@/web-agent";
 import { tokens, u } from "@/styles/base";
-import { css } from "@/lib/css";
+import { css } from "./css";
 import type { Sx } from "@/styles/sx";
 
 /**
@@ -66,7 +66,7 @@ const S = {
  * The playground page: the catalog on the left, the chat on the right.
  *
  * The chat runs the real loop — it asks for an API key on first load. Swap in
- * `<WebAgent autoStart demo/>` to replay the canned turns instead.
+ * `<DemoAgent autoStart/>` to replay the canned turns instead.
  */
 export function Playground() {
   return (

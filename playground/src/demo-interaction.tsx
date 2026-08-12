@@ -1,12 +1,12 @@
 /**
  * Playground fixtures for the interaction elements (confirmation, suggestion,
- * queue, checkpoint, commit). Each is compound, so a transcript part — which
- * carries plain data, never a VNode — cannot pass the children itself. These
- * wrappers do it, with static props and no-op callbacks.
+ * queue, commit). Each is compound, so a transcript part — which carries plain
+ * data, never a VNode — cannot pass the children itself. These wrappers do it,
+ * with static props and no-op callbacks.
  *
- * Demo only. Nothing here is part of the library surface.
+ * Demo only. Nothing here is part of the library surface. `checkpoint` is the
+ * exception and ships in `components/elements.tsx` — the loop emits it.
  */
-import { Checkpoint, CheckpointIcon, CheckpointTrigger } from "@/components/ai-elements/checkpoint";
 import {
   Commit,
   CommitActions,
@@ -125,18 +125,6 @@ export const QueueDemo = ({ label, items }: QueueDemoProps) => (
       </QueueSectionContent>
     </QueueSection>
   </Queue>
-);
-
-export interface CheckpointDemoProps {
-  label: string;
-  tooltip?: string;
-}
-
-export const CheckpointDemo = ({ label, tooltip }: CheckpointDemoProps) => (
-  <Checkpoint>
-    <CheckpointIcon />
-    <CheckpointTrigger tooltip={tooltip}>{label}</CheckpointTrigger>
-  </Checkpoint>
 );
 
 export interface CommitDemoProps {

@@ -1,5 +1,8 @@
 # web-agent
 
+A pnpm workspace: the library at the root, the dev page in `playground/`, the MV3
+side panel in `extension/`.
+
 Standalone web component library (`<web-agent>`) + Chrome extension, bundling
 [`@earendil-works/pi-agent-core`](https://www.npmjs.com/package/@earendil-works/pi-agent-core)
 for the agent loop.
@@ -27,49 +30,69 @@ or a gateway — with the page tools; nothing is verified in a real browser yet.
 
 | Area                                      | State                                                                |
 | ----------------------------------------- | -------------------------------------------------------------------- |
-| Vite + Preact playground                  | working — `pnpm dev` on `:4050`, catalog left, chat right            |
+| Vite + Preact playground                  | its own package, `playground/` — `pnpm dev` on `:4050`               |
 | shadcn + AI SDK Elements components       | **ejected** — rewritten as native preact, see below                  |
 | Chat UI (`src/components/agent-chat.tsx`) | working, presentational — every agent input is an optional prop      |
 | Markdown (`src/components/markdown.tsx`)  | working — md4x wasm, AST to preact, unverified in browser            |
-| Transcript store                          | `src/agent/use-agent.ts` over pi; `demo-chat.ts` still drives `demo` |
+| Transcript store                          | `src/agent/use-agent.ts` over pi; the canned turns are the demo's    |
 | AI Elements                               | all 30 dependency-free registry components ported, see COMPONENTS.md |
 | pi-agent-core wiring                      | **done** — see "The agent loop"                                      |
 | Providers                                 | 12, including the OpenRouter and Vercel gateways — see below         |
 | API key                                   | one per provider, kept in `localStorage`, or passed as `apiKey`      |
 | Styling                                   | inline style objects; no sheet — the host declares the tokens        |
 | `<web-agent>` custom element              | written, shadow DOM, injects nothing, unverified in browser          |
-| Chrome MV3 extension                      | **WIP stub** — side panel hosts the element, no tab bridge yet       |
+| Chrome MV3 extension                      | **WIP stub** — own package, `extension/`; no tab bridge yet          |
 | Build / tests                             | `pnpm build`, `pnpm vitest run` pass — UI render tests included      |
 | `pnpm typecheck`                          | clean                                                                |
 
 ## Commands
 
+Run them from the repo root; the playground and extension ones delegate to their
+packages.
+
 ```sh
 pnpm dev               # playground on http://localhost:4050
-pnpm build             # dist/playground + dist/lib
+pnpm build             # dist/lib + dist/playground
+pnpm build:lib         # dist/lib alone
 pnpm build:extension   # dist/extension (load unpacked)
-pnpm typecheck         # tsc --noEmit
-pnpm vitest run
+pnpm typecheck         # tsc --noEmit, all three packages
+pnpm vitest run        # both projects: `lib` and `playground`
 pnpm lint              # oxlint
 pnpm fmt               # oxfmt
 ```
+
+## Exports
+
+Four entries, one bundle each in `dist/lib` (`vite.config.lib.ts` lists them).
+
+| Subpath                | Entry                     | What                                                      |
+| ---------------------- | ------------------------- | --------------------------------------------------------- |
+| `web-agent`            | `src/index.ts`            | `AgentChat`, `WebAgent`, `defineWebAgent`, `tokens`, loop |
+| `web-agent/element`    | `src/element.tsx`         | side effect — defines `<web-agent>`                       |
+| `web-agent/components` | `src/components/index.ts` | every built-in component, named                           |
+| `web-agent/pi`         | `src/agent/index.ts`      | the loop alone; the root re-exports this same set         |
+
+`/components` and `/pi` have no user yet — the playground and the extension
+import the source through `@`. They exist so a host can take a piece without the
+assembled chat.
 
 ## Layout
 
 ```
 src/
+  index.ts                 the `web-agent` entry — chat, element, tokens, and the loop
+  components/index.ts      the `web-agent/components` entry — every built-in component
+  agent/index.ts           the `web-agent/pi` entry — the loop alone
   components/ui/           shadcn primitives, rewritten in preact
   components/ai-elements/  AI SDK Elements, rewritten in preact
   components/agent-chat.tsx  chat surface — takes a transcript + callbacks
   components/markdown.tsx  md4x AST -> preact, see below
-  components/elements.tsx  name -> renderer registry for `{ kind: "element" }` parts
-  components/demo-*.tsx    data-driven wrappers so the demo can drive compound
-                           elements from plain props — demo only, not exported
+  components/elements.tsx  name -> renderer registry for `{ kind: "element" }` parts,
+                           plus registerElements() for names the loop never emits
   styles/base.ts           the `tokens` text, the `reset` presets, `u`,
                            and the keyframe/option pairs `useAnimation()` takes
   styles/sx.ts             the Sx type, WithSx, and sx() — merges caller-last
   lib/
-    css.ts                 css`` tagged template -> a rule string
     icons.tsx              inlined SVG icons (geometry from lucide, ISC)
     markdown.ts            md4x wasm loader + useMarkdown()
     use-stick-to-bottom.ts scroll-follow hook
@@ -88,21 +111,45 @@ src/
     tools.ts               read_page, find_elements
     transcript.ts          AgentMessage[] -> renderable parts, and the usage panel
     use-agent.ts           Preact state over Agent events
-  demo-chat.ts             canned turns for `<WebAgent demo/>`, and the catalog
-                           fixtures. `autoStart` streams every turn on mount
-  playground.tsx           the dev page: catalog left, chat right — demo only
-  catalog.tsx              every component, rendered with fixture data — demo only
   types.ts                 UI types inlined from the `ai` package
   element.tsx              <web-agent> custom element
   web-agent.tsx            the container: key gate, storage, agent -> AgentChat
-test/                      every *.test.ts(x) — imports the source through `@/`
+test/                      the library's tests — imports the source through `@/`
   agent/                   the loop: agent, transcript, providers
   components/              one component each: markdown, terminal, popover, …
   lib/                     ansi
-  render.test.tsx          every element, from the demo fixtures — cross-cutting
-  styles.test.tsx          box-sizing over the whole catalog — cross-cutting
-extension/                 WIP MV3 side panel
+  eject.test.ts            no *Styles export anywhere, no `react` to resolve
+playground/                the dev page — its own package, `@web-agent/playground`
+  index.html               the page; `vite.config.ts` serves it on :4050
+  vitest.config.ts         the `playground` project of the root vitest run
+  src/
+    main.tsx               entry — renders `Playground` into #root
+    playground.tsx         catalog left, chat right
+    catalog.tsx            every component, rendered with fixture data
+    demo-chat.ts           canned turns, and the catalog fixtures.
+                           `autoStart` streams every turn on mount
+    demo-agent.tsx         `AgentChat` over the canned turns — no loop, no key
+    demo-elements.tsx      the demo renderers, registered into `ELEMENTS`
+    demo-*.tsx             data-driven wrappers so the demo can drive compound
+                           elements from plain props
+    css.ts                 css`` tagged template -> a rule string
+  test/
+    render.test.tsx        every element, from the demo fixtures — cross-cutting
+    styles.test.tsx        box-sizing over the whole catalog — cross-cutting
+    catalog.test.tsx, demo-chat.test.ts
+extension/                 WIP MV3 side panel — its own package, `@web-agent/extension`
+  manifest.json            copied beside the bundle by `vite.config.ts`, not imported
+  sidepanel.html           the panel document; hosts `<web-agent>`
+  panel.ts                 declares the tokens, then `defineWebAgent()`
+  background.ts            the service worker — opens the panel on the action click
+  vite.config.ts           two inputs, flat `[name].js`, out to `../dist/extension`
 ```
+
+The playground and the extension both import the library **source** through `@`
+(their vite and vitest configs alias it to `../src`), not `dist` — the page is where
+the library is worked on, and the panel is where the element is hosted. The
+dependency on `web-agent` in each `package.json` is the honest declaration of that;
+nothing resolves through it.
 
 ## Next steps
 
@@ -223,9 +270,9 @@ tailwind — the CLI has nothing left to write into, so a new element is a manua
 
 - Source imports `preact`, `preact/hooks`, and `preact/compat` (only for `memo` —
   that is preact's own module, not a react shim).
-- `reactAliasesEnabled: false` in all four vite/vitest configs. There is no
+- `reactAliasesEnabled: false` in every vite/vitest config, all three packages. There is no
   react→preact/compat alias any more, so a stray `react` import fails the build
-  instead of silently resolving. `test/render.test.tsx` asserts this.
+  instead of silently resolving. `test/eject.test.ts` asserts this.
 - `tsconfig.json` uses `jsxImportSource: "preact"` and no `react` path mappings.
 
 Replaced packages:
@@ -279,7 +326,7 @@ element can carry it. Everything that could not be carried is gone:
   skips the snippet gets an unpainted tree.
 - **`box-sizing`** — was one rule over every element. It is inline now, but only in the
   ~56 style objects where a size meets a padding or a border, which is the only place it
-  changes a pixel; on all ~355 elements it would be dead weight. `test/styles.test.tsx`
+  changes a pixel; on all ~355 elements it would be dead weight. `playground/test/styles.test.tsx`
   renders the catalog and the chat and fails on any element that pairs the two without
   it — three of the first misses were found that way, where the size and the inset came
   from different objects merged by `sx()`.
@@ -390,12 +437,12 @@ subcomponent each.
 
 ### What the checks catch, and what they do not
 
-- **`test/styles.test.tsx`** renders the whole catalog and the chat and fails on any
+- **`playground/test/styles.test.tsx`** renders the whole catalog and the chat and fails on any
   element that carries a real size and a real padding or border without
   `box-sizing: border-box`. A third case renders a bare `<div>` that pairs the two, so
   the check cannot pass by finding nothing. What it cannot see is a size a **caller**
   passes as `style` onto a padded primitive — the catalog renders defaults.
-- **`ships no stylesheet`**, in `test/render.test.tsx`, globs the components for a `*Styles`
+- **`ships no stylesheet`**, in `test/eject.test.ts`, globs the components for a `*Styles`
   export and fails if one comes back. There is no manifest to add a block to any more,
   so a new block would simply be dead text.
 - **Nothing catches an inverted `sx()` argument.** A state object merged before the

@@ -148,8 +148,9 @@ Worth knowing before reading a ported file against its upstream.
 - **Data props on compound elements.** A transcript part carries plain data, never JSX,
   so `test-results` gained `suites?`, `environment-variables` gained `variables?`, and
   `transcription`'s segment render prop became optional. Each extends the component's own
-  `children ?? default` idiom. Everything else composes through a `demo-*.tsx` wrapper
-  instead, which keeps the demo shape out of the shipped component — prefer that.
+  `children ?? default` idiom. Everything else composes through a
+  `playground/src/demo-*.tsx` wrapper instead, which keeps the demo shape out of the
+  shipped component — prefer that.
 - **No model catalog.** `context` called `tokenlens`'s `getUsage()` to price every token
   count. The catalog is not bundled, so the limits and the money come in as props —
   `usedTokens`, `maxTokens`, `usage`, and a `costs` object in USD — and `modelId` is now
@@ -236,16 +237,18 @@ Each step, in order. `image` is the smallest worked example — read it beside t
    cascade order: primitives, then composites, then `agent-chat`. An override that layer
    order cannot express is a compound selector, not a bet on order.
 6. **Show it in the demo.** A port is not done until a human can see it in a browser.
-   Register the component in `ELEMENTS` in `src/components/elements.tsx`, then add a
-   canned reply to `replies` in `src/demo-chat.ts` that renders it with realistic fixture
-   data. The transcript carries it as a `{ kind: "element", name, props }` part, which
+   Register the component in `DEMO_ELEMENTS` in `playground/src/demo-elements.tsx` —
+   `ELEMENTS` in `src/components/elements.tsx` is for the names the loop itself emits —
+   then add a canned reply to `replies` in `playground/src/demo-chat.ts` that renders it
+   with realistic fixture data. The transcript carries it as a
+   `{ kind: "element", name, props }` part, which
    `agent-chat.tsx` looks up in the registry — so a new element needs no change to the
    `ViewPart` union and no branch of its own. Interactive components get static props and
    no-op callbacks; the demo store holds no state for them.
 7. **Drop what needs a new package.** Tooltips fall back to the native `title` attribute.
    Say what was dropped in this file, so the choice is deliberate and reversible.
 8. **Check.** `pnpm typecheck`, `pnpm vitest run`, `pnpm lint`, `pnpm fmt`.
-   `test/render.test.tsx` fails on a block the manifest misses, but it only sees classes on
+   `playground/test/render.test.tsx` fails on a block the manifest misses, but it only sees classes on
    what it renders — add a render test for anything the chat does not yet mount.
 
 `src/index.ts` exports the shell, not single elements, so a port needs no barrel change.
@@ -255,8 +258,8 @@ Each step, in order. `image` is the smallest worked example — read it beside t
 Nothing — every registry component that needs no new npm dependency is ported. What is
 left is in [Blocked](#blocked); restore one of those deliberately, with its dependency.
 
-The `test/render.test.tsx` suite drives all of them from the demo fixtures: one test asserts
-every `{ kind: "element" }` name in `demo-chat.ts` resolves in the `ELEMENTS` registry,
+The `playground/test/render.test.tsx` suite drives all of them from the demo fixtures: one
+test asserts every `{ kind: "element" }` name in `demo-chat.ts` resolves in the registry,
 another renders the whole demo transcript and asserts every `wa-` class it emits is
 declared in the sheet.
 
@@ -264,11 +267,11 @@ declared in the sheet.
 
 Each needs a new npm dependency. Restore deliberately, not by default.
 
-| Component                                                              | Blocker                                                                                                      |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `canvas`, `connection`, `controls`, `edge`, `node`, `panel`, `toolbar` | `@xyflow/react` is react-only. Needs `preact/compat` aliasing, which `test/render.test.tsx` asserts against. |
-| `persona`                                                              | `@rive-app/react-webgl2`, react-only                                                                         |
-| `jsx-preview`                                                          | `react-jsx-parser`, react-only                                                                               |
-| `audio-player`                                                         | `media-chrome` (web components, so framework-neutral) plus `button-group`                                    |
-| `attachments`                                                          | radix `hover-card` — `ui/hover-card.tsx` covers it, so this one is unported, not blocked                     |
-| `voice-selector`, `mic-selector`                                       | `cmdk` — `ui/command.tsx` covers it, so only the port is left; `model-selector` is the worked example        |
+| Component                                                              | Blocker                                                                                                    |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `canvas`, `connection`, `controls`, `edge`, `node`, `panel`, `toolbar` | `@xyflow/react` is react-only. Needs `preact/compat` aliasing, which `test/eject.test.ts` asserts against. |
+| `persona`                                                              | `@rive-app/react-webgl2`, react-only                                                                       |
+| `jsx-preview`                                                          | `react-jsx-parser`, react-only                                                                             |
+| `audio-player`                                                         | `media-chrome` (web components, so framework-neutral) plus `button-group`                                  |
+| `attachments`                                                          | radix `hover-card` — `ui/hover-card.tsx` covers it, so this one is unported, not blocked                   |
+| `voice-selector`, `mic-selector`                                       | `cmdk` — `ui/command.tsx` covers it, so only the port is left; `model-selector` is the worked example      |

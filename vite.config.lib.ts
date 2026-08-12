@@ -15,6 +15,8 @@ export default defineConfig({
       entry: {
         "web-agent": fileURLToPath(new URL("./src/index.ts", import.meta.url)),
         element: fileURLToPath(new URL("./src/element.tsx", import.meta.url)),
+        components: fileURLToPath(new URL("./src/components/index.ts", import.meta.url)),
+        pi: fileURLToPath(new URL("./src/agent/index.ts", import.meta.url)),
       },
       formats: ["es"],
     },
