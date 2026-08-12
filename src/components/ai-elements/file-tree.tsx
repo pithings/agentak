@@ -20,6 +20,7 @@ const S = {
     padding: "0.5rem",
   },
   treeItem: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     alignItems: "center",

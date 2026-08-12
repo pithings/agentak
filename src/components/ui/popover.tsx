@@ -22,6 +22,7 @@ const S = {
   popover: { position: "relative", display: "inline-block" },
   anchor: { position: "relative", display: "inline-block" },
   content: {
+    boxSizing: "border-box",
     position: "absolute",
     zIndex: "50",
     width: "18rem",

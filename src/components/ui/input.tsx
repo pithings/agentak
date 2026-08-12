@@ -1,28 +1,24 @@
 import type { ComponentProps } from "preact";
 
-import { css } from "@/lib/css";
-import { cn } from "@/lib/utils";
 import { useInteraction } from "@/lib/use-interaction";
 import { reset } from "@/styles/base";
 import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 /**
- * A pseudo-element is a box of its own, so no inline style is even in the
- * running. These two are the only reason `.wa-control` is still on the input and
- * on the textarea, and they stay CSS for good.
+ * `::placeholder` and `::selection` were the last two rules in this project. A
+ * pseudo-element is a box of its own, so no inline style was ever in the running
+ * for either, and keeping them meant keeping a stylesheet for three
+ * declarations.
+ *
+ * The placeholder is `color-scheme` now — it inherits from the host's `:root`
+ * alongside the tokens (`styles/base.ts`), so the UA paints a placeholder that
+ * suits the theme. It is the browser's grey rather than `--wa-muted-foreground`;
+ * that is the trade. The selection highlight went back to the UA's, which
+ * follows the OS.
  */
-export const inputStyles = css`
-  .wa-control::placeholder {
-    color: var(--wa-muted-foreground);
-  }
-  .wa-control::selection {
-    background: var(--wa-primary);
-    color: var(--wa-primary-foreground);
-  }
-`;
-
 const S = {
   control: {
+    boxSizing: "border-box",
     width: "100%",
     minWidth: "0",
     border: "1px solid var(--wa-input)",
@@ -38,10 +34,10 @@ const S = {
   focus: { borderColor: "var(--wa-ring)", boxShadow: "var(--wa-focus-ring)" },
   disabled: { pointerEvents: "none", cursor: "not-allowed", opacity: "0.5" },
   invalid: { borderColor: "var(--wa-destructive)", boxShadow: "var(--wa-invalid-ring)" },
-  input: { height: "2.25rem", padding: "0.25rem 0.75rem" },
+  input: { boxSizing: "border-box", height: "2.25rem", padding: "0.25rem 0.75rem" },
 } satisfies Record<string, Sx>;
 
-/** The states `.wa-control` used to paint. */
+/** The states the control frame paints. */
 export interface ControlLook {
   focusVisible?: boolean;
   disabled?: boolean;
@@ -74,7 +70,7 @@ function Input({ className, style, type, ...props }: WithSx<ComponentProps<"inpu
 
   return (
     <input
-      className={cn("wa-control", className)}
+      className={className}
       data-slot="input"
       style={sx(
         reset.control,

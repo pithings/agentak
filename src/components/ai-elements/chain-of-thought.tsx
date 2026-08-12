@@ -101,6 +101,7 @@ const S = {
     gap: "0.5rem",
   },
   cotFrame: {
+    boxSizing: "border-box",
     display: "flex",
     maxHeight: "22rem",
     alignItems: "center",

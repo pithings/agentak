@@ -7,6 +7,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 const S = {
   alert: {
+    boxSizing: "border-box",
     position: "relative",
     display: "grid",
     width: "100%",

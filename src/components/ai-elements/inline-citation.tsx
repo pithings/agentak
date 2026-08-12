@@ -48,6 +48,7 @@ const S = {
   // ui/badge.tsx), so borrowing the badge classes no longer reproduces the
   // look — they are reproduced directly here instead, font size included.
   inlineCitationTrigger: {
+    boxSizing: "border-box",
     display: "inline-flex",
     flexShrink: "0",
     width: "fit-content",
@@ -70,15 +71,12 @@ const S = {
   // Was the `.wa-popover-content.wa-inline-citation-card` compound: wider and
   // unpadded than both the popover base and the hover-card width, so this must
   // reach PopoverContent as `style` to keep outranking them.
-  inlineCitationCard: {
-    width: "20rem",
-    padding: "0",
-    overflow: "hidden",
-  },
+  inlineCitationCard: { boxSizing: "border-box", width: "20rem", padding: "0", overflow: "hidden" },
   inlineCitationCarousel: {
     width: "100%",
   },
   inlineCitationCarouselItem: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     flexDirection: "column",

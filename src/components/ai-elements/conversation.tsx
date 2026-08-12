@@ -28,6 +28,7 @@ const S = {
     padding: "1rem",
   },
   empty: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     height: "100%",

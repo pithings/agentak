@@ -18,6 +18,7 @@ import { getStatusBadge } from "./tool";
 // which merge them in caller-last.
 const S = {
   sandbox: {
+    boxSizing: "border-box",
     width: "100%",
     marginBottom: "1rem",
     overflow: "hidden",
@@ -25,6 +26,7 @@ const S = {
     borderRadius: "var(--wa-radius-md)",
   },
   sandboxHeader: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     alignItems: "center",
@@ -49,6 +51,7 @@ const S = {
     gap: "0",
   },
   sandboxBar: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     alignItems: "center",
@@ -59,6 +62,7 @@ const S = {
     fontSize: "0.875rem",
   },
   sandboxTabsList: {
+    boxSizing: "border-box",
     height: "auto",
     borderRadius: "0",
     background: "none",

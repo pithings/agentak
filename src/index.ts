@@ -3,8 +3,9 @@
 export { AgentChat, type AgentChatProps } from "@/components/agent-chat";
 export { WebAgent, type WebAgentProps } from "@/web-agent";
 export { defineWebAgent, WebAgentElement } from "@/element";
-// Styles: `<Style/>` for a rendered tree, `adoptStyles` for a root you own.
-export { adoptStyles, Style, styleText } from "@/styles/sheet";
+// Styles are inline on every element. The one thing a host must declare is the
+// `--wa-*` tokens: put this text in a `<style>`, or copy the values.
+export { tokens } from "@/styles/base";
 export type { ViewMessage, ViewPart } from "@/types";
 
 // The loop. A host that wants its own surface can drive these directly.

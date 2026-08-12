@@ -20,8 +20,8 @@ const S = {
     paddingLeft: "0.5rem",
     fontWeight: "400",
   },
-  // Input's own color rule (`.wa-control`) is still CSS, so this override has
-  // to win by landing after it in the style attribute, not by class order.
+  // Input sets its own color inline, so this override wins by landing after it
+  // in the style attribute — `sx()` merges caller-last.
   snippetInput: {
     color: "var(--wa-foreground)",
   },

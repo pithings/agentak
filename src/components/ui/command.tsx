@@ -10,8 +10,6 @@ import {
   useState,
 } from "preact/hooks";
 
-import { css } from "@/lib/css";
-import { cn } from "@/lib/utils";
 import { isIconChild, SearchIcon } from "@/lib/icons";
 import { useControllableState } from "@/lib/use-controllable-state";
 import { reset, u } from "@/styles/base";
@@ -26,13 +24,6 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
  * `model-selector` is the first user; `voice-selector` and `mic-selector` are
  * the same shape.
  */
-export const commandStyles = css`
-  /* No inline style reaches a pseudo-element. */
-  .wa-command-input::placeholder {
-    color: var(--wa-muted-foreground);
-  }
-`;
-
 const S = {
   command: {
     display: "flex",
@@ -54,6 +45,7 @@ const S = {
     color: "var(--wa-muted-foreground)",
   },
   commandInput: {
+    boxSizing: "border-box",
     width: "100%",
     minWidth: "0",
     height: "2.75rem",
@@ -64,6 +56,7 @@ const S = {
     outline: "none",
   },
   commandList: {
+    boxSizing: "border-box",
     maxHeight: "18rem",
     overflowX: "hidden",
     overflowY: "auto",
@@ -323,7 +316,7 @@ function CommandInput({
         aria-controls={listId}
         aria-expanded
         autocomplete="off"
-        className={cn("wa-command-input", className)}
+        className={className}
         data-slot="command-input"
         onInput={(event) => setSearch(event.currentTarget.value)}
         placeholder={placeholder}

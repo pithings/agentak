@@ -4,11 +4,11 @@ import type { JSX } from "preact";
  * A style object. Preact writes these straight onto `element.style`, so a
  * property is set on the element itself and outranks every rule in the sheet.
  *
- * That precedence is the whole constraint of this codebase's split: a property
- * belongs here only when nothing in `styles/` overrides it for the same element.
- * A property that a `::placeholder`, a `:last-child` or a descendant selector
- * re-declares has to stay in CSS, or the inline value would win and the rule
- * would never paint. `styles/sheet.tsx` documents what is left.
+ * Every property lives here now — this library ships no stylesheet, so there is
+ * nothing for an inline value to outrank. What could not be reached from an
+ * element was dropped or replaced: `::placeholder` and `::selection` are
+ * `color-scheme` on the host, and the tokens are the host's to declare
+ * (`styles/base.ts`).
  */
 export type Sx = JSX.CSSProperties;
 

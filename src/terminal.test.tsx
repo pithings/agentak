@@ -2,8 +2,6 @@ import { cleanup, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { Terminal } from "@/components/ai-elements/terminal";
-import { declares } from "@/styles/declared";
-import { styleText } from "@/styles/sheet";
 
 afterEach(cleanup);
 
@@ -67,21 +65,5 @@ describe("Terminal", () => {
     expect(container.querySelector('[data-slot="terminal-cursor"]')).toBeTruthy();
     expect(screen.getByText("Running")).toBeTruthy();
     expect(screen.getByTitle("Clear")).toBeTruthy();
-  });
-
-  it("declares every class it renders", () => {
-    const { container } = render(<Terminal isStreaming onClear={() => {}} output={output} />);
-
-    const sheet = styleText();
-    const used = new Set<string>();
-    for (const element of container.querySelectorAll("*")) {
-      for (const name of element.classList) {
-        if (name.startsWith("wa-")) used.add(name);
-      }
-    }
-
-    // Most of Terminal's own classes are gone now — their declarations moved
-    // inline — so this only has Button's classes and .wa-terminal-action left.
-    expect([...used].filter((name) => !declares(sheet, name))).toEqual([]);
   });
 });

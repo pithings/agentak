@@ -24,6 +24,7 @@ const S = {
     justifyContent: "flex-end",
   },
   messageContent: {
+    boxSizing: "border-box",
     display: "flex",
     width: "fit-content",
     minWidth: "0",

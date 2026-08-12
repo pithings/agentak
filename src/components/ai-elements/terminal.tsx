@@ -55,6 +55,7 @@ const S = {
     color: "var(--wa-terminal-fg)",
   },
   terminalContent: {
+    boxSizing: "border-box",
     maxHeight: "24rem",
     overflow: "auto",
     padding: "0.75rem 1rem",

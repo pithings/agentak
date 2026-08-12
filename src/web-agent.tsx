@@ -24,6 +24,7 @@ import { sx, type Sx } from "@/styles/sx";
 
 const S = {
   gate: {
+    boxSizing: "border-box",
     display: "flex",
     minHeight: "0",
     flexDirection: "column",
@@ -195,7 +196,7 @@ function LiveAgent({
   // provider's model, and a message sent now would go to the wrong place.
   if (modelProvider !== providerId && catalog.loading) {
     return (
-      <div className={className ? `wa-root ${className}` : "wa-root"} style={sx(S.gate, style)}>
+      <div className={className} style={sx(S.gate, style)}>
         <div style={S.gateRow}>
           <Spinner />
           <span style={u.muted}>Loading the {provider.label} models…</span>
@@ -266,7 +267,7 @@ function Settings({ provider, keys, onSelectProvider, onSave, className, style }
 
   return (
     <form
-      className={className ? `wa-root ${className}` : "wa-root"}
+      className={className}
       onSubmit={(event) => {
         event.preventDefault();
         if (draft.trim()) onSave(draft.trim());

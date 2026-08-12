@@ -12,7 +12,7 @@ const S = {
     display: "flex",
     flexDirection: "column",
     // rowGap, not gap: this is a column, and `gap` would also write column-gap,
-    // which `.wa-alert:has(> svg)` still needs to set.
+    // which Alert sets for itself once it has a leading icon (`alertColumns`).
     rowGap: "0.5rem",
   },
   confirmationTitle: {

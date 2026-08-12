@@ -3,8 +3,6 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { declares } from "@/styles/declared";
-import { styleText } from "@/styles/sheet";
 
 afterEach(cleanup);
 
@@ -98,27 +96,6 @@ describe("Popover", () => {
     expect(panel.dataset.side).toBe("right"); // jsdom has no layout, so no flip.
     expect(panel.dataset.align).toBe("start");
     expect(panel.style.getPropertyValue("--wa-popover-offset")).toBe("12px");
-  });
-
-  it("declares every class it renders", () => {
-    const { container } = render(
-      <HoverCard defaultOpen>
-        <HoverCardTrigger>Trigger</HoverCardTrigger>
-        <HoverCardContent>card</HoverCardContent>
-      </HoverCard>,
-    );
-
-    const sheet = styleText();
-    const used = new Set<string>();
-    for (const element of container.querySelectorAll("*")) {
-      for (const name of element.classList) {
-        if (name.startsWith("wa-")) used.add(name);
-      }
-    }
-
-    // A class only earns its place if a rule still selects it — styles that need
-    // no selector are inline now. Counting classes would measure nothing.
-    expect([...used].filter((name) => !declares(sheet, name))).toEqual([]);
   });
 });
 

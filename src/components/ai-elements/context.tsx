@@ -45,6 +45,7 @@ const S = {
     transformOrigin: "center",
   },
   contextContent: {
+    boxSizing: "border-box",
     minWidth: "15rem",
     marginTop: "0.5rem",
     overflow: "hidden",
@@ -53,10 +54,7 @@ const S = {
     background: "var(--wa-background)",
     boxShadow: "var(--wa-shadow-xs)",
   },
-  contextHeader: {
-    width: "100%",
-    padding: "0.75rem",
-  },
+  contextHeader: { boxSizing: "border-box", width: "100%", padding: "0.75rem" },
   contextSummary: {
     display: "flex",
     alignItems: "center",
@@ -79,6 +77,7 @@ const S = {
     transition: "width var(--wa-transition)",
   },
   contextBody: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     flexDirection: "column",
@@ -96,6 +95,7 @@ const S = {
     color: "var(--wa-muted-foreground)",
   },
   contextFooter: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     alignItems: "center",

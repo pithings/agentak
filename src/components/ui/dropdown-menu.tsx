@@ -27,12 +27,14 @@ const S = {
   // Was the `.wa-popover-content.wa-menu` compound: the panel is a popover
   // first, so this must reach PopoverContent as `style` to keep outranking it.
   content: {
+    boxSizing: "border-box",
     width: "max-content",
     minWidth: "8rem",
     maxWidth: "20rem",
     padding: "0.25rem",
   },
   item: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     alignItems: "center",

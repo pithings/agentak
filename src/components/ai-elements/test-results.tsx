@@ -118,6 +118,7 @@ const S = {
     borderRadius: "var(--wa-radius-lg)",
   },
   suiteName: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     alignItems: "center",

@@ -19,6 +19,7 @@ const LOG_COLOR = {
 
 const S = {
   webPreview: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     height: "100%",
@@ -40,11 +41,7 @@ const S = {
   webPreviewBody: {
     flex: "1",
   },
-  webPreviewFrame: {
-    width: "100%",
-    height: "100%",
-    border: "0",
-  },
+  webPreviewFrame: { boxSizing: "border-box", width: "100%", height: "100%", border: "0" },
   webPreviewConsole: {
     borderTop: "1px solid var(--wa-border)",
     background: "var(--wa-muted-surface)",
@@ -52,6 +49,7 @@ const S = {
     fontSize: "0.875rem",
   },
   webPreviewConsoleTrigger: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     alignItems: "center",
@@ -64,6 +62,7 @@ const S = {
     background: "var(--wa-hover)",
   },
   webPreviewConsoleBody: {
+    boxSizing: "border-box",
     display: "flex",
     flexDirection: "column",
     gap: "0.25rem",

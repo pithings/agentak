@@ -13,6 +13,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 const S = {
   tabs: { display: "flex", flexDirection: "column", gap: "0.5rem" },
   list: {
+    boxSizing: "border-box",
     display: "inline-flex",
     width: "fit-content",
     alignItems: "center",

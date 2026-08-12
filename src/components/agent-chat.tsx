@@ -75,7 +75,6 @@ import type {
   ViewMessage,
   ViewToolPart,
 } from "@/types";
-import { cn } from "@/lib/utils";
 import { BotIcon, RotateCcwIcon, XIcon } from "@/lib/icons";
 import { u } from "@/styles/base";
 import { sx, type Sx } from "@/styles/sx";
@@ -97,6 +96,7 @@ const S = {
     WebkitFontSmoothing: "antialiased",
   },
   chatHeader: {
+    boxSizing: "border-box",
     display: "flex",
     minWidth: "0",
     alignItems: "center",
@@ -248,8 +248,7 @@ export function AgentChat({
   const current = models?.find((model) => model.id === modelId);
 
   return (
-    // `wa-root` carries the reset from styles/base.ts — structural, not styled.
-    <div className={cn("wa-root", className)} style={sx(S.chat, style)}>
+    <div className={className} style={sx(S.chat, style)}>
       <header style={S.chatHeader}>
         <BotIcon style={sx(u.icon, u.muted)} />
         <span style={S.chatTitle}>web-agent</span>

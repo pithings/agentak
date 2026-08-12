@@ -1,6 +1,5 @@
 import type { ComponentProps } from "preact";
 
-import { cn } from "@/lib/utils";
 import { controlSx, isInvalid } from "@/components/ui/input";
 import { useInteraction } from "@/lib/use-interaction";
 import { reset } from "@/styles/base";
@@ -8,6 +7,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 const S = {
   textarea: {
+    boxSizing: "border-box",
     display: "block",
     minHeight: "4rem",
     padding: "0.5rem 0.75rem",
@@ -20,7 +20,7 @@ function Textarea({ className, style, ...props }: WithSx<ComponentProps<"textare
 
   return (
     <textarea
-      className={cn("wa-control", className)}
+      className={className}
       data-slot="textarea"
       style={sx(
         reset.control,

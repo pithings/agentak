@@ -41,10 +41,7 @@ const S = {
   // Was the `.wa-popover-content.wa-model-selector-content` compound: the
   // popover's own padding and width are wrong for a list, so this must reach
   // PopoverContent as `style` to keep outranking it.
-  modelSelectorContent: {
-    width: "20rem",
-    padding: "0",
-  },
+  modelSelectorContent: { boxSizing: "border-box", width: "20rem", padding: "0" },
   // The trigger renders `PopoverTrigger`, not `Button`, so its box comes from
   // `buttonSx({ variant: "outline", size: "sm" })` (ui/button.tsx) plus the
   // two properties Button does not set — `justifyContent`/`minWidth`/

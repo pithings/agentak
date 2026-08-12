@@ -69,6 +69,7 @@ const tokenizeLines = (code: string, language: CodeLanguage): KeyedLine[] => {
 
 const S = {
   code: {
+    boxSizing: "border-box",
     position: "relative",
     width: "100%",
     overflow: "hidden",

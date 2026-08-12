@@ -43,12 +43,14 @@ export const toolBodyErrorSx = {
 
 const S = {
   tool: {
+    boxSizing: "border-box",
     width: "100%",
     marginBottom: "1rem",
     border: "1px solid var(--wa-border)",
     borderRadius: "var(--wa-radius-md)",
   },
   toolHeader: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     alignItems: "center",

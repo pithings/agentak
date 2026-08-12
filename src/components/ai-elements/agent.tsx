@@ -18,11 +18,13 @@ import { toolBodySx } from "./tool";
 
 const S = {
   agent: {
+    boxSizing: "border-box",
     width: "100%",
     border: "1px solid var(--wa-border)",
     borderRadius: "var(--wa-radius-md)",
   },
   agentHeader: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     alignItems: "center",

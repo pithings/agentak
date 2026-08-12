@@ -1,12 +1,13 @@
 import { Catalog, catalogStyles } from "@/catalog";
 import { WebAgent } from "@/web-agent";
-import { u } from "@/styles/base";
+import { tokens, u } from "@/styles/base";
 import { css } from "@/lib/css";
 import type { Sx } from "@/styles/sx";
 
 /**
- * Playground-only styles. They are not part of `styles/sheet.tsx` — nothing here
- * ships — so they carry a `pg-` prefix and ride in a `<style>` of their own.
+ * Playground-only styles. Nothing here ships, so they carry a `pg-` prefix and
+ * ride in a `<style>` of their own, next to the tokens the page declares the way
+ * a host page would.
  *
  * `.pg` needs a fixed grid-template-columns and `.pg-side` a border on the wide
  * layout, but both are rewritten by the narrow-viewport media query below —
@@ -70,7 +71,7 @@ const S = {
 export function Playground() {
   return (
     <div className="pg" style={S.pg}>
-      <style>{playgroundStyles + catalogStyles}</style>
+      <style>{tokens + playgroundStyles + catalogStyles}</style>
       <main style={S.pgMain}>
         <Catalog />
       </main>

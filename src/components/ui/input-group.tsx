@@ -16,6 +16,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
  */
 const S = {
   group: {
+    boxSizing: "border-box",
     position: "relative",
     display: "flex",
     width: "100%",
@@ -33,6 +34,7 @@ const S = {
   groupFocus: { borderColor: "var(--wa-ring)", boxShadow: "var(--wa-focus-ring)" },
   groupInvalid: { borderColor: "var(--wa-destructive)", boxShadow: "var(--wa-invalid-ring)" },
   addon: {
+    boxSizing: "border-box",
     display: "flex",
     height: "auto",
     alignItems: "center",
@@ -81,6 +83,7 @@ const ALIGNS = {
   },
   "block-start": {
     sx: {
+      boxSizing: "border-box",
       order: "-1",
       width: "100%",
       justifyContent: "flex-start",
@@ -91,6 +94,7 @@ const ALIGNS = {
   },
   "block-end": {
     sx: {
+      boxSizing: "border-box",
       order: "1",
       width: "100%",
       justifyContent: "flex-start",

@@ -6,6 +6,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 const S = {
   badge: {
+    boxSizing: "border-box",
     display: "inline-flex",
     flexShrink: "0",
     width: "fit-content",

@@ -13,6 +13,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
  */
 const S = {
   btn: {
+    boxSizing: "border-box",
     display: "inline-flex",
     flexShrink: "0",
     alignItems: "center",
@@ -85,19 +86,28 @@ const VARIANTS = {
 
 const SIZES = {
   default: {
-    sx: { height: "2.25rem", padding: "0.5rem 1rem" },
+    sx: { boxSizing: "border-box", height: "2.25rem", padding: "0.5rem 1rem" },
     iconPad: { padding: "0.5rem 0.75rem" },
   },
   xs: {
-    sx: { height: "1.5rem", gap: "0.25rem", paddingInline: "0.5rem", fontSize: "0.75rem" },
+    sx: {
+      boxSizing: "border-box",
+      height: "1.5rem",
+      gap: "0.25rem",
+      paddingInline: "0.5rem",
+      fontSize: "0.75rem",
+    },
     iconPad: { paddingInline: "0.375rem" },
     glyph: S.iconXs,
   },
   sm: {
-    sx: { height: "2rem", gap: "0.375rem", paddingInline: "0.75rem" },
+    sx: { boxSizing: "border-box", height: "2rem", gap: "0.375rem", paddingInline: "0.75rem" },
     iconPad: { paddingInline: "0.625rem" },
   },
-  lg: { sx: { height: "2.5rem", paddingInline: "1.5rem" }, iconPad: { paddingInline: "1rem" } },
+  lg: {
+    sx: { boxSizing: "border-box", height: "2.5rem", paddingInline: "1.5rem" },
+    iconPad: { paddingInline: "1rem" },
+  },
   icon: { sx: { width: "2.25rem", height: "2.25rem" } },
   "icon-xs": { sx: { width: "1.5rem", height: "1.5rem" }, glyph: S.iconXs },
   "icon-sm": { sx: { width: "2rem", height: "2rem" } },

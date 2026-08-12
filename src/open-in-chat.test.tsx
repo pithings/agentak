@@ -15,8 +15,6 @@ import {
   OpenInTrigger,
   OpenInv0,
 } from "@/components/ai-elements/open-in-chat";
-import { declares } from "@/styles/declared";
-import { styleText } from "@/styles/sheet";
 
 afterEach(cleanup);
 
@@ -86,24 +84,6 @@ describe("OpenIn", () => {
     expect(panel.dataset.align).toBe("start");
     expect(menuItems()).toHaveLength(7); // Six providers plus the plain item.
     expect(screen.getByText("Open this prompt in")).toBeTruthy();
-  });
-
-  it("declares every class it renders", () => {
-    const { container } = render(<Menu defaultOpen />);
-
-    const sheet = styleText();
-    const used = new Set<string>();
-    for (const element of container.querySelectorAll("*")) {
-      for (const name of element.classList) {
-        if (name.startsWith("wa-")) used.add(name);
-      }
-    }
-
-    // Guards against a vacuous check. Counts `data-slot`, not `wa-` classes:
-    // a class lives only while a rule selects it, so that count falls to zero as
-    // styles move inline, but every component keeps its slot.
-    expect(container.querySelectorAll("[data-slot]").length).toBeGreaterThan(5);
-    expect([...used].filter((name) => !declares(sheet, name))).toEqual([]);
   });
 });
 

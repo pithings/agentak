@@ -61,6 +61,7 @@ const S = {
     color: "var(--wa-info)",
   },
   schemaSectionTrigger: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     alignItems: "center",

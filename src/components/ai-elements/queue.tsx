@@ -37,6 +37,7 @@ const S = {
   },
   queueItemHover: { background: "var(--wa-muted)" },
   queueIndicator: {
+    boxSizing: "border-box",
     display: "inline-block",
     width: "0.625rem",
     height: "0.625rem",
@@ -73,6 +74,7 @@ const S = {
   // Overrides the icon button's own size, radius, colour and transition. It
   // reaches Button as `style`, so it still lands after the ghost variant.
   queueAction: {
+    boxSizing: "border-box",
     width: "auto",
     height: "auto",
     borderRadius: "var(--wa-radius-sm)",
@@ -89,6 +91,7 @@ const S = {
     marginTop: "0.25rem",
   },
   queueImage: {
+    boxSizing: "border-box",
     width: "2rem",
     height: "2rem",
     border: "1px solid var(--wa-border)",
@@ -119,6 +122,7 @@ const S = {
     paddingRight: "1rem",
   },
   queueTrigger: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     alignItems: "center",

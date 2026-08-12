@@ -944,7 +944,7 @@ function CatalogItem({ entry }: { entry: CatalogEntry }) {
 /** The left pane: every ported component, rendered with fixture data. */
 export function Catalog() {
   return (
-    <div className="wa-root" style={S.pgCatalog}>
+    <div style={S.pgCatalog}>
       <header style={S.pgCatalogHead}>
         <div>
           <h1 style={S.pgCatalogTitle}>Component catalog</h1>

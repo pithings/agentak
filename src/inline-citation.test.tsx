@@ -17,8 +17,6 @@ import {
   InlineCitationSource,
   InlineCitationText,
 } from "@/components/ai-elements/inline-citation";
-import { declares } from "@/styles/declared";
-import { styleText } from "@/styles/sheet";
 
 afterEach(cleanup);
 
@@ -132,19 +130,5 @@ describe("InlineCitation", () => {
 
     fireEvent.click(previous);
     expect(screen.getByText("2/3")).toBeTruthy();
-  });
-
-  it("declares every class it renders", () => {
-    const { container } = render(<Citation />);
-
-    const sheet = styleText();
-    const used = new Set<string>();
-    for (const element of container.querySelectorAll("*")) {
-      for (const name of element.classList) {
-        if (name.startsWith("wa-")) used.add(name);
-      }
-    }
-
-    expect([...used].filter((name) => !declares(sheet, name))).toEqual([]);
   });
 });

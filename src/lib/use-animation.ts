@@ -19,8 +19,7 @@ import { useMemo } from "preact/hooks";
  * a duration prop). A new object literal written inline in JSX would restart
  * the animation on every render.
  *
- * SSR-safe: this project renders to a string on the server (`styleText()` /
- * `<Style/>`), and a ref callback never runs there — Preact only invokes it
+ * SSR-safe: a ref callback never runs on the server — Preact only invokes it
  * once a real element mounts in a browser (or jsdom). So the element must
  * already look right unanimated: keep the animation's resting frame (e.g.
  * `opacity: 1`, no `transform`) as the element's own static style, the same

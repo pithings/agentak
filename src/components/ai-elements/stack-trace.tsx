@@ -13,6 +13,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 const S = {
   stack: {
+    boxSizing: "border-box",
     width: "100%",
     overflow: "hidden",
     border: "1px solid var(--wa-border)",
@@ -21,6 +22,7 @@ const S = {
     fontSize: "0.875rem",
   },
   stackHeader: {
+    boxSizing: "border-box",
     display: "flex",
     width: "100%",
     alignItems: "center",
@@ -70,6 +72,7 @@ const S = {
     justifyContent: "center",
   },
   stackContent: {
+    boxSizing: "border-box",
     overflow: "auto",
     borderTop: "1px solid var(--wa-border)",
     background: "var(--wa-muted-surface)",

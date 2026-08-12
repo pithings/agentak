@@ -119,8 +119,6 @@ import {
   TestSuiteName,
 } from "@/components/ai-elements/test-results";
 import { Context } from "@/components/ai-elements/context";
-import { declares } from "@/styles/declared";
-import { styleText } from "@/styles/sheet";
 import type { ViewMessage } from "@/types";
 
 const messages: ViewMessage[] = [
@@ -688,20 +686,6 @@ describe("Context", () => {
 
     expect(screen.queryByText("Reasoning")).toBeNull();
   });
-
-  it("declares every class it renders", () => {
-    const { container } = render(<Context {...props} />);
-
-    const sheet = styleText();
-    const used = new Set<string>();
-    for (const element of container.querySelectorAll("*")) {
-      for (const name of element.classList) {
-        if (name.startsWith("wa-")) used.add(name);
-      }
-    }
-
-    expect([...used].filter((name) => !declares(sheet, name))).toEqual([]);
-  });
 });
 
 describe("the demo transcript", () => {
@@ -716,78 +700,25 @@ describe("the demo transcript", () => {
     expect(names.length).toBeGreaterThan(20);
     expect(names.filter((name) => !ELEMENTS[name])).toEqual([]);
   });
-
-  it("declares every class the ported elements render", () => {
-    const { container } = render(
-      <AgentChat
-        isStreaming={false}
-        messages={[{ id: "demo", parts, role: "assistant" }]}
-        onReset={() => {}}
-        onSend={() => {}}
-        onStop={() => {}}
-      />,
-    );
-
-    const sheet = styleText();
-    const used = new Set<string>();
-    for (const element of container.querySelectorAll("*")) {
-      for (const name of element.classList) {
-        if (name.startsWith("wa-")) used.add(name);
-      }
-    }
-
-    expect([...used].filter((name) => !declares(sheet, name))).toEqual([]);
-  });
 });
 
 describe("styles", () => {
-  it("declares every class the chat renders", () => {
-    // Class names are plain strings, so nothing but this catches a typo. A class
-    // that no rule selects is dead weight now — styles that need no selector are
-    // inline. So the assertion is one-way: everything rendered must be declared.
-    const { container } = render(
-      <AgentChat
-        error="boom"
-        isStreaming={false}
-        messages={messages}
-        onReset={() => {}}
-        onSend={() => {}}
-        onStop={() => {}}
-      />,
-    );
-
-    const sheet = styleText();
-    const used = new Set<string>();
-    for (const element of container.querySelectorAll("*")) {
-      for (const name of element.classList) {
-        if (name.startsWith("wa-")) used.add(name);
-      }
-    }
-
-    expect([...used].filter((name) => !declares(sheet, name))).toEqual([]);
-  });
-
-  it("has every declared block in the sheet", () => {
-    // The manifest is written by hand, so a new `*Styles` export can miss it.
+  it("ships no stylesheet", () => {
+    // There is no sheet to adopt any more, and nothing injects one. A component
+    // that grows a `*Styles` block has nowhere to put it, so it would render
+    // dead text — this is what catches that, since the old manifest that used
+    // to is gone. Tokens are the exception and live in `styles/base.ts`, which
+    // this glob does not reach.
     const modules = import.meta.glob<Record<string, unknown>>("./components/**/*.tsx", {
       eager: true,
     });
 
     const blocks = Object.values(modules)
       .flatMap((module) => Object.entries(module))
-      .filter(([name, value]) => name.endsWith("Styles") && typeof value === "string") as [
-      string,
-      string,
-    ][];
+      .filter(([name, value]) => name.endsWith("Styles") && typeof value === "string")
+      .map(([name]) => name);
 
-    const sheet = styleText();
-    // No count floor: the number of blocks shrinks toward the permanent few as
-    // styles move inline, so any number here becomes a treadmill. Naming one
-    // block that can never go inline — `inputStyles` is `::placeholder` and
-    // `::selection`, and no inline style reaches a pseudo-element — proves the
-    // glob still finds blocks, so the assertion below is not vacuous.
-    expect(blocks.map(([name]) => name)).toContain("inputStyles");
-    expect(blocks.filter(([, text]) => !sheet.includes(text)).map(([name]) => name)).toEqual([]);
+    expect(blocks).toEqual([]);
   });
 });
 

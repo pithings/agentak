@@ -15,6 +15,7 @@ import { sx, type Sx } from "@/styles/sx";
  */
 const S = {
   switch: {
+    boxSizing: "border-box",
     display: "inline-flex",
     width: "2rem",
     height: "1.15rem",

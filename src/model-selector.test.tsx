@@ -14,8 +14,6 @@ import {
   ModelSelectorShortcut,
   ModelSelectorTrigger,
 } from "@/components/ai-elements/model-selector";
-import { declares } from "@/styles/declared";
-import { styleText } from "@/styles/sheet";
 
 afterEach(cleanup);
 
@@ -146,23 +144,5 @@ describe("ModelSelector", () => {
     fireEvent.click(screen.getByText("Claude Haiku 4.5"));
 
     expect(onValueChange).toHaveBeenCalledWith("claude-haiku-4-5-20251001");
-  });
-
-  it("declares every class it renders", () => {
-    const { container } = render(<Selector />);
-
-    const sheet = styleText();
-    const used = new Set<string>();
-    for (const element of container.querySelectorAll("*")) {
-      for (const name of element.classList) {
-        if (name.startsWith("wa-")) used.add(name);
-      }
-    }
-
-    // Guards against a vacuous check. Counts `data-slot`, not `wa-` classes:
-    // a class lives only while a rule selects it, so that count falls to zero as
-    // styles move inline, but every component keeps its slot.
-    expect(container.querySelectorAll("[data-slot]").length).toBeGreaterThan(8);
-    expect([...used].filter((name) => !declares(sheet, name))).toEqual([]);
   });
 });

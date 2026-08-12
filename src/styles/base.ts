@@ -1,27 +1,33 @@
 import type { Sx } from "@/styles/sx";
 
 /**
- * Tokens and the reset — everything left that cannot be an inline style
- * object. `@keyframes` used to sit here too (`wa-spin`, `wa-pulse`); both are
- * gone now that animations run through `useAnimation()` — see
- * `spinKeyframes`/`pulseKeyframes` below and `lib/use-animation.ts`.
+ * The tokens, and nothing else. This library injects no stylesheet of its own —
+ * every rule that could be reached from an element is an inline style object
+ * now, and the two that could not (`::placeholder`, `::selection`) were dropped
+ * in favour of `color-scheme`, which is inherited and therefore the host's to
+ * set. `@keyframes` went the same way earlier: animations run through
+ * `useAnimation()` — see `spinKeyframes`/`pulseKeyframes` below.
  *
- * Tokens stay in CSS on purpose. A custom property inherits, so one declaration
- * on `:root`/`:host` reaches every component, and the `.dark` block re-points the
- * same names without a single component branching on theme. Inline objects
- * reference them by `var()` exactly as the old rules did.
+ * A custom property inherits, so this text on the host page's `:root` reaches
+ * every component, crosses the `<web-agent>` shadow boundary, and re-points on
+ * `.dark` without a single component branching on theme. Style objects read the
+ * names with `var()`.
  *
- * Tokens sit on `:host` as well as `:root` because the same sheet is adopted by
- * the `<web-agent>` shadow root, where `:root` matches nothing.
+ * **A host must declare these.** `var(--wa-background)` with no token behind it
+ * resolves to nothing, not to a default. `tokens` is exported from the package
+ * root for exactly that: drop it in a `<style>`, adopt it, or copy the values.
+ * The `:host` selectors are there for a host that adopts it into a shadow root
+ * of its own, where `:root` matches nothing.
  *
- * The reset is scoped to `.wa-root`, which every surface that hosts components
- * carries — `AgentChat` renders it beside `.wa-chat` — and written with
- * `:where()` so it never outranks anything. Inline styles outrank it too, which
- * is the same order as before: a component's own value wins over the reset.
+ * `color-scheme` rides along because it is what paints `::placeholder` and
+ * `::selection` now — a pseudo-element is a box of its own, so no inline style
+ * ever reached them, and it inherits from here just as the tokens do.
  */
-export const base = `
+export const tokens = `
 :root,
 :host {
+  color-scheme: light;
+
   --wa-radius: 0.625rem;
   --wa-radius-sm: calc(var(--wa-radius) - 4px);
   --wa-radius-md: calc(var(--wa-radius) - 2px);
@@ -112,6 +118,7 @@ export const base = `
 
 .dark,
 :host(.dark) {
+  color-scheme: dark;
   --wa-background: oklch(0.145 0 0);
   --wa-foreground: oklch(0.985 0 0);
   --wa-primary: oklch(0.922 0 0);
@@ -172,19 +179,6 @@ export const base = `
   --wa-ansi-bright-white: #ffffff;
 }
 
-:host {
-  display: block;
-  color: var(--wa-foreground);
-}
-
-/* The one part of the reset that is not about a tag. Inlining it means the
-   property on every element the library renders, so it stays a rule. */
-.wa-root,
-.wa-root *,
-.wa-root *::before,
-.wa-root *::after {
-  box-sizing: border-box;
-}
 `;
 
 /**
@@ -203,13 +197,15 @@ export const base = `
  * style={sx(reset.button, S.trigger, hovered && S.triggerHover, style)}
  * ```
  *
- * A preset covers only the tag it is named for. `box` is separate because
- * `box-sizing` applied to every element, not to a tag — it is still a rule in
- * the sheet, since inlining it means a property on all ~355 elements this
- * library renders.
+ * A preset covers only the tag it is named for. `box-sizing` is in none of them:
+ * it used to be one rule over every element, and inlining it everywhere would be
+ * a property on all ~355 elements this library renders. It sits instead in the
+ * ~56 style objects where a size and a padding or border meet on the same
+ * element, which is the only place it changes a pixel. `styles.test.tsx` fails
+ * on any element that pairs the two without it.
  *
- * What a preset cannot reach, the sheet still must: a caller's own children get
- * no reset now, which is the trade this made. See AGENTS.md.
+ * A caller's own children get no reset, and no box-sizing either — they are
+ * outside every component's reach. See AGENTS.md.
  */
 export const reset = {
   /** h1-h6, p, figure, blockquote. */
@@ -274,6 +270,7 @@ export const u = {
   viewport: { height: "100dvh" },
 
   srOnly: {
+    boxSizing: "border-box",
     position: "absolute",
     width: "1px",
     height: "1px",

@@ -9,7 +9,7 @@ for the agent loop.
 - vite
 - preact (native — no react, no `preact/compat` aliasing)
 - shadcn + ai-elements, ejected to preact
-- styles written in typescript — inline style objects; no tailwind, and near enough no stylesheet
+- styles written in typescript — inline style objects; no tailwind, no stylesheet at all
 - pi-agent-core
 
 ## Conventions
@@ -36,8 +36,8 @@ or a gateway — with the page tools; nothing is verified in a real browser yet.
 | pi-agent-core wiring                      | **done** — see "The agent loop"                                      |
 | Providers                                 | 12, including the OpenRouter and Vercel gateways — see below         |
 | API key                                   | one per provider, kept in `localStorage`, or passed as `apiKey`      |
-| Styling                                   | inline style objects; the sheet is tokens + 2 blocks, see below      |
-| `<web-agent>` custom element              | written, shadow DOM + adopted stylesheet, unverified in browser      |
+| Styling                                   | inline style objects; no sheet — the host declares the tokens        |
+| `<web-agent>` custom element              | written, shadow DOM, injects nothing, unverified in browser          |
 | Chrome MV3 extension                      | **WIP stub** — side panel hosts the element, no tab bridge yet       |
 | Build / tests                             | `pnpm build`, `pnpm vitest run` pass — UI render tests included      |
 | `pnpm typecheck`                          | clean                                                                |
@@ -65,11 +65,9 @@ src/
   components/elements.tsx  name -> renderer registry for `{ kind: "element" }` parts
   components/demo-*.tsx    data-driven wrappers so the demo can drive compound
                            elements from plain props — demo only, not exported
-  styles/base.ts           tokens, the box-sizing rule, the `reset` presets, `u`,
+  styles/base.ts           the `tokens` text, the `reset` presets, `u`,
                            and the keyframe/option pairs `useAnimation()` takes
   styles/sx.ts             the Sx type, WithSx, and sx() — merges caller-last
-  styles/sheet.tsx         ordered manifest -> styleText(), <Style/>, adoptStyles()
-  styles/declared.ts       test-only: does the sheet still select this class?
   lib/
     css.ts                 css`` tagged template -> a rule string
     icons.tsx              inlined SVG icons (geometry from lucide, ISC)
@@ -106,8 +104,9 @@ extension/                 WIP MV3 side panel
    `documentBridge()` reads the side panel's own document today, which is empty.
 2. Extension key storage: `chrome.storage` instead of `localStorage`, passed as `apiKey`
    — it takes a record of keys by provider id.
-3. Verify `<web-agent>` in a host page, and the loop against a real key. The sheet is
-   adopted by the shadow root alone, so nothing has to be written to the host document.
+3. Verify `<web-agent>` in a host page, and the loop against a real key. Nothing is
+   written to the host document, but the host has to declare the `--wa-*` tokens —
+   export `tokens` is that text.
 4. Compaction. pi exports `compact()`, but it needs a `Models` store — the whole
    catalog — so a long conversation still runs into the window.
 
@@ -257,26 +256,33 @@ Dropped on the way through, restore deliberately if wanted:
 
 ## Styling
 
-Tailwind is gone, and so is the stylesheet. A component's styles are **inline style
-objects**. What is left in the sheet is only what an inline style cannot reach: the
-tokens, one `box-sizing` rule, and two pseudo-element blocks.
+Tailwind is gone, and so is the stylesheet — the library injects nothing, into a
+document or a shadow root. A component's styles are **inline style objects**.
 
 ### The split
 
-An inline style outranks every rule in the sheet. That single fact decides everything:
+An inline style outranks every rule, so a property goes inline unless nothing on the
+element can carry it. Everything that could not be carried is gone:
 
-> A property goes inline unless nothing on the element can carry it.
-
-So the sheet is now only these:
-
-- **tokens** — `:root`/`:host` and the `.dark` block in `styles/base.ts`. A custom
-  property inherits, so one declaration reaches every component and dark mode needs no
-  per-component branch. Style objects read them with `var()`.
-- **`box-sizing`** — the one reset rule that is about every element rather than a tag.
-  Inlining it means the property on ~355 elements, so it stays.
-- **pseudo-elements** — `::placeholder` in `ui/input.tsx` and `ui/command.tsx`,
-  `::selection` in `ui/input.tsx`. A pseudo-element is a box of its own; nothing put on
-  the element is even in the running.
+- **tokens** — the one thing left in CSS, and **the host declares it**, not this
+  library. `styles/base.ts` exports the text as `tokens`, re-exported from the package
+  root. A custom property inherits and inheritance crosses a shadow boundary, so a host
+  page's `:root` reaches every component inside `<web-agent>`, and `.dark` re-points the
+  same names with no per-component branch. Style objects read them with `var()`. **A
+  `var()` with no token behind it resolves to nothing, not to a default** — a host that
+  skips the snippet gets an unpainted tree.
+- **`box-sizing`** — was one rule over every element. It is inline now, but only in the
+  ~56 style objects where a size meets a padding or a border, which is the only place it
+  changes a pixel; on all ~355 elements it would be dead weight. `styles.test.tsx`
+  renders the catalog and the chat and fails on any element that pairs the two without
+  it — three of the first misses were found that way, where the size and the inset came
+  from different objects merged by `sx()`.
+- **pseudo-elements** — dropped. `::placeholder` and `::selection` were the last two
+  rules in the project; a pseudo-element is a box of its own, so no inline style was ever
+  in the running. The placeholder is `color-scheme` now, which inherits from the host
+  alongside the tokens and is in the `tokens` text. It paints the UA's grey rather than
+  `--wa-muted-foreground`; the selection highlight is the UA's, which follows the OS.
+- **`@keyframes`** — `useAnimation()`, see below.
 
 Everything else — layout, spacing, colour, typography, and every interaction state — is
 a `Sx` object. That includes the cases a selector used to own: a sibling gap or a
@@ -361,8 +367,8 @@ value is inline, and a class never beats inline. Pass the override as `style`:
 <Badge style={S.result} />
 ```
 
-There are **no compound selectors left in the sheet**. If you find yourself writing one,
-the property it targets has already gone inline and the selector will match nothing.
+There is **no sheet to write a selector into**. If you find yourself reaching for one,
+the property it targets is already inline and the selector would match nothing.
 
 ### Animation
 
@@ -378,49 +384,50 @@ subcomponent each.
 
 ### What the checks catch, and what they do not
 
-- **`src/styles.test.tsx`** renders the whole catalog and the chat, then compares every
-  element's inline properties against every sheet rule that can match it. It fails on any
-  property that went inline while a rule still needed to win.
-- **`declares every class it renders`**, in several suites, fails when a `wa-` class is
-  left in the DOM with no rule selecting it. `styles/declared.ts` matches on a token
-  boundary — a plain `sheet.includes(".wa-tool")` is satisfied by `.wa-tool-content` and
-  hid three dead classes for several rounds.
-- **Nothing catches an inverted `sx()` argument.** Both checks are about inline-vs-sheet;
-  a state object merged before the resting value it should override produces no failure,
-  only a wrong pixel. Verify precedence by reading, or with a jsdom cascade probe.
-- **A class is a selector hook, not a style carrier.** A `wa-` class stays on an element
-  only while some rule selects it. `data-slot`, `data-variant`, `data-size` and
-  `data-state` are the stable hooks and are never removed. Grep before removing a class:
-  `grep -rn "wa-the-class" src`.
+- **`src/styles.test.tsx`** renders the whole catalog and the chat and fails on any
+  element that carries a real size and a real padding or border without
+  `box-sizing: border-box`. A third case renders a bare `<div>` that pairs the two, so
+  the check cannot pass by finding nothing. What it cannot see is a size a **caller**
+  passes as `style` onto a padded primitive — the catalog renders defaults.
+- **`ships no stylesheet`**, in `render.test.tsx`, globs the components for a `*Styles`
+  export and fails if one comes back. There is no manifest to add a block to any more,
+  so a new block would simply be dead text.
+- **Nothing catches an inverted `sx()` argument.** A state object merged before the
+  resting value it should override produces no failure, only a wrong pixel. Verify
+  precedence by reading.
+- **There are no `wa-` classes left.** `data-slot`, `data-variant`, `data-size` and
+  `data-state` are the stable hooks. A class carries nothing now — do not add one to
+  style something, and do not expect a host to be able to target it.
 
 ### The trade
 
 Components render identically wherever they are embedded, and a host page cannot break
-them. In exchange: a host page cannot restyle them either (only the `--wa-*` tokens are
-still open), styles re-emit per element per render instead of being parsed once, hover
-and focus cost a render, and **a caller's own children get no reset** — they are outside
-every component's reach. Nothing is left in the sheet for them: a raw `<p>` under
+them, and nothing has to be injected anywhere. In exchange: a host page cannot restyle
+them either (only the `--wa-*` tokens are open), styles re-emit per element per render
+instead of being parsed once, hover and focus cost a render, and **a caller's own
+children get no reset** — they are outside every component's reach. A raw `<p>` under
 `AlertDescription` and a raw `<table>` in a tool body lose their line-height and their
-width. Both are covered when the child comes through `<Markdown>`, which sets the same
+width; both are covered when the child comes through `<Markdown>`, which sets the same
 values inline, and that is every real caller today.
 
-Three ways out of `styles/sheet.tsx`, all from the same string:
+The one thing a host must do:
 
-- `styleText()` — the sheet, pure, no DOM. Safe in node.
-- `<Style/>` — the sheet as markup, for any path that renders to a string.
-- `adoptStyles(root)` — browser only, after mount: one constructable sheet shared between
-  roots, with a `<style>` fallback. `element.tsx` calls it for the shadow root,
-  `main.tsx` for the playground document.
+```html
+<style>
+  /* the `tokens` export, verbatim */
+</style>
+```
 
-Use `<Style/>` **or** `adoptStyles`, not both. Both skip a root that already carries
-`[data-wa-styles]`, so a mix costs nothing worse than a duplicate sheet.
+`tokens` is a string — put it in a `<style>`, adopt it into a root of your own, or copy
+the values. The playground does the first (`playground.tsx`), the extension side panel
+too (`extension/panel.ts`), and both are honest about it: those documents are ours, not
+a host's. `<web-agent>` itself declares only `display: block`, set on the element in
+`connectedCallback` because there is no `:host` rule to carry it.
 
-`BLOCKS` is explicit because module evaluation order is not a contract — it changes with
-the entry point and with how a bundler splits chunks, so a server and a browser would
-otherwise build different sheets from the same source.
-
-The sheet still needs modern CSS: `:has()`, `color-mix()` and `field-sizing` are used as
-tailwind used them.
+The style objects and the tokens still need modern CSS: `color-mix()` and
+`field-sizing` are used as tailwind used them. `:has()` is gone from everything that
+ships — it survives only in the playground's own `<style>` (`catalog.tsx`), which is
+demo-only.
 
 ## Markdown
 
