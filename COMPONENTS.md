@@ -245,7 +245,7 @@ Each step, in order. `image` is the smallest worked example — read it beside t
 7. **Drop what needs a new package.** Tooltips fall back to the native `title` attribute.
    Say what was dropped in this file, so the choice is deliberate and reversible.
 8. **Check.** `pnpm typecheck`, `pnpm vitest run`, `pnpm lint`, `pnpm fmt`.
-   `render.test.tsx` fails on a block the manifest misses, but it only sees classes on
+   `test/render.test.tsx` fails on a block the manifest misses, but it only sees classes on
    what it renders — add a render test for anything the chat does not yet mount.
 
 `src/index.ts` exports the shell, not single elements, so a port needs no barrel change.
@@ -255,7 +255,7 @@ Each step, in order. `image` is the smallest worked example — read it beside t
 Nothing — every registry component that needs no new npm dependency is ported. What is
 left is in [Blocked](#blocked); restore one of those deliberately, with its dependency.
 
-The `render.test.tsx` suite drives all of them from the demo fixtures: one test asserts
+The `test/render.test.tsx` suite drives all of them from the demo fixtures: one test asserts
 every `{ kind: "element" }` name in `demo-chat.ts` resolves in the `ELEMENTS` registry,
 another renders the whole demo transcript and asserts every `wa-` class it emits is
 declared in the sheet.
@@ -264,11 +264,11 @@ declared in the sheet.
 
 Each needs a new npm dependency. Restore deliberately, not by default.
 
-| Component                                                              | Blocker                                                                                                 |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `canvas`, `connection`, `controls`, `edge`, `node`, `panel`, `toolbar` | `@xyflow/react` is react-only. Needs `preact/compat` aliasing, which `render.test.tsx` asserts against. |
-| `persona`                                                              | `@rive-app/react-webgl2`, react-only                                                                    |
-| `jsx-preview`                                                          | `react-jsx-parser`, react-only                                                                          |
-| `audio-player`                                                         | `media-chrome` (web components, so framework-neutral) plus `button-group`                               |
-| `attachments`                                                          | radix `hover-card` — `ui/hover-card.tsx` covers it, so this one is unported, not blocked                |
-| `voice-selector`, `mic-selector`                                       | `cmdk` — `ui/command.tsx` covers it, so only the port is left; `model-selector` is the worked example   |
+| Component                                                              | Blocker                                                                                                      |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `canvas`, `connection`, `controls`, `edge`, `node`, `panel`, `toolbar` | `@xyflow/react` is react-only. Needs `preact/compat` aliasing, which `test/render.test.tsx` asserts against. |
+| `persona`                                                              | `@rive-app/react-webgl2`, react-only                                                                         |
+| `jsx-preview`                                                          | `react-jsx-parser`, react-only                                                                               |
+| `audio-player`                                                         | `media-chrome` (web components, so framework-neutral) plus `button-group`                                    |
+| `attachments`                                                          | radix `hover-card` — `ui/hover-card.tsx` covers it, so this one is unported, not blocked                     |
+| `voice-selector`, `mic-selector`                                       | `cmdk` — `ui/command.tsx` covers it, so only the port is left; `model-selector` is the worked example        |

@@ -709,7 +709,7 @@ describe("styles", () => {
     // dead text — this is what catches that, since the old manifest that used
     // to is gone. Tokens are the exception and live in `styles/base.ts`, which
     // this glob does not reach.
-    const modules = import.meta.glob<Record<string, unknown>>("./components/**/*.tsx", {
+    const modules = import.meta.glob<Record<string, unknown>>("../src/components/**/*.tsx", {
       eager: true,
     });
 

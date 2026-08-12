@@ -95,6 +95,12 @@ src/
   types.ts                 UI types inlined from the `ai` package
   element.tsx              <web-agent> custom element
   web-agent.tsx            the container: key gate, storage, agent -> AgentChat
+test/                      every *.test.ts(x) — imports the source through `@/`
+  agent/                   the loop: agent, transcript, providers
+  components/              one component each: markdown, terminal, popover, …
+  lib/                     ansi
+  render.test.tsx          every element, from the demo fixtures — cross-cutting
+  styles.test.tsx          box-sizing over the whole catalog — cross-cutting
 extension/                 WIP MV3 side panel
 ```
 
@@ -150,7 +156,7 @@ api, so `streamFor()` picks the module per turn and a gateway model costs no ext
 | OpenAI                                                  | openai-responses                        |
 | Groq, Cerebras, Together, DeepSeek, xAI, Z.ai, Moonshot | openai-completions                      |
 
-Adding one is an entry plus its `defaultModelId`. `src/agent/providers.test.ts` loads
+Adding one is an entry plus its `defaultModelId`. `test/agent/providers.test.ts` loads
 every catalog and fails if a default no longer exists, or if a listed model needs an api
 this build does not carry.
 
@@ -219,7 +225,7 @@ tailwind — the CLI has nothing left to write into, so a new element is a manua
   that is preact's own module, not a react shim).
 - `reactAliasesEnabled: false` in all four vite/vitest configs. There is no
   react→preact/compat alias any more, so a stray `react` import fails the build
-  instead of silently resolving. `src/render.test.tsx` asserts this.
+  instead of silently resolving. `test/render.test.tsx` asserts this.
 - `tsconfig.json` uses `jsxImportSource: "preact"` and no `react` path mappings.
 
 Replaced packages:
@@ -273,7 +279,7 @@ element can carry it. Everything that could not be carried is gone:
   skips the snippet gets an unpainted tree.
 - **`box-sizing`** — was one rule over every element. It is inline now, but only in the
   ~56 style objects where a size meets a padding or a border, which is the only place it
-  changes a pixel; on all ~355 elements it would be dead weight. `styles.test.tsx`
+  changes a pixel; on all ~355 elements it would be dead weight. `test/styles.test.tsx`
   renders the catalog and the chat and fails on any element that pairs the two without
   it — three of the first misses were found that way, where the size and the inset came
   from different objects merged by `sx()`.
@@ -384,12 +390,12 @@ subcomponent each.
 
 ### What the checks catch, and what they do not
 
-- **`src/styles.test.tsx`** renders the whole catalog and the chat and fails on any
+- **`test/styles.test.tsx`** renders the whole catalog and the chat and fails on any
   element that carries a real size and a real padding or border without
   `box-sizing: border-box`. A third case renders a bare `<div>` that pairs the two, so
   the check cannot pass by finding nothing. What it cannot see is a size a **caller**
   passes as `style` onto a padded primitive — the catalog renders defaults.
-- **`ships no stylesheet`**, in `render.test.tsx`, globs the components for a `*Styles`
+- **`ships no stylesheet`**, in `test/render.test.tsx`, globs the components for a `*Styles`
   export and fails if one comes back. There is no manifest to add a block to any more,
   so a new block would simply be dead text.
 - **Nothing catches an inverted `sx()` argument.** A state object merged before the
