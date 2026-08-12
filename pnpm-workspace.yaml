@@ -1,0 +1,5 @@
+allowBuilds:
+  "@google/genai": false
+  protobufjs: false
+minimumReleaseAgeExclude:
+  - md4x@0.0.26

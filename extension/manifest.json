@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "web-agent",
+  "version": "0.0.0",
+  "description": "WIP — side panel host for the <web-agent> element.",
+  "permissions": ["sidePanel", "activeTab", "scripting", "storage"],
+  "action": { "default_title": "Open web-agent" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "background": { "service_worker": "background.js", "type": "module" }
+}
