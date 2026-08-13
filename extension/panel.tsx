@@ -1,7 +1,7 @@
 /**
  * WIP side panel entry. Mounts the chat surface over the pi loop.
  *
- * `AgentakChat` from `agentak/preact` is the surface in a box, and it declares
+ * `ChatPanel` from `agentak/preact` is the surface in a box, and it declares
  * the `--*` tokens — the panel document is ours rather than a host's, so nothing
  * else has to. It carries no loop: `createPiSession()` is the import that brings
  * one, and this is the only line here that knows about pi.
@@ -13,11 +13,8 @@
 import { render } from "preact";
 
 import { createPiSession } from "@/pi/session";
-import { AgentakChat } from "@/preact";
+import { ChatPanel } from "@/preact";
 import { u } from "@/styles/base";
 
 // One session for the life of the panel, which is the life of the document.
-render(
-  <AgentakChat session={createPiSession()} style={u.fill} />,
-  document.querySelector("#root")!,
-);
+render(<ChatPanel session={createPiSession()} style={u.fill} />, document.querySelector("#root")!);

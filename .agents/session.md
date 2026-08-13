@@ -102,7 +102,7 @@ than a rewrite.
 | Entry                                            | Harness                                        |
 | ------------------------------------------------ | ---------------------------------------------- |
 | `agentak`                                        | none — `AgentChat` takes the session as a prop |
-| `agentak/preact`, `agentak/react`, `agentak/vue` | none either — same prop, same rule             |
+| `agentak/preact`, `agentak/react`, `agentak/vue` | none either — `ChatPanel` takes the same prop  |
 | `agentak/pi`                                     | `createPiSession()`                            |
 
 The choice is the host's, and it is made at the mount: nothing in the library picks a
@@ -110,7 +110,7 @@ loop, and nothing registers anything as a side effect. A host that imports a sur
 entry and its own session never resolves pi.
 
 **The session is required**, and required by the type: `session` has no default on
-`AgentChat` or on any wrapper, so a mount without one does not compile. A wrapper that
+`AgentChat` or on `ChatPanel`, so a mount without one does not compile. A wrapper that
 made one from options beside it would put pi in every bundle that renders a chat —
 which is the seam, spent for one saved import.
 

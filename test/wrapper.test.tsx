@@ -1,11 +1,11 @@
 import { cleanup, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
-import { createApp, h } from "vue";
+import { createApp, h, nextTick, ref } from "vue";
 
-import { mount } from "@/index";
-import { AgentakChat } from "@/preact";
+import { mountChat } from "@/index";
+import { ChatPanel, ChatView } from "@/preact";
 import type { ChatSession, ChatSnapshot } from "@/session";
-import { type AgentakChatProps, AgentakChat as VueAgentakChat } from "@/vue";
+import { type ChatPanelProps, ChatPanel as VueChatPanel, ChatView as VueChatView } from "@/vue";
 
 afterEach(() => {
   cleanup();
@@ -36,11 +36,11 @@ function fakeSession(): ChatSession & { disposed: number; dispose(): void } {
 describe("the framework wrapper", () => {
   it("mounts the surface and declares the tokens once", () => {
     const session = fakeSession();
-    const { rerender } = render(<AgentakChat session={session} style={{ height: "600px" }} />);
+    const { rerender } = render(<ChatPanel session={session} style={{ height: "600px" }} />);
 
     expect(screen.getByRole("textbox")).toBeTruthy();
 
-    rerender(<AgentakChat session={session} style={{ height: "600px" }} />);
+    rerender(<ChatPanel session={session} style={{ height: "600px" }} />);
     const sheets = document.head.querySelectorAll("style[data-agentak-tokens]");
     expect(sheets.length).toBe(1);
     // First in the head: a page that declares the same names keeps them.
@@ -49,20 +49,56 @@ describe("the framework wrapper", () => {
   });
 
   it("leaves the tokens alone when the host says so", () => {
-    render(<AgentakChat session={fakeSession()} tokens={false} />);
+    render(<ChatPanel session={fakeSession()} tokens={false} />);
     expect(document.head.querySelector("style[data-agentak-tokens]")).toBeNull();
   });
 
   it("never ends the session — the host made it, the host ends it", () => {
     const session = fakeSession();
-    const { unmount } = render(<AgentakChat session={session} />);
+    const { unmount } = render(<ChatPanel session={session} />);
     unmount();
     expect(session.disposed).toBe(0);
   });
 });
 
+/** The other half of every wrapper: the surface a host drives itself. */
+describe("the controlled wrapper", () => {
+  it("mounts `Chat` with no session, and declares the tokens", () => {
+    render(
+      <ChatView
+        isStreaming={false}
+        messages={[]}
+        onReset={() => {}}
+        onSend={() => {}}
+        onStop={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole("textbox")).toBeTruthy();
+    expect(document.head.querySelector("style[data-agentak-tokens]")).toBeTruthy();
+  });
+
+  it("passes the host's props through to the surface", () => {
+    render(
+      <ChatView
+        isStreaming={false}
+        messages={[{ id: "1", parts: [{ kind: "text", text: "hello" }], role: "user" }]}
+        onReset={() => {}}
+        onSend={() => {}}
+        onStop={() => {}}
+        title="A title"
+        tokens={false}
+      />,
+    );
+
+    expect(screen.getByText("A title")).toBeTruthy();
+    expect(screen.getByText("hello")).toBeTruthy();
+    expect(document.head.querySelector("style[data-agentak-tokens]")).toBeNull();
+  });
+});
+
 /** The framework-less mount: what a `<script type="module">` calls. */
-describe("mount()", () => {
+describe("mountChat()", () => {
   const host = () => {
     const element = document.createElement("div");
     element.id = "chat";
@@ -72,7 +108,7 @@ describe("mount()", () => {
 
   it("takes a selector, declares the tokens, and fills the element", () => {
     const element = host();
-    const chat = mount("#chat", { session: fakeSession() });
+    const chat = mountChat("#chat", { session: fakeSession() });
 
     expect(screen.getByRole("textbox")).toBeTruthy();
     expect(document.head.querySelector("style[data-agentak-tokens]")).toBeTruthy();
@@ -87,7 +123,7 @@ describe("mount()", () => {
   it("redraws in place, and ends no session", () => {
     const element = host();
     const session = fakeSession();
-    const chat = mount(element, { session, tokens: false });
+    const chat = mountChat(element, { session, tokens: false });
 
     chat.update({ session });
     expect(screen.getByRole("textbox")).toBeTruthy();
@@ -99,7 +135,7 @@ describe("mount()", () => {
   });
 
   it("says so when the selector finds nothing", () => {
-    expect(() => mount("#nowhere", { session: fakeSession() })).toThrow(/nowhere/);
+    expect(() => mountChat("#nowhere", { session: fakeSession() })).toThrow(/nowhere/);
   });
 });
 
@@ -108,10 +144,10 @@ describe("mount()", () => {
  * of this package that no preact test reaches.
  */
 describe("the vue wrapper", () => {
-  const mount = (props: AgentakChatProps & { class?: string }) => {
+  const mount = (props: ChatPanelProps & { class?: string }) => {
     const host = document.createElement("div");
     document.body.append(host);
-    const app = createApp(h(VueAgentakChat, props));
+    const app = createApp(h(VueChatPanel, props));
     app.mount(host);
     return () => {
       app.unmount();
@@ -137,5 +173,34 @@ describe("the vue wrapper", () => {
     const unmount = mount({ session: fakeSession() });
     expect(document.head.querySelector("style[data-agentak-tokens]")).toBeTruthy();
     unmount();
+  });
+
+  it("mounts the controlled surface, and redraws it on a changed prop", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const title = ref("First");
+    const app = createApp(() =>
+      h(VueChatView, {
+        isStreaming: false,
+        messages: [],
+        onReset: () => {},
+        onSend: () => {},
+        onStop: () => {},
+        title: title.value,
+        tokens: false,
+      }),
+    );
+    app.mount(host);
+
+    expect(screen.getByText("First")).toBeTruthy();
+
+    // The callbacks are props here, not emits — a changed one redraws the
+    // island the same way, because the watcher takes every prop by value.
+    title.value = "Second";
+    await nextTick();
+    expect(screen.getByText("Second")).toBeTruthy();
+
+    app.unmount();
+    host.remove();
   });
 });

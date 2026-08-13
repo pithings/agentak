@@ -4,7 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffe
 
 import { createPiSession, type PiSession } from "@/pi/session";
 import { u } from "@/styles/base";
-import { AgentakChat } from "@/vue";
+import { ChatPanel } from "@/vue";
 import { ChatActions, StartDemo } from "../chat-actions";
 import { chat, closeChat, openChat, setChatMode } from "../chat-store";
 import { DemoAgent } from "../demo-agent";
@@ -13,7 +13,7 @@ import PreactHost from "./preact-host.vue";
 /**
  * The in-page chatbox, the way a host page mounts one.
  *
- * It opens on the live agent — `AgentakChat` from `agentak/vue`, the surface as
+ * It opens on the live agent — `ChatPanel` from `agentak/vue`, the surface as
  * a vue element, over a pi session this page makes and ends itself. The wrapper
  * carries no loop, so `createPiSession()` below is the one import that brings
  * one. The page's tokens reach the surface by inheritance, and the page's
@@ -222,7 +222,7 @@ onBeforeUnmount(() => {
         <!-- One surface at a time, and neither keeps its transcript across the
              swap: the watcher above ends the session with the mode.
              `tokens` is off because `main.ts` declares them for the page. -->
-        <AgentakChat
+        <ChatPanel
           v-if="session"
           class="min-h-0 flex-1"
           :actions="actions"

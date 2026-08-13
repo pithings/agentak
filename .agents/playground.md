@@ -40,7 +40,7 @@ The page is vue; every component in the library is preact. They meet in
 neither patches the other's nodes. A catalog preview is one such island; the demo
 chat is another.
 
-The chatbox is the one island the page does **not** hand-roll: it is `AgentakChat`
+The chatbox is the one island the page does **not** hand-roll: it is `ChatPanel`
 from `agentak/vue`, which owns the same bridge inside the library — a div vue renders
 and preact fills. The wrapper carries no loop, so the widget still makes the pi session
 itself and still ends it: a `shallowRef` filled on the first live mount, dropped when
@@ -178,13 +178,13 @@ library and the extension stay on the root's 7.
 
 WIP MV3 side panel. `pnpm build:extension` writes `extension/dist`; load it unpacked.
 
-| File             | What                                                          |
-| ---------------- | ------------------------------------------------------------- |
-| `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported  |
-| `sidepanel.html` | the panel document — one full-height `#root` to render into   |
-| `panel.tsx`      | `AgentakChat` from `agentak/preact`, over `createPiSession()` |
-| `background.ts`  | the service worker — opens the panel on the action click      |
-| `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`         |
+| File             | What                                                         |
+| ---------------- | ------------------------------------------------------------ |
+| `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported |
+| `sidepanel.html` | the panel document — one full-height `#root` to render into  |
+| `panel.tsx`      | `ChatPanel` from `agentak/preact`, over `createPiSession()`  |
+| `background.ts`  | the service worker — opens the panel on the action click     |
+| `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`        |
 
 Not built yet: key storage in `chrome.storage` instead of `localStorage`. The agent
 carries no tools, so the panel reads nothing from the active tab yet.

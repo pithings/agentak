@@ -8,10 +8,10 @@
   Add an AI chat to any web page with one component.
 </p>
 
-- 🧩 **One component and one session.** `<AgentakChat session={…} />` gives you the full
+- 🧩 **One component and one session.** `<ChatPanel session={…} />` gives you the full
   chat, including provider settings, styles, and tools.
 - ⚡ **Works with React, Vue, Preact, or plain JavaScript.** Use the package for your
-  framework, or call `mount()` on an element. You can also load it from a CDN.
+  framework, or call `mountChat()` on an element. You can also load it from a CDN.
 - 🎨 **No stylesheet to import.** Components use inline styles, and the wrappers add the
   theme variables for you.
 - 🔄 **Bring your own agent if you want.** The chat takes a `ChatSession`. You can use the
@@ -45,12 +45,12 @@ npx nypm i agentak
 
 <script type="module">
   // The chat UI
-  import { mount } from "https://esm.sh/agentak";
+  import { mountChat } from "https://esm.sh/agentak";
 
   // The included Pi agent
   import { createPiSession } from "https://esm.sh/agentak/pi";
 
-  mount("#chat", { session: createPiSession() });
+  mountChat("#chat", { session: createPiSession() });
 </script>
 ```
 
@@ -70,14 +70,14 @@ runs the conversation.
 
 ```tsx
 import { useEffect, useMemo } from "react";
-import { AgentakChat } from "agentak/react";
+import { ChatPanel } from "agentak/react";
 import { createPiSession } from "agentak/pi";
 
 export function Assistant() {
   const session = useMemo(() => createPiSession(), []);
   useEffect(() => () => session.dispose(), [session]);
 
-  return <AgentakChat session={session} style={{ height: "600px" }} />;
+  return <ChatPanel session={session} style={{ height: "600px" }} />;
 }
 ```
 
@@ -86,7 +86,7 @@ export function Assistant() {
 ```vue
 <script setup lang="ts">
 import { onBeforeUnmount } from "vue";
-import { AgentakChat } from "agentak/vue";
+import { ChatPanel } from "agentak/vue";
 import { createPiSession } from "agentak/pi";
 
 const session = createPiSession();
@@ -94,37 +94,37 @@ onBeforeUnmount(() => session.dispose());
 </script>
 
 <template>
-  <AgentakChat :session="session" class="h-[600px]" />
+  <ChatPanel :session="session" class="h-[600px]" />
 </template>
 ```
 
 ### 🟣 Preact
 
 ```tsx
-import { AgentakChat } from "agentak/preact";
+import { ChatPanel } from "agentak/preact";
 import { createPiSession } from "agentak/pi";
 
 const session = createPiSession();
 
-<AgentakChat session={session} style={{ height: "600px" }} />;
+<ChatPanel session={session} style={{ height: "600px" }} />;
 ```
 
 ### 🧩 No framework
 
 ```ts
-import { mount } from "agentak";
+import { mountChat } from "agentak";
 import { createPiSession } from "agentak/pi";
 
-const chat = mount("#chat", { session: createPiSession() });
+const chat = mountChat("#chat", { session: createPiSession() });
 ```
 
-#### `mount(target, props)`
+#### `mountChat(target, props)`
 
 `target` can be a CSS selector or an element. `props` accepts every
 [`AgentChat` prop](#agentchat). You can also pass `tokens: false` if your page already
 provides the CSS variables.
 
-`mount()` adds the CSS variables, prepares the target element, and renders the chat. Make
+`mountChat()` adds the CSS variables, prepares the target element, and renders the chat. Make
 sure the target has a height because the chat fills the available space.
 
 It returns `{ update, unmount }`. Use `update(props)` to apply new props without losing the
@@ -133,7 +133,7 @@ session, so you must dispose of a session that you created.
 
 ### Props
 
-`AgentakChat` accepts the same props in React, Vue, and Preact:
+`ChatPanel` accepts the same props in React, Vue, and Preact:
 
 | Prop                  | Type            | Description                                                    |
 | --------------------- | --------------- | -------------------------------------------------------------- |
@@ -170,6 +170,29 @@ const session = createPiSession({ provider: "openai", apiKey: "sk-…" });
 `AgentChat` accepts `session`, `generateTitle`, `actions`, `emptyActions`, `className`, and
 `style`. It does not accept `tokens` because that prop belongs to the framework wrappers.
 If you use `AgentChat` directly, call `injectTokens()` from `agentak` yourself.
+
+#### `ChatView`
+
+`agentak/react`, `agentak/vue`, and `agentak/preact` also export `ChatView`. It renders
+the `Chat` component in the same wrapper element, and it takes no session. Your app owns
+the conversation: pass the transcript, the streaming flag, and the callbacks.
+
+```tsx
+import { ChatView } from "agentak/react";
+
+<ChatView
+  messages={messages}
+  isStreaming={streaming}
+  onSend={send}
+  onStop={stop}
+  onReset={clear}
+  style={{ height: "600px" }}
+/>;
+```
+
+`ChatView` accepts every prop of the `Chat` component, plus `tokens`, `class` /
+`className`, and `style` for the element around the chat. In Vue, the callbacks are props
+rather than events: write `:on-send="send"`.
 
 ### Notes
 

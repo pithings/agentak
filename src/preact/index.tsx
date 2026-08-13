@@ -1,16 +1,30 @@
 import { useLayoutEffect } from "preact/hooks";
 
 import { AgentChat } from "@/agent-chat";
+import { Chat } from "@/components/chat";
 import { injectTokens } from "@/styles/inject";
 import { sx, type Sx } from "@/styles/sx";
-import { type AgentakChatProps, chatProps, HOST } from "@/wrap";
+import {
+  type ChatPanelProps as BasePanelProps,
+  type ChatViewProps as BaseViewProps,
+  HOST,
+  surfaceProps,
+} from "@/wrap";
 
-export type { AgentakChatProps } from "@/wrap";
-
-export interface PreactAgentakChatProps extends AgentakChatProps {
+/** The box around the surface — `className` and `style` are where a size goes. */
+interface PreactHost {
   className?: string;
-  /** The box around the surface — this is where a size goes. */
   style?: Sx;
+}
+
+export interface ChatPanelProps extends BasePanelProps, PreactHost {}
+export interface ChatViewProps extends BaseViewProps, PreactHost {}
+
+/** The tokens, before the paint: the surface reads them the moment it renders. */
+function useTokens(declare?: boolean) {
+  useLayoutEffect(() => {
+    if (declare !== false) injectTokens();
+  }, []);
 }
 
 /**
@@ -21,24 +35,52 @@ export interface PreactAgentakChatProps extends AgentakChatProps {
  * is the host's:
  *
  * ```tsx
- * import { AgentakChat } from "agentak/preact";
+ * import { ChatPanel } from "agentak/preact";
  * import { createPiSession } from "agentak/pi";
  *
  * const session = createPiSession();
- * <AgentakChat session={session} style={{ height: "600px" }} />
+ * <ChatPanel session={session} style={{ height: "600px" }} />
  * ```
  *
  * Whoever made the session ends it — this component never does.
  */
-export function AgentakChat({ className, style, ...props }: PreactAgentakChatProps) {
-  // Before the paint: the surface reads the tokens the moment it renders.
-  useLayoutEffect(() => {
-    if (props.tokens !== false) injectTokens();
-  }, []);
+export function ChatPanel({ className, style, ...props }: ChatPanelProps) {
+  useTokens(props.tokens);
 
   return (
     <div className={className} style={sx(HOST, style)}>
-      <AgentChat {...chatProps(props)} />
+      <AgentChat {...surfaceProps(props)} />
+    </div>
+  );
+}
+
+/**
+ * The chat, for a preact app that runs the conversation itself: `Chat` in a box
+ * the page sizes, with the `--*` tokens declared on mount.
+ *
+ * Nothing stands behind it. The transcript, the streaming flag and the
+ * callbacks are the host's, so an app with its own store or its own transport
+ * takes the surface and no session at all:
+ *
+ * ```tsx
+ * import { ChatView } from "agentak/preact";
+ *
+ * <ChatView
+ *   isStreaming={busy}
+ *   messages={messages}
+ *   onReset={clear}
+ *   onSend={send}
+ *   onStop={stop}
+ *   style={{ height: "600px" }}
+ * />
+ * ```
+ */
+export function ChatView({ className, style, ...props }: ChatViewProps) {
+  useTokens(props.tokens);
+
+  return (
+    <div className={className} style={sx(HOST, style)}>
+      <Chat {...surfaceProps(props)} />
     </div>
   );
 }

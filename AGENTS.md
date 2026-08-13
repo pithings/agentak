@@ -61,14 +61,14 @@ The package has six entry points, and each one builds into its own bundle. They 
 in `build.config.ts`. Each bundle has a matching `.d.mts` file, while shared code is placed
 in `dist/_chunks`. The package declares `sideEffects: false`.
 
-| Subpath              | Entry                     | Exports                                       |
-| -------------------- | ------------------------- | --------------------------------------------- |
-| `agentak`            | `src/index.ts`            | `Chat`, `AgentChat`, `mount()`, `ChatSession` |
-| `agentak/components` | `src/components/index.ts` | All included components as named exports      |
-| `agentak/pi`         | `src/pi/index.ts`         | `createPiSession()` and lower-level Pi APIs   |
-| `agentak/preact`     | `src/preact/index.tsx`    | `AgentakChat` for Preact                      |
-| `agentak/react`      | `src/react/index.ts`      | `AgentakChat` for React                       |
-| `agentak/vue`        | `src/vue/index.ts`        | `AgentakChat` for Vue                         |
+| Subpath              | Entry                     | Exports                                           |
+| -------------------- | ------------------------- | ------------------------------------------------- |
+| `agentak`            | `src/index.ts`            | `Chat`, `AgentChat`, `mountChat()`, `ChatSession` |
+| `agentak/components` | `src/components/index.ts` | All included components as named exports          |
+| `agentak/pi`         | `src/pi/index.ts`         | `createPiSession()` and lower-level Pi APIs       |
+| `agentak/preact`     | `src/preact/index.tsx`    | `ChatPanel` and `ChatView` for Preact             |
+| `agentak/react`      | `src/react/index.ts`      | `ChatPanel` and `ChatView` for React              |
+| `agentak/vue`        | `src/vue/index.ts`        | `ChatPanel` and `ChatView` for Vue                |
 
 Only `agentak/pi` loads the included agent loop. The root entry, component entry, and
 framework wrappers all require a `ChatSession`. This lets the host choose its own agent and
@@ -77,16 +77,23 @@ keeps Pi out of bundles that do not import `agentak/pi`. See
 
 ### Framework wrappers
 
-`AgentakChat` wraps `AgentChat` with the two things a framework host usually needs:
+Each wrapper exports two components, one for each surface the root entry has:
+
+| Component   | Surface     | Driven by                           |
+| ----------- | ----------- | ----------------------------------- |
+| `ChatPanel` | `AgentChat` | a `ChatSession`                     |
+| `ChatView`  | `Chat`      | the host's transcript and callbacks |
+
+Both add the two things a framework host usually needs:
 
 1. An element that accepts `class` or `style` and sets the chat size.
 2. A call to `injectTokens()` when the component mounts.
 
-A `session` is required for both `AgentakChat` and `AgentChat`. The wrappers never dispose
+A `session` is required for both `ChatPanel` and `AgentChat`. The wrappers never dispose
 of a session because they did not create it.
 
-`src/wrap.ts` contains the shared props, `chatProps()`, and `mountChat()`. The Preact wrapper
-renders `AgentChat` directly. The React and Vue wrappers each render one `<div>`, then let
+`src/wrap.ts` contains the shared props, `surfaceProps()`, `mountIsland()`, and the
+framework-less `mountChat()`. The Preact wrapper renders the surface directly. The React and Vue wrappers each render one `<div>`, then let
 Preact render inside it. React or Vue owns the outer element, and Preact owns its children.
 The renderers do not update each other's nodes.
 
@@ -140,7 +147,7 @@ src/
   index.ts / agent-chat.tsx     Package entry and the container mounted by a host
   session.ts                    `ChatSession`, used by the UI to talk to an agent
   wrap.ts                       Shared code for the three framework wrappers
-  preact/ react/ vue/           `AgentakChat` wrappers for each framework
+  preact/ react/ vue/           `ChatPanel` and `ChatView` wrappers per framework
   components/ui/                shadcn primitives ported to Preact
   components/ai-elements/       AI SDK Elements ported to Preact
   components/chat.tsx           Chat UI with transcript input and callbacks
