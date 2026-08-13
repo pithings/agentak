@@ -32,7 +32,7 @@
     "build:lib": "obuild",
     "build:extension": "pnpm --filter @web-agent/extension build",
     "preview": "pnpm --filter @web-agent/playground preview",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p playground && tsc --noEmit -p extension",
+    "typecheck": "tsc --noEmit && pnpm --filter @web-agent/playground typecheck && tsc --noEmit -p extension",
     "lint": "oxlint",
     "fmt": "oxfmt .",
     "test": "vitest"

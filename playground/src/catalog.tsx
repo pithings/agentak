@@ -1,5 +1,4 @@
 import type { ComponentChildren, ComponentType } from "preact";
-import { useEffect, useRef, useState } from "preact/hooks";
 
 import {
   Accordion,
@@ -152,102 +151,16 @@ import { Element } from "@/components/elements";
 import "./demo-elements";
 import { replies } from "./demo-chat";
 import { BotIcon, CopyIcon, RotateCcwIcon, SearchIcon } from "@/lib/icons";
-import { css } from "./css";
 import { useInteraction } from "@/lib/use-interaction";
 import { u } from "@/styles/base";
-import { sx, type Sx } from "@/styles/sx";
+import type { Sx } from "@/styles/sx";
 
-export const catalogStyles = css`
-  /* Every demo is arbitrary content, so the pane clips it rather than letting
-     one wide table stretch the whole grid column. Stays CSS: the :has() rule
-     below overrides it while a popover is open, and an inline style would
-     outrank that override. */
-  .pg-item {
-    overflow: hidden;
-  }
-  .pg-item-body {
-    overflow-x: auto;
-  }
-  /* A popover panel is an absolutely positioned child of its anchor, not a
-     portal, so the clipping above would cut it off. Relax it only while a panel
-     is open — a closed pane still clips a wide table. :has() has no inline form.
-     The card also grows to hold the panel, see CatalogItem.
-
-     Keyed on data-side, not on a slot name: PopoverContent spreads the caller's
-     props last, so ModelSelector, DropdownMenu, HoverCard, InlineCitation and
-     OpenIn each replace data-slot with a name of their own. data-side is the
-     side the panel resolved to, which only PopoverContent writes. */
-  .pg-item:has([data-side]),
-  .pg-item:has([data-side]) .pg-item-body {
-    overflow: visible;
-  }
-`;
-
+/**
+ * The fixtures alone. Every entry is a preact island the vue page mounts
+ * through `preact-host.vue` — the page chrome around them is tailwind, and
+ * nothing in this file knows about it.
+ */
 const S = {
-  pgCatalog: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "2rem",
-    padding: "1.5rem 1.75rem 4rem",
-  },
-  pgCatalogHead: {
-    display: "flex",
-    alignItems: "start",
-    justifyContent: "space-between",
-    gap: "1rem",
-  },
-  pgCatalogTitle: {
-    fontSize: "1.125rem",
-    fontWeight: "600",
-  },
-  pgCatalogLede: {
-    marginTop: "0.25rem",
-    fontSize: "0.8125rem",
-  },
-  pgSectionHead: {
-    display: "flex",
-    position: "sticky",
-    zIndex: "1",
-    top: "0",
-    alignItems: "baseline",
-    gap: "0.5rem",
-    margin: "0 -1.75rem",
-    borderBottom: "1px solid var(--wa-border)",
-    background: "var(--wa-background)",
-    padding: "0.5rem 1.75rem",
-  },
-  pgSectionTitle: {
-    fontSize: "0.9375rem",
-    fontWeight: "600",
-  },
-  pgSectionNote: {
-    fontSize: "0.75rem",
-  },
-  pgGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(min(24rem, 100%), 1fr))",
-    gap: "1rem",
-    marginTop: "1rem",
-    alignItems: "start",
-  },
-  pgItem: {
-    display: "flex",
-    flexDirection: "column",
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-background)",
-  },
-  pgItemName: {
-    borderBottom: "1px solid var(--wa-border)",
-    background: "var(--wa-muted-surface)",
-    padding: "0.375rem 0.75rem",
-    fontFamily: "var(--wa-font-mono)",
-    fontSize: "0.75rem",
-    color: "var(--wa-muted-foreground)",
-  },
-  pgItemBody: {
-    padding: "0.75rem",
-  },
   pgRow: {
     display: "flex",
     flexWrap: "wrap",
@@ -291,11 +204,17 @@ function DemoTrigger({
 export interface CatalogEntry {
   name: string;
   render: () => ComponentChildren;
+  /** Source file, where it is not `<section dir>/<name>.tsx`. */
+  path?: string;
 }
 
 export interface CatalogSection {
+  /** Route and anchor id. */
+  id: string;
   title: string;
   note: string;
+  /** Where the source lives, for the header of a component page. */
+  dir: string;
   entries: CatalogEntry[];
 }
 
@@ -620,6 +539,7 @@ const surface: CatalogEntry[] = [
   },
   {
     name: "markdown",
+    path: "src/components/markdown.tsx",
     render: () => <Markdown>{SAMPLE_MD}</Markdown>,
   },
   {
@@ -853,124 +773,54 @@ const elements: CatalogEntry[] = [
 
 export const CATALOG: CatalogSection[] = [
   {
+    id: "primitives",
     title: "Primitives",
-    note: "components/ui — shadcn, rewritten in preact",
+    note: "shadcn, rewritten in preact",
+    dir: "src/components/ui",
     entries: primitives,
   },
   {
+    id: "surface",
     title: "Chat surface",
-    note: "components/ai-elements — what agent-chat renders",
+    note: "what agent-chat renders",
+    dir: "src/components/ai-elements",
     entries: surface,
   },
   {
+    id: "elements",
     title: "Elements",
-    note: "components/ai-elements — transcript parts, plus the compound ones composed by hand",
+    note: "transcript parts, plus the compound ones composed by hand",
+    dir: "src/components/ai-elements",
     entries: elements,
   },
 ];
 
-const total = CATALOG.reduce((count, section) => count + section.entries.length, 0);
-
-/**
- * Light and dark are one class on the root — every token pair hangs off it — so
- * this button is the whole theme switch. It opens on the system preference.
- */
-function ThemeButton() {
-  const [isDark, setDark] = useState(
-    () => globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false,
-  );
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDark);
-  }, [isDark]);
-
-  return (
-    <Button onClick={() => setDark(!isDark)} size="sm" variant="outline">
-      {isDark ? "Light theme" : "Dark theme"}
-    </Button>
-  );
+export interface CatalogHit extends CatalogEntry {
+  section: CatalogSection;
 }
 
-/**
- * One card. A popover panel is out of flow, so an open one hangs over the cards
- * below it — the card reserves the height the panel needs instead, and gives it
- * back on close. Measured, because every panel is a different height, and the
- * panel does not move as the card grows: it is anchored to its trigger.
- */
-function CatalogItem({ entry }: { entry: CatalogEntry }) {
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const [reserved, setReserved] = useState(0);
+/** Every entry, flat, in catalog order — what the sidebar and the routes read. */
+export const ENTRIES: CatalogHit[] = CATALOG.flatMap((section) =>
+  section.entries.map((entry) => ({ ...entry, section })),
+);
 
-  useEffect(() => {
-    const body = bodyRef.current;
-    if (!body) return;
-
-    const measure = () => {
-      // data-side, not a slot name: every panel resolves a side, but ModelSelector,
-      // DropdownMenu, HoverCard, InlineCitation and OpenIn each pass a data-slot of
-      // their own, which PopoverContent spreads over the one it wrote.
-      const panels = body.querySelectorAll<HTMLElement>("[data-side]");
-      if (panels.length === 0) return setReserved(0); // The common case: nothing to measure.
-
-      const box = body.getBoundingClientRect();
-      const pad = parseFloat(getComputedStyle(body).paddingBottom) || 0;
-      let need = 0;
-      for (const panel of panels) {
-        need = Math.max(need, panel.getBoundingClientRect().bottom + pad - box.top);
-      }
-      setReserved(need);
-    };
-
-    // A panel mounts and unmounts with the open state, and resizes as a list filters.
-    const observer = new MutationObserver(measure);
-    observer.observe(body, { attributes: true, childList: true, subtree: true });
-    measure();
-
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <article className="pg-item" style={S.pgItem}>
-      <header style={S.pgItemName}>{entry.name}</header>
-      <div
-        className="pg-item-body"
-        ref={bodyRef}
-        style={sx(S.pgItemBody, reserved > 0 && { minHeight: `${reserved}px` })}
-      >
-        {entry.render()}
-      </div>
-    </article>
-  );
+export function findEntry(name: string): CatalogHit | undefined {
+  return ENTRIES.find((entry) => entry.name === name);
 }
 
-/** The left pane: every ported component, rendered with fixture data. */
-export function Catalog() {
-  return (
-    <div style={S.pgCatalog}>
-      <header style={S.pgCatalogHead}>
-        <div>
-          <h1 style={S.pgCatalogTitle}>Component catalog</h1>
-          <p style={sx(S.pgCatalogLede, u.muted)}>
-            {total} components — shadcn primitives and AI SDK Elements, ported to preact. The chat
-            on the right renders the same sheet.
-          </p>
-        </div>
-        <ThemeButton />
-      </header>
+/** Previous and next in catalog order, for the pager on a component page. */
+export function neighbours(name: string): { prev?: CatalogHit; next?: CatalogHit } {
+  const index = ENTRIES.findIndex((entry) => entry.name === name);
+  if (index < 0) return {};
+  return { next: ENTRIES[index + 1], prev: ENTRIES[index - 1] };
+}
 
-      {CATALOG.map((section) => (
-        <section key={section.title}>
-          <div style={S.pgSectionHead}>
-            <h2 style={S.pgSectionTitle}>{section.title}</h2>
-            <span style={sx(S.pgSectionNote, u.muted)}>{section.note}</span>
-          </div>
-          <div style={S.pgGrid}>
-            {section.entries.map((entry) => (
-              <CatalogItem entry={entry} key={entry.name} />
-            ))}
-          </div>
-        </section>
-      ))}
-    </div>
-  );
+/** Where the source sits. Most entries follow the section, a few say so. */
+export function sourcePath(hit: CatalogHit): string {
+  return hit.path ?? `${hit.section.dir}/${hit.name}.tsx`;
+}
+
+/** Case-insensitive name match — the one filter the sidebar and the grid share. */
+export function matches(entry: CatalogEntry, query: string): boolean {
+  return entry.name.toLowerCase().includes(query.trim().toLowerCase());
 }

@@ -272,8 +272,12 @@ function PopoverContent({
       setOpen(false);
     };
 
+    // preventDefault marks the key used, so a host that closes its own surface
+    // on Escape — the playground chatbox does — leaves it open behind a panel.
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setOpen(false);
     };
 
     doc.addEventListener("pointerdown", onPointerDown, true);

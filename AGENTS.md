@@ -12,7 +12,9 @@ in `extension/`. Both sub-packages alias `@` to `../src`, so they import the lib
 - obuild (library) / vite (playground, extension)
 - preact
 - shadcn + AI SDK Elements components, ported to preact
-- styles as inline style objects in typescript — no tailwind, no stylesheet
+- library styles as inline style objects in typescript — no stylesheet ships
+- vue 3 + vue-router + tailwind v4, in the playground page only — the host app
+  around the library, never inside it
 - pi-agent-core + pi-ai
 
 ## Conventions
@@ -32,7 +34,7 @@ pnpm dev               # playground on http://localhost:4050
 pnpm build             # dist/ (obuild) + playground/dist
 pnpm build:lib         # dist/ alone
 pnpm build:extension   # extension/dist (load unpacked)
-pnpm typecheck         # tsc --noEmit, all three packages
+pnpm typecheck         # tsc --noEmit; vue-tsc for the playground, `.vue` included
 pnpm vitest run        # projects `lib` and `playground`
 pnpm lint              # oxlint
 pnpm fmt               # oxfmt
@@ -85,7 +87,7 @@ src/
   agent/                        the pi loop — see .agents/pi.md
   types.ts                      UI types, inlined from the `ai` package
 test/                           library tests, importing source through `@/`
-playground/                     dev page, `@web-agent/playground`
+playground/                     vue host app, `@web-agent/playground`
 extension/                      MV3 side panel, `@web-agent/extension`
 ```
 
@@ -100,6 +102,7 @@ Next:
 1. Extension `PageBridge` over `chrome.scripting.executeScript` against the active tab.
    `documentBridge()` reads the side panel's own document today, which is empty.
 2. Extension key storage: `chrome.storage` instead of `localStorage`, passed as `apiKey`.
-3. Verify `<web-agent>` in a host page, and the loop against a real key.
+3. Verify `<web-agent>` in a host page, and the loop against a real key. The
+   playground chatbox mounts the element itself, so the page is the host to check.
 4. Compaction. pi exports `compact()`, but it needs a `Models` store, so a long
    conversation still runs into the window.

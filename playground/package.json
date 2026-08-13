@@ -2,26 +2,33 @@
   "name": "@web-agent/playground",
   "version": "0.0.0",
   "private": true,
-  "description": "Dev page for web-agent: the component catalog, and the chat",
+  "description": "Dev page for web-agent: the vue host app, the catalog, and the chat",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "vue-tsc --noEmit",
     "test": "vitest"
   },
   "dependencies": {
     "preact": "^10.29.8",
+    "vue": "^3.5.41",
+    "vue-router": "^5.2.0",
     "web-agent": "workspace:*"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",
+    "@tailwindcss/vite": "^4.3.3",
     "@testing-library/preact": "^3.2.4",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "@vue/test-utils": "^2.4.11",
     "jsdom": "^30.0.1",
-    "typescript": "^7.0.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
     "vite": "^8.2.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "vue-tsc": "^3.3.9"
   }
 }

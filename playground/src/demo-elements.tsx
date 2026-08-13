@@ -13,7 +13,7 @@ const as = (component: unknown) => component as ElementRenderer;
 /**
  * The renderers the library does not ship, because nothing in the loop emits
  * them yet. Registering is a module side effect, so importing this file once —
- * `main.tsx` and `catalog.tsx` do — is all a demo transcript needs.
+ * `main.ts` and `catalog.tsx` do — is all a demo transcript needs.
  */
 export const DEMO_ELEMENTS: Record<string, ElementRenderer> = {
   agent: as(AgentDemo),

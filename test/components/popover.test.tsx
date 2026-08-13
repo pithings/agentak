@@ -51,10 +51,18 @@ describe("Popover", () => {
     fireEvent.click(trigger);
     expect(document.activeElement).toBe(screen.getByText("Inside"));
 
-    fireEvent.keyDown(document, { key: "Escape" });
+    // fireEvent returns false when the handler cancelled the event: the panel
+    // marks Escape used, so a host that closes on Escape too keeps its surface.
+    expect(fireEvent.keyDown(document, { key: "Escape" })).toBe(false);
 
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it("leaves Escape alone while it is closed", () => {
+    render(<Basic />);
+
+    expect(fireEvent.keyDown(document, { key: "Escape" })).toBe(true);
   });
 
   it("closes on an outside pointerdown but not on one inside", () => {

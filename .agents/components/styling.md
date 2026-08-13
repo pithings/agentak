@@ -116,7 +116,7 @@ subcomponent each.
 
 ## What the checks catch, and what they do not
 
-- **`playground/test/styles.test.tsx`** renders the catalog and the chat and fails on
+- **`playground/test/styles.test.tsx`** renders every catalog fixture and the chat, and fails on
   any element that pairs a real size with a real padding or border and no
   `box-sizing: border-box`. It cannot see a size a **caller** passes as `style` onto a
   padded primitive.

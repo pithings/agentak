@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/* The library switches theme on `.dark` at the root, so the page follows the
+   same class instead of the media query tailwind defaults to. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* The page paints from the `--wa-*` tokens the widget reads — `main.ts`
+   declares them, the way a host page must. `inline` keeps the var() reference
+   in the utility, so one class repoints when `.dark` repoints the token. */
+@theme inline {
+  --color-page: var(--wa-background);
+  --color-ink: var(--wa-foreground);
+  --color-line: var(--wa-border);
+  --color-surface: var(--wa-muted-surface);
+  --color-fill: var(--wa-muted);
+  --color-soft: var(--wa-muted-foreground);
+  --color-brand: var(--wa-primary);
+  --color-brand-ink: var(--wa-primary-foreground);
+  --color-ring: var(--wa-ring);
+
+  --font-sans: var(--wa-font-sans);
+  --font-mono: var(--wa-font-mono);
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    background: var(--wa-background);
+    color: var(--wa-foreground);
+    font-family: var(--wa-font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}

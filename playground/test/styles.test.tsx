@@ -1,7 +1,7 @@
 import { cleanup, render } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { Catalog } from "../src/catalog";
+import { AllEntries } from "./entries";
 import { AgentChat } from "@/components/agent-chat";
 import { replies } from "../src/demo-chat";
 
@@ -92,7 +92,7 @@ function missing(container: Element): Miss[] {
 
 describe("box-sizing", () => {
   it("is set wherever a size meets an inset, in the catalog", () => {
-    const { container } = render(<Catalog />);
+    const { container } = render(<AllEntries />);
 
     expect(missing(container)).toEqual([]);
   });
