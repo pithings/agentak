@@ -1,14 +1,17 @@
-// UI plus the agent loop. `Chat` still takes a `ViewMessage[]` from
-// anything; `createAgent` + `useAgent` are what the element drives it with.
+// The surface and nothing behind it. This entry loads no agent runtime: `Chat`
+// takes a `ViewMessage[]` from anything, and `AgentChat` takes a `ChatSession`
+// from anything. The built-in loop is `agentak/pi` — `createPiSession()` — and
+// `agentak/element` is the entry that binds it to `<agent-chat>`.
 export { Chat, type ChatProps } from "@/components/chat";
 export { AgentChat, type AgentChatProps } from "@/agent-chat";
-export { defineAgentChat, AgentChatElement } from "@/element";
+export { AgentChatElement, defineAgentChat, type DefineAgentChatOptions } from "@/element";
+export {
+  type ChatSession,
+  type ChatSessionOptions,
+  type ChatSnapshot,
+  useSession,
+} from "@/session";
 // Styles are inline on every element. The one thing a host must declare is the
 // `--*` tokens: put this text in a `<style>`, or copy the values.
 export { tokens } from "@/styles/base";
 export type { ViewMessage, ViewPart } from "@/types";
-
-// The loop. A host that wants its own surface can drive these directly, or
-// import the same set from the `agentak/pi` subpath. The built-in
-// components are `agentak/components`; nothing here re-exports them.
-export * from "@/agent/index";

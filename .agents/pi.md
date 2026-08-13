@@ -1,13 +1,16 @@
 # The agent loop
 
 `src/agent/` — pi-agent-core, and everything that feeds the chat. `createAgent()`
-builds a pi `Agent`; `useAgent()` turns its events into the props `Chat` takes.
-Neither the chat nor any element knows pi exists.
+builds a pi `Agent`; `createAgentStore()` turns its events into a snapshot; and
+`createPiSession()` puts the provider picker around that and answers `ChatSession`,
+which is all the surface asks for. Nothing outside this directory imports pi — see
+[`session.md`](session.md) for the seam and how a host replaces this whole directory.
 
 ```
 prompt -> Agent -> streamFor(model.api) -> streamSimple -> AgentEvent
                 -> beforeToolCall -> ApprovalGate -> AgentTool -> PageBridge
-useAgent: every event -> toViewMessages(agent.state) -> Chat
+store:   every event -> toViewMessages(agent.state) -> AgentSnapshot
+session: AgentSnapshot + providers + models + title -> ChatSnapshot -> Chat
 ```
 
 | File              | What                                                      |
@@ -17,12 +20,15 @@ useAgent: every event -> toViewMessages(agent.state) -> Chat
 | `approvals.ts`    | the confirmation gate behind `beforeToolCall`             |
 | `models.ts`       | catalog filtering, the defaults                           |
 | `providers.ts`    | the provider list, the api modules, `streamFor()`         |
-| `use-catalog.ts`  | one provider's models, fetched once per page              |
+| `catalog.ts`      | one provider's models, fetched once per page              |
+| `use-catalog.ts`  | the same, as a hook, for a host driving `Chat` itself     |
 | `page-bridge.ts`  | how tools reach the page — document-backed today          |
 | `storage.ts`      | `localStorage` for the keys, the provider and the model   |
 | `tools.ts`        | `read_page`, `find_elements`                              |
 | `transcript.ts`   | `AgentMessage[]` -> renderable parts, and the usage panel |
-| `use-agent.ts`    | preact state over `Agent` events                          |
+| `store.ts`        | a subscribable view of `Agent` events                     |
+| `use-agent.ts`    | the store as a hook — `ChatState`, unchanged              |
+| `session.ts`      | the store, the picker and the title as one `ChatSession`  |
 | `title.ts`        | the conversation's name — derived, or asked of the model  |
 
 ## Imports stay dynamic
@@ -74,9 +80,9 @@ request header changes that.
 
 Seven of the nine send it. `cors: false` names the two that do not — **Kilo Gateway**
 and **OpenCode Zen** — and `availableProviders()` drops them from what a page offers,
-rather than letting the picker take a click that ends in a console error. `AgentChat`
-reads that list for its rows _and_ for the provider it opens on, so one stored in the
-panel is not restored on a page.
+rather than letting the picker take a click that ends in a console error.
+`createPiSession()` reads that list for its rows _and_ for the provider it opens on, so
+one stored in the panel is not restored on a page.
 
 `corsFree()` is the exception, and the whole of the runtime check: a
 `chrome-extension:` document fetches through `host_permissions`, which the preflight
@@ -101,7 +107,7 @@ A key is stored per provider, so switching back to one already set up asks nothi
 
 **One picker, three levels.** Provider, model and key are all `chat/picker.tsx`, the
 `model-selector` in the composer. Nothing else chooses any of them: there is no key
-screen and no provider screen, and the chat is the only view `AgentChat` has. A catalog
+screen and no provider screen, and the chat is the only view the surface has. A catalog
 lands in the panel's own list, under a spinner, rather than in a view that would close
 the panel it landed for.
 
@@ -128,7 +134,7 @@ field and tap it is worse than one that costs a keyboard, and the keyboard's roo
 handled by the cap rather than by leaving the field cold.
 
 **Picking a provider is half a choice**, so it goes on to that provider's models
-instead of closing. Nothing picks a model for anyone: the effect in `AgentChat` restores
+instead of closing. Nothing picks a model for anyone: `follow()` in `session.ts` restores
 only `storedModelId(provider)`, so a provider used before comes back as it was, and one
 chosen for the first time waits on the list. Picking a provider that has no key opens
 the key level first, and the provider changes only once the key is saved — so
@@ -191,7 +197,7 @@ tool first; the element is waiting.
   index, so a growing message keeps its identity. `streamingMessage` stays separate
   from `messages` until `message_end`, so it is appended, not merged.
 - **A run is still streaming inside its own `agent_end` listener.** It settles after
-  every listener returns, so `use-agent.ts` waits on `waitForIdle()` for the last
+  every listener returns, so `store.ts` waits on `waitForIdle()` for the last
   redraw. Without it the composer keeps its stop button forever.
 - **The gate is a promise, not a flag.** `beforeToolCall` parks the call until the UI
   answers; a denial returns `{ block: true }` and pi writes an error tool result, which
@@ -204,4 +210,8 @@ tool first; the element is waiting.
   wants `inputTokens`/`cachedInputTokens`. Cache writes fold into the cache row, and
   reasoning tokens carry no cost of their own because pi prices them as output.
 - **Build the runtime once.** `createAgent()` inside a render makes a new, empty
-  agent every time. `agent-chat.tsx` holds it in `useState(() => …)`.
+  agent every time. `createPiSession()` is called once, outside the tree, and holds it.
+- **The snapshot is cached until the next event.** The agent mutates its own arrays, so
+  identity is the only change signal a renderer has: `store.ts` and `session.ts` both
+  drop their cached snapshot in `notify()` and rebuild on the next read. A fresh object
+  per read would redraw the whole transcript on every render.

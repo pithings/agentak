@@ -177,7 +177,7 @@ WIP MV3 side panel. `pnpm build:extension` writes `extension/dist`; load it unpa
 | ---------------- | ------------------------------------------------------------ |
 | `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported |
 | `sidepanel.html` | the panel document, which hosts `<agent-chat>`               |
-| `panel.ts`       | declares the `tokens`, then `defineAgentChat()`              |
+| `panel.ts`       | declares the `tokens`, then `defineAgentChat()` over pi      |
 | `background.ts`  | the service worker — opens the panel on the action click     |
 | `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`        |
 

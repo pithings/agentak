@@ -1,6 +1,7 @@
-// The pi-agent-core loop, under the `agentak/pi` subpath. A host that
-// wants its own surface drives these directly; the root export re-exports the
-// same set.
+// The pi-agent-core loop, under the `agentak/pi` subpath — the one entry that
+// pulls pi in. `createPiSession` is what `<agent-chat>` runs on; the rest is for
+// a host that wants the loop under a surface of its own.
+export { createPiSession, type PiSessionOptions } from "@/agent/session";
 export {
   AGENT_NAME,
   createAgent,
@@ -22,6 +23,7 @@ export {
   DEFAULT_PROVIDER_ID,
   findModel,
 } from "@/agent/models";
+export { cachedCatalog, loadCatalog } from "@/agent/catalog";
 export {
   type AnyModel,
   availableProviders,
@@ -43,9 +45,17 @@ export { createPageTools } from "@/agent/tools";
 export {
   generateTitle,
   type GenerateTitleOptions,
+  titleRequest,
   type TitleOptions,
+  type TitleRequest,
   toTitle,
   useTitle,
 } from "@/agent/title";
 export { type ContextUsageView, toContextUsage, toViewMessages } from "@/agent/transcript";
-export { type ChatState, type QueuedMessage, useAgent } from "@/agent/use-agent";
+export {
+  type AgentSnapshot,
+  type AgentStore,
+  createAgentStore,
+  type QueuedMessage,
+} from "@/agent/store";
+export { type ChatState, useAgent } from "@/agent/use-agent";

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 
-import { catalogModels } from "@/agent/models";
-import { type AnyModel, findProvider } from "@/agent/providers";
+import { cachedCatalog, loadCatalog } from "@/agent/catalog";
+import type { AnyModel } from "@/agent/providers";
 
 export interface CatalogState {
   models: AnyModel[];
@@ -11,14 +11,16 @@ export interface CatalogState {
   providerId?: string;
 }
 
-/** One chunk per provider, fetched once for the life of the page. */
-const cache = new Map<string, AnyModel[]>();
-
-/** The models of one provider. Without one there is nothing to load. */
+/**
+ * The models of one provider. Without one there is nothing to load.
+ *
+ * For a host driving `Chat` itself. `createPiSession` calls `loadCatalog`
+ * directly, because it holds the choice rather than following it.
+ */
 export function useCatalog(providerId?: string): CatalogState {
   const [state, setState] = useState<CatalogState>(() => ({
-    models: (providerId && cache.get(providerId)) || [],
-    loading: Boolean(providerId) && !cache.has(providerId as string),
+    models: (providerId && cachedCatalog(providerId)) || [],
+    loading: Boolean(providerId) && !(providerId && cachedCatalog(providerId)),
     providerId,
   }));
 
@@ -28,29 +30,16 @@ export function useCatalog(providerId?: string): CatalogState {
       return;
     }
 
-    const cached = cache.get(providerId);
+    const cached = cachedCatalog(providerId);
     if (cached) {
       setState({ loading: false, models: cached, providerId });
       return;
     }
 
-    const provider = findProvider(providerId);
-    if (!provider) {
-      setState({
-        error: `No provider named ${providerId}.`,
-        loading: false,
-        models: [],
-        providerId,
-      });
-      return;
-    }
-
     let live = true;
     setState({ loading: true, models: [], providerId });
-    provider.load().then(
-      (catalog) => {
-        const models = catalogModels(catalog);
-        cache.set(providerId, models);
+    loadCatalog(providerId).then(
+      (models) => {
         if (live) setState({ loading: false, models, providerId });
       },
       (error: unknown) => {

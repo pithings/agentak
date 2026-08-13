@@ -1,5 +1,6 @@
 import { render } from "preact";
 import { AgentChat } from "@/agent-chat";
+import type { ChatSession } from "@/session";
 import { u } from "@/styles/base";
 
 const TAG = "agent-chat";
@@ -30,19 +31,66 @@ const TAG = "agent-chat";
  *
  * One attribute: `generate-title` asks the model to name the conversation
  * instead of taking the name from the first message. It costs one request.
+ *
+ * The element carries no loop of its own — `defineAgentChat` hands it the
+ * session to run, so this module knows nothing about pi. `agentak/element`
+ * supplies the built-in one.
  */
 export class AgentChatElement extends HTMLElement {
   static observedAttributes = ["generate-title"];
 
+  /**
+   * The harness, set by `defineAgentChat` — one call per element, on connect. A
+   * session assigned to `session` wins over it. It is optional only because a
+   * `customElements.define` of this class cannot pass one; connecting such an
+   * element throws rather than paints an empty box.
+   */
+  createSession?: () => ChatSession;
+
   #root: ShadowRoot;
+  #session?: ChatSession;
+  /** Made here, so disposed here. A host's own session is the host's to end. */
+  #owned = false;
 
   constructor() {
     super();
     this.#root = this.attachShadow({ mode: "open" });
   }
 
+  /**
+   * What runs this element, for a host holding a session rather than a factory:
+   * `document.querySelector("agent-chat").session = mine`. It can be set before
+   * the element lands or after, and it wins over the registered factory.
+   */
+  get session(): ChatSession | undefined {
+    return this.#session;
+  }
+
+  set session(session: ChatSession | undefined) {
+    if (this.#owned) this.#session?.dispose?.();
+    this.#session = session;
+    this.#owned = false;
+    if (this.isConnected) this.#render();
+  }
+
   connectedCallback() {
     if (!this.style.display) this.style.display = "block";
+    if (!this.#session) {
+      // A session is not optional. `defineAgentChat` requires one, so this is
+      // only reached by a `customElements.define` of the class itself — and a
+      // surface that paints nothing is the worst way to say so. A throw would
+      // not reach the caller either: the browser reports an exception from a
+      // reaction callback and carries on.
+      if (!this.createSession) {
+        console.error(
+          `<${this.localName}> has no session. Register the tag with ` +
+            `defineAgentChat({ session }), or set the element's \`session\`.`,
+        );
+        return;
+      }
+      this.#session = this.createSession();
+      this.#owned = true;
+    }
     this.#render();
   }
 
@@ -52,16 +100,22 @@ export class AgentChatElement extends HTMLElement {
 
   disconnectedCallback() {
     render(null, this.#root);
+    if (!this.#owned) return;
+    this.#session?.dispose?.();
+    this.#session = undefined;
+    this.#owned = false;
   }
 
   // A second render into the same root is a diff, so the transcript survives an
   // attribute change.
   #render() {
+    if (!this.#session) return; // set before the element landed, and not yet connected
     render(
       <AgentChat
         actions={<slot name="actions" style={u.contents} />}
         emptyActions={<slot name="empty" style={u.contents} />}
         generateTitle={this.hasAttribute("generate-title")}
+        session={this.#session}
         style={u.fill}
       />,
       this.#root,
@@ -69,11 +123,33 @@ export class AgentChatElement extends HTMLElement {
   }
 }
 
+export interface DefineAgentChatOptions {
+  /**
+   * The tag to register. Default `agent-chat` — the built-in name is not
+   * reserved for the built-in loop, so a host harness can take it.
+   */
+  tag?: string;
+  /** What runs the chat. One call per element. */
+  session: () => ChatSession;
+}
+
 /**
- * Registers the tag. This module does not call it — `agentak/element` is the
- * entry that does, so nothing registers a tag as a side effect of importing the
- * class.
+ * Registers the tag, over the session it should run.
+ *
+ * This module does not call it — `agentak/element` is the entry that does, with
+ * `createPiSession`, so nothing registers a tag and nothing pulls in a loop as a
+ * side effect of importing the class. A host with its own harness calls this
+ * itself, and pi never loads.
+ *
+ * The factory is held on a subclass rather than a module variable, so a second
+ * tag over a second harness does not overwrite the first.
  */
-export function defineAgentChat(tag = TAG) {
-  if (!customElements.get(tag)) customElements.define(tag, AgentChatElement);
+export function defineAgentChat({ tag = TAG, session }: DefineAgentChatOptions) {
+  if (customElements.get(tag)) return;
+  customElements.define(
+    tag,
+    class extends AgentChatElement {
+      createSession = session;
+    },
+  );
 }

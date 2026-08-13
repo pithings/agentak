@@ -53,6 +53,35 @@ export function toTitle(messages: ViewMessage[]): string | undefined {
   return text ? cut(text, MAX_CHARS) : undefined;
 }
 
+/** The title work a transcript implies. */
+export interface TitleRequest {
+  /** What the header shows without asking anybody: the first message, cut. */
+  derived?: string;
+  /**
+   * The exchange to name, once there is one. Absent while the first answer is
+   * still to come, which is also when nothing should be asked.
+   */
+  seed?: string;
+}
+
+/**
+ * What to show, and what to ask about — the whole decision, so the hook and
+ * `createPiSession` share it instead of each reading the transcript its own way.
+ */
+export function titleRequest(messages: ViewMessage[]): TitleRequest {
+  const derived = toTitle(messages);
+  // The first answer that says anything: a first turn can be tool calls alone.
+  const answer =
+    messages
+      .filter((message) => message.role === "assistant")
+      .map(textOf)
+      .find(Boolean) ?? "";
+  if (!derived || !answer) return { derived };
+
+  const question = textOf(messages.find((message) => message.role === "user"));
+  return { derived, seed: `${cut(question, SEED_CHARS)}\n\n${cut(answer, SEED_CHARS)}` };
+}
+
 export interface GenerateTitleOptions {
   model: AnyModel;
   /** The exchange to name. */
@@ -134,21 +163,13 @@ export function useTitle({
   isStreaming,
   streamFn,
 }: TitleOptions): string | undefined {
-  const derived = toTitle(messages);
+  const { derived, seed } = titleRequest(messages);
   const [generated, setGenerated] = useState<{ for: string; title: string } | undefined>(undefined);
   // What was asked already, so a re-render does not ask twice.
   const asked = useRef<string | undefined>(undefined);
 
-  const question = textOf(messages.find((message) => message.role === "user"));
-  // The first answer that says anything: a first turn can be tool calls alone.
-  const answer =
-    messages
-      .filter((message) => message.role === "assistant")
-      .map(textOf)
-      .find(Boolean) ?? "";
-
   useEffect(() => {
-    if (!generate || !model || !derived || !answer || isStreaming) return;
+    if (!generate || !model || !derived || !seed || isStreaming) return;
     if (asked.current === derived) return;
     asked.current = derived;
 
@@ -156,7 +177,7 @@ export function useTitle({
     void generateTitle({
       apiKey,
       model,
-      seed: `${cut(question, SEED_CHARS)}\n\n${cut(answer, SEED_CHARS)}`,
+      seed,
       signal: controller.signal,
       streamFn,
     }).then((title) => {
@@ -164,7 +185,7 @@ export function useTitle({
     });
 
     return () => controller.abort();
-  }, [answer, apiKey, derived, generate, isStreaming, model, question, streamFn]);
+  }, [apiKey, derived, generate, isStreaming, model, seed, streamFn]);
 
   return generated && generated.for === derived ? generated.title : derived;
 }

@@ -46,6 +46,7 @@ pnpm fmt               # oxfmt
 | ------------------------------------------------ | ------------------------------------------------------------- |
 | [`.agents/components.md`](.agents/components.md) | start here for the UI — the rules, and a map of `components/` |
 | [`.agents/components/`](.agents/components/)     | styling, the primitives, porting an element, markdown         |
+| [`.agents/session.md`](.agents/session.md)       | `ChatSession` — the seam between the surface and a harness    |
 | [`.agents/pi.md`](.agents/pi.md)                 | the agent loop, providers, tools, transcript                  |
 | [`.agents/playground.md`](.agents/playground.md) | the dev page and the extension package                        |
 
@@ -54,26 +55,34 @@ pnpm fmt               # oxfmt
 Four entries, one bundle each; `build.config.ts` lists them. `.d.mts` is emitted
 beside every bundle.
 
-| Subpath              | Entry                     | What                                                   |
-| -------------------- | ------------------------- | ------------------------------------------------------ |
-| `agentak`            | `src/index.ts`            | `Chat`, `AgentChat`, `defineAgentChat`, `tokens`, loop |
-| `agentak/element`    | `src/register.ts`         | side effect — defines `<agent-chat>`                   |
-| `agentak/components` | `src/components/index.ts` | every built-in component, named                        |
-| `agentak/pi`         | `src/agent/index.ts`      | the loop alone; the root re-exports the same set       |
+| Subpath              | Entry                     | What                                                            |
+| -------------------- | ------------------------- | --------------------------------------------------------------- |
+| `agentak`            | `src/index.ts`            | `Chat`, `AgentChat`, `defineAgentChat`, `ChatSession`, `tokens` |
+| `agentak/element`    | `src/register.ts`         | side effect — defines `<agent-chat>`, over the pi session       |
+| `agentak/components` | `src/components/index.ts` | every built-in component, named                                 |
+| `agentak/pi`         | `src/agent/index.ts`      | the loop — `createPiSession()` and the parts under it           |
+
+**The root entry loads no loop.** `AgentChat` takes a `ChatSession`, and `agentak/pi` is
+the only entry that pulls pi in — so a host with its own harness gets the surface and
+none of the runtime. `agentak/element` is where the two meet: it is the one module that
+binds `<agent-chat>` to `createPiSession()`. See
+[`.agents/session.md`](.agents/session.md) for the interface and the guard test.
 
 `<agent-chat>` takes two slots, both light DOM. `slot="actions"` lands at the end of
 the chat header, so a host page puts its own chrome — minimise, and the like — on the
 one title bar the surface already has. `slot="empty"` lands under the greeting, for a
 suggestion or a launcher the host owns; it shows only before the first message.
-`AgentChat` takes the same as `actions` and `emptyActions`. Provider, model and key are
-all the composer's picker, so the chat is the only view there is — no gate in front of
-it, and no screen to swap to.
+`AgentChat` takes the same as `actions` and `emptyActions`, plus the `session` that runs
+it. Provider, model and key are all the composer's picker — the pi session's, so a host
+harness that carries no providers gets no provider level — so the chat is the only view
+there is, with no gate in front of it and no screen to swap to.
 
 The header names the conversation after the first message. `<agent-chat generate-title>`
 — `generateTitle` on `AgentChat` — asks the model for the name instead, once, after the
 first answer lands; it is one extra request, so it is off unless a host opts in, and a
-failure leaves the first-message title standing. `Chat` takes the finished string as
-`title`. See `src/agent/title.ts`.
+failure leaves the first-message title standing. It reaches the session through
+`setOptions()`, so changing the attribute keeps the transcript. `Chat` takes the
+finished string as `title`. See `src/agent/title.ts`.
 
 `dist/` is the published library and nothing else — the playground builds into
 `playground/dist` and the extension into `extension/dist`, so `files: ["dist"]` needs
@@ -90,6 +99,7 @@ consumer's bundler. `platform: "browser"` is the one hand-set option.
 ```
 src/
   index.ts / element.tsx / agent-chat.tsx  package entry, custom element, container
+  session.ts                    `ChatSession` — what the surface asks of a harness
   register.ts                   `agentak/element` — the one module with a side effect
   components/ui/                shadcn primitives, in preact
   components/ai-elements/       AI SDK Elements, in preact
@@ -117,11 +127,18 @@ answer no CORS preflight, so a page is offered 7 and the extension all 9; see
 in a real browser yet — the element, markdown and the panel are written but untested
 there.
 
+The loop is behind `ChatSession`, so the surface and the harness are separate packages
+of code in one repo: pi is reachable from `agentak/pi` and `agentak/element` alone, and a
+host can bring another harness. [`.agents/session.md`](.agents/session.md).
+
 Next:
 
 1. Extension `PageBridge` over `chrome.scripting.executeScript` against the active tab.
-   `documentBridge()` reads the side panel's own document today, which is empty.
-2. Extension key storage: `chrome.storage` instead of `localStorage`, passed as `apiKey`.
+   `documentBridge()` reads the side panel's own document today, which is empty. It is a
+   `page` option on `createPiSession()` in `extension/panel.ts` — the session is the only
+   place the panel differs from a page.
+2. Extension key storage: `chrome.storage` instead of `localStorage`, passed as `apiKey`
+   to the same call.
 3. Verify `<agent-chat>` in a host page, and the loop against a real key. The
    playground chatbox mounts the element itself, so the page is the host to check.
 4. Compaction. pi exports `compact()`, but it needs a `Models` store, so a long

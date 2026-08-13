@@ -2,6 +2,7 @@
 import { h } from "preact";
 import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from "vue";
 
+import { createPiSession } from "@/agent/session";
 import { defineAgentChat } from "@/element";
 import { u } from "@/styles/base";
 import { ChatActions, StartDemo } from "../chat-actions";
@@ -56,8 +57,10 @@ import PreactHost from "./preact-host.vue";
  * collapsed wrapper would clip it away.
  */
 // Call it, rather than importing the entry for its side effect: a bare import
-// is what a bundler drops.
-defineAgentChat();
+// is what a bundler drops. The session is the argument, because the element
+// carries no loop — this is the page choosing pi, the same choice
+// `agentak/element` makes for a CDN host.
+defineAgentChat({ session: () => createPiSession() });
 
 const playDemo = () => setChatMode("demo");
 const goLive = () => setChatMode("live");
