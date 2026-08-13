@@ -1,7 +1,7 @@
 // The pi-agent-core loop, under the `agentak/pi` subpath — the one entry that
 // pulls pi in. `createPiSession` is what `AgentChat` runs on; the rest is for a
 // host that wants the loop under a surface of its own.
-export { createPiSession, type PiSessionOptions } from "@/pi/session";
+export { createPiSession, type PiSession, type PiSessionOptions } from "@/pi/session";
 export {
   AGENT_NAME,
   createAgent,

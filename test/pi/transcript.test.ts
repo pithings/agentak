@@ -154,4 +154,18 @@ describe("toContextUsage", () => {
   it("is undefined before the first turn", () => {
     expect(toContextUsage([{ role: "user", content: "hi", timestamp: 0 }], model)).toBeUndefined();
   });
+
+  it("warns once the window is as good as spent", () => {
+    expect(toContextUsage([assistant([])], model)?.nearLimit).toBe(false);
+
+    // Everything but the room pi keeps for a summary — the point it would
+    // compact at, which is the point the meter warns at.
+    const full = assistant([]);
+    const spent = model.contextWindow - 16_384 + 1;
+    if (full.role === "assistant") {
+      full.usage = usage({ cacheRead: 0, cacheWrite: 0, input: spent, output: 0 });
+    }
+
+    expect(toContextUsage([full], model)?.nearLimit).toBe(true);
+  });
 });

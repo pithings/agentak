@@ -14,25 +14,80 @@ createPiSession()            ChatSnapshot = Pick<ChatProps, …>
 ## The contract is a `Pick` of `ChatProps`
 
 `ChatSnapshot` is not a type of its own — it is the subset of `Chat`'s props a harness
-owns. So "compatible" is checked by tsc rather than promised by a doc, and a new prop on
-the surface cannot quietly leave the seam behind. What is left out of the `Pick` belongs
-to whoever mounts the chat: `style`, `className`, `actions`, `emptyActions`.
+owns. So "compatible" is checked by tsc rather than promised by a doc. What is left out
+of the `Pick` belongs to whoever mounts the chat: `style`, `className`, `actions`,
+`emptyActions`.
 
-`ChatSession` is six required members — `subscribe`, `snapshot`, `send`, `stop`,
+`Pick` alone catches a rename, never an addition — a new prop on the surface that joined
+no list would just be unreachable, which is how `providerLabel` was once stranded. So
+the three lists are asserted to cover the props between them:
+
+```ts
+type Exhausted<T extends never> = T;
+export type ChatPropsAccountedFor = Exhausted<
+  Exclude<keyof ChatProps, keyof ChatSnapshot | HostOwned | Callbacks>
+>;
+```
+
+A new `ChatProps` key belongs to the snapshot (a harness reports it), to `HostOwned` (the
+mount declares it), or to `Callbacks` — anything `on*`, which `AgentChat` routes to the
+session. One that joins none fails `pnpm typecheck` on that line. `ChatSessionOptions`
+has the same guard against `CHAT_SESSION_OPTIONS`, the runtime key list `AgentChat`
+forwards options by.
+
+`ChatSession` is five required members — `subscribe`, `snapshot`, `send`, `stop`,
 `reset` — plus optional ones for the parts of the surface that answer back:
-`respond` (tool confirmations), `dequeue`, `selectProvider`, `selectModel`, `saveKey`,
-`setPickerOpen`, `setOptions`, `dispose`. **Absent means gone, not broken.** A harness
-with one fixed model carries no `providers`, and `picker.tsx` then heads its own model
-list; one with no token accounting carries no `usage`, and the composer shows no meter.
+`respondToTool`, `dequeue`, `dismissError`, `retry`, `selectProvider`, `selectModel`,
+`setThinkingLevel`, `saveKey`, `setPickerOpen`, `setOptions`. **Absent means gone, not broken.** A harness with one
+fixed model carries no `providers`, and `picker.tsx` then heads its own model list under
+`providerLabel`; one with no token accounting carries no `usage`, and the composer shows
+no meter; one with no `dismissError` shows an error row with nothing to close it.
+
+Data and method pair up: `models` with `selectModel`, `providers` with `selectProvider`,
+`queued` with `dequeue`, `thinkingLevels` with `setThinkingLevel`, and `error` with both
+`dismissError` and `retry`. One without the other is a list nothing chooses from, or a
+method nothing calls.
+
+**`thinkingLevels` is what the chosen model offers, not the scale.** pi's scale is
+`off | minimal | low | medium | high | xhigh | max`, but a model takes only part of it
+and one that cannot reason takes `off` alone — one level is no choice, so the picker then
+shows no level at all. The list travels rather than a `reasoning` flag, because only the
+harness knows which of the seven a given model answers to. pi keeps the choice per
+provider **and** model: one provider carries reasoning models beside models that take no
+level, so a level restored per provider would be sent to a model that refuses it.
+
+**The context warning rides inside `usage`, so it costs the seam nothing.** `nearLimit`
+is one more field of `ChatUsage`, and the meter turns amber on it — where the line falls
+belongs to whoever counts the tokens. pi puts it where its own harness would compact:
+`shouldCompact(used, window, DEFAULT_COMPACTION_SETTINGS)`, which is the window less the
+room a summary needs. Nothing here compacts yet, so the warning is all there is.
+
+`respondToTool` takes a third argument, `reason`, which rides with a denial alone: the
+harness gives it to the model in place of the tool's output, so a denial can steer the
+next turn rather than only failing this one. pi's gate already took one — see
+`approvals.ts`. `retry` is the error row's other button: pi drops the failed turn (an
+empty assistant message carrying `errorMessage`) and calls `agent.continue()`, which
+refuses a transcript ending on an assistant message. A catalog error retries the catalog
+load instead, so the button is never the dead one.
 
 Two rules a harness must keep:
 
-1. **`snapshot()` is identity-stable between notifications.** The surface reads it on
-   every render. A fresh object each call redraws the whole transcript. Cache it, and
-   drop the cache in `notify()`.
+1. **`snapshot()` is cheap and identity-stable between notifications.** The surface reads
+   it more than once per render. A fresh object each call redraws the whole transcript.
+   Cache it, and drop the cache in `notify()`. `useSession` re-reads once in dev and
+   `console.warn`s the first time a session breaks this — the failure is otherwise silent.
 2. **`subscribe` fires after the change, not before.** `useSession` reads the snapshot
    during the render and re-checks identity once the subscription lands, so an event in
    that gap is not lost — but it cannot recover a change nobody announced.
+
+**`pickerOpen` is one piece of state, and `setPickerOpen` decides who holds it.** A
+session that implements it owns both halves, and the surface reads `snapshot.pickerOpen`
+alone; one that does not leaves both here. Implementing the setter and forgetting the
+field would otherwise leave the picker shut for good.
+
+**One session is one conversation.** Nothing here loads, lists or names a stored
+transcript. A host that keeps several switches between them by switching sessions, which
+`useSession` keys on — the seam does not grow a history API.
 
 ## Subscribe and snapshot, not a hook
 
@@ -60,9 +115,13 @@ made one from options beside it would put pi in every bundle that renders a chat
 which is the seam, spent for one saved import.
 
 **Whoever made the session disposes it.** Nothing in the library calls `dispose()` on
-unmount — it never made the object, so it does not end it. `extension/panel.tsx` keeps
-one for the life of the document; `playground/src/components/chat-widget.vue` makes one
-on the first live mount and ends it when the mode changes or the widget goes away.
+unmount — it never made the object, so it does not end it. So `dispose` is not on
+`ChatSession` at all: `createPiSession()` returns `PiSession`, which is `ChatSession`
+plus a required `dispose()`. It is the factory's contract with its caller, not what the
+chat asks of a harness — an optional member nothing in the library calls would only read
+as one the surface might. `extension/panel.tsx` keeps one for the life of the document;
+`playground/src/components/chat-widget.vue` makes one on the first live mount and ends it
+when the mode changes or the widget goes away.
 
 Host-declared preferences travel as props rather than session options, so one can change
 without a new session and a lost transcript: `generateTitle` on `AgentChat` is forwarded
@@ -79,7 +138,7 @@ const session: ChatSession = {
   send: (text) => { … },
   stop: () => { … },
   reset: () => { … },
-};
+};                                   // the host ends whatever it built here
 
 render(<AgentChat session={session} />, target);
 ```

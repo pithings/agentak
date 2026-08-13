@@ -13,13 +13,13 @@ import {
   ModelSelectorTrigger,
   ModelSelectorValue,
 } from "@/components/ai-elements/model-selector";
-import type { ChatModel, ChatProvider } from "@/components/chat/types";
+import type { ChatModel, ChatProvider, ChatThinkingLevel } from "@/components/chat/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useControllableState } from "@/lib/use-controllable-state";
 import { isTouch } from "@/lib/utils";
-import { ArrowLeftIcon, ExternalLinkIcon, PlugIcon } from "@/lib/icons";
+import { ArrowLeftIcon, BrainIcon, ExternalLinkIcon, PlugIcon } from "@/lib/icons";
 import { u } from "@/styles/base";
 import { sx, type Sx } from "@/styles/sx";
 
@@ -125,8 +125,19 @@ const noZoom = touch ? u.noZoom : undefined;
 // one per row wherever the field sits.
 const listFirst = touch ? { borderBottom: "1px solid var(--border)", order: "-1" } : undefined;
 
-/** Which of the three lists the panel is showing. */
-type Level = "providers" | "models" | "key";
+/** Which of the four lists the panel is showing. */
+type Level = "providers" | "models" | "key" | "thinking";
+
+/** The scale reads as a scale, so the two ends get words rather than ids. */
+const THINKING_LABEL: Record<ChatThinkingLevel, string> = {
+  off: "Off",
+  minimal: "Minimal",
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  xhigh: "Very high",
+  max: "Maximum",
+};
 
 export interface ChatPickerProps {
   /** The models of the chosen provider. */
@@ -146,6 +157,14 @@ export interface ChatPickerProps {
   onSaveKey?: (providerId: string, key: string) => void;
   /** Heads the model list. Only needed when the picker carries no providers. */
   providerLabel?: string;
+  /**
+   * How hard the chosen model thinks. Paired with `thinkingLevels`: a model
+   * that offers one level offers no choice, and the level is then not shown.
+   */
+  thinkingLevel?: ChatThinkingLevel;
+  /** What the chosen model offers, in order. */
+  thinkingLevels?: ChatThinkingLevel[];
+  onThinkingLevelChange?: (level: ChatThinkingLevel) => void;
   /**
    * The panel, controlled — how a caller asks the question itself. `AgentChat`
    * opens it when a message is sent before any provider is chosen.
@@ -169,6 +188,9 @@ export function ChatPicker({
   onProviderChange,
   onSaveKey,
   providerLabel,
+  thinkingLevel = "off",
+  thinkingLevels,
+  onThinkingLevelChange,
   pickerOpen,
   onPickerOpenChange,
 }: ChatPickerProps) {
@@ -186,6 +208,8 @@ export function ChatPicker({
   const model = models?.find((entry) => entry.id === modelId);
   const provider = providers?.find((entry) => entry.id === providerId);
   const shown: Level = level ?? (!providers || provider ? "models" : "providers");
+  // One level is no choice — a model with no reasoning offers `off` alone.
+  const levels = thinkingLevels && thinkingLevels.length > 1 ? thinkingLevels : undefined;
 
   // The query belongs to the level it was typed in — it would hide the other.
   const go = (next: Level | null) => {
@@ -284,7 +308,8 @@ export function ChatPicker({
         side="top"
         style={S.content}
       >
-        {shown !== "key" && (
+        {/* Seven rows need no filter, so the thinking level carries none. */}
+        {(shown === "providers" || shown === "models") && (
           <ModelSelectorInput
             onKeyDown={back}
             placeholder={shown === "providers" ? "Search providers…" : "Search models…"}
@@ -339,7 +364,26 @@ export function ChatPicker({
               {shown === "providers" ? "No providers found." : "No models found."}
             </ModelSelectorEmpty>
 
-            {shown === "providers" ? (
+            {shown === "thinking" ? (
+              <ModelSelectorGroup heading="Thinking">
+                {levels?.map((entry) => (
+                  <ModelSelectorItem
+                    checked={entry === thinkingLevel}
+                    key={entry}
+                    // Not a model, so the row must not commit itself as one.
+                    onClick={(event) => {
+                      event.preventDefault();
+                      onThinkingLevelChange?.(entry);
+                      go("models");
+                    }}
+                    textValue={THINKING_LABEL[entry]}
+                    value={entry}
+                  >
+                    <ModelSelectorName>{THINKING_LABEL[entry]}</ModelSelectorName>
+                  </ModelSelectorItem>
+                ))}
+              </ModelSelectorGroup>
+            ) : shown === "providers" ? (
               <ModelSelectorGroup heading="Providers">
                 {providers?.map((entry) => (
                   <ModelSelectorItem
@@ -377,26 +421,48 @@ export function ChatPicker({
           </ModelSelectorList>
         )}
 
-        {shown !== "providers" && providers && (
+        {shown !== "providers" && (providers || levels) && (
           <div style={sx(S.strip, !touch && S.stripLine)}>
-            <Button
-              // The key, not a second name for the button: the glyph is hidden
-              // from the reader, which gets the shortcut as a shortcut.
-              aria-keyshortcuts="Backspace"
-              onClick={() => go("providers")}
-              size="xs"
-              style={sx(S.stripButton, S.back)}
-              // The composer is a form: a bare button would submit it.
-              type="button"
-              variant="ghost"
-            >
-              <ArrowLeftIcon />
-              Providers
-              {/* Only while the field it listens on is empty — see `back`. */}
-              <kbd aria-hidden="true" style={S.backHint} title="Backspace">
-                ⌫
-              </kbd>
-            </Button>
+            {/* The thinking level is reached from the models, so it goes back
+                there; every other level came from the providers. */}
+            {(shown === "thinking" || providers) && (
+              <Button
+                // The key, not a second name for the button: the glyph is hidden
+                // from the reader, which gets the shortcut as a shortcut.
+                aria-keyshortcuts={shown === "thinking" ? undefined : "Backspace"}
+                onClick={() => go(shown === "thinking" ? "models" : "providers")}
+                size="xs"
+                style={sx(S.stripButton, S.back)}
+                // The composer is a form: a bare button would submit it.
+                type="button"
+                variant="ghost"
+              >
+                <ArrowLeftIcon />
+                {shown === "thinking" ? "Models" : "Providers"}
+                {/* Only while the field it listens on is empty — see `back`. */}
+                {shown !== "thinking" && (
+                  <kbd aria-hidden="true" style={S.backHint} title="Backspace">
+                    ⌫
+                  </kbd>
+                )}
+              </Button>
+            )}
+            {shown === "models" && levels && (
+              <Button
+                // The strip has room for the level alone, which names nothing
+                // on its own — the reader gets what the word is a level of.
+                aria-label={`Thinking level: ${THINKING_LABEL[thinkingLevel]}`}
+                onClick={() => go("thinking")}
+                size="xs"
+                style={S.stripButton}
+                title="Thinking level"
+                type="button"
+                variant="ghost"
+              >
+                <BrainIcon />
+                {THINKING_LABEL[thinkingLevel]}
+              </Button>
+            )}
             {shown === "models" && provider?.keyed && (
               <Button
                 onClick={() => {

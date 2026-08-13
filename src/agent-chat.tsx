@@ -2,7 +2,12 @@ import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 
 import { Chat } from "@/components/chat";
-import { type ChatSession, type ChatSessionOptions, useSession } from "@/session";
+import {
+  CHAT_SESSION_OPTIONS,
+  type ChatSession,
+  type ChatSessionOptions,
+  useSession,
+} from "@/session";
 import type { Sx } from "@/styles/sx";
 
 export interface AgentChatProps extends ChatSessionOptions {
@@ -39,23 +44,36 @@ export function AgentChat({
   session,
   className,
   style,
-  generateTitle,
   actions,
   emptyActions,
+  ...options
 }: AgentChatProps) {
   const snapshot = useSession(session);
 
   // Declared by the host rather than the session — the prop changes without a
-  // new session, and so without a lost transcript. Left out, it is not passed
-  // on: a session built with one of its own keeps it.
-  useEffect(() => {
-    if (generateTitle !== undefined) session.setOptions?.({ generateTitle });
-  }, [generateTitle, session]);
+  // new session, and so without a lost transcript. An absent one is not passed
+  // on: a session built with one of its own keeps it. Forwarded by the key list
+  // rather than one branch per option, so a new option needs no edit here.
+  const declared = Object.fromEntries(
+    CHAT_SESSION_OPTIONS.filter((key) => options[key] !== undefined).map((key) => [
+      key,
+      options[key],
+    ]),
+  ) as ChatSessionOptions;
+  // The values, not the object: the object is fresh on every render, and the
+  // options are the host's own primitives.
+  const signature = JSON.stringify(declared);
 
-  // A session that opens the picker itself keeps the flag; one that does not
-  // leaves it here, where a plain popover needs no session at all.
+  useEffect(() => {
+    if (signature !== "{}") session.setOptions?.(JSON.parse(signature) as ChatSessionOptions);
+  }, [signature, session]);
+
+  // A session that answers `setPickerOpen` owns the flag, both halves of it —
+  // reading `snapshot.pickerOpen` when nothing sets it would leave the picker
+  // shut for good. One that does not leaves the state here, where a plain
+  // popover needs no session at all.
   const [held, setHeld] = useState(false);
-  const pickerOpen = snapshot.pickerOpen ?? held;
+  const pickerOpen = session.setPickerOpen ? (snapshot.pickerOpen ?? false) : held;
   const onPickerOpenChange = session.setPickerOpen ?? setHeld;
 
   // The callbacks go through the session rather than out of it as bare
@@ -68,14 +86,22 @@ export function AgentChat({
       className={className}
       emptyActions={emptyActions}
       onDequeue={session.dequeue && ((id) => session.dequeue?.(id))}
+      onDismissError={session.dismissError && (() => session.dismissError?.())}
       onModelChange={session.selectModel && ((id) => session.selectModel?.(id))}
       onPickerOpenChange={onPickerOpenChange}
       onProviderChange={session.selectProvider && ((id) => session.selectProvider?.(id))}
       onReset={() => session.reset()}
-      onRespond={session.respond && ((id, approved) => session.respond?.(id, approved))}
+      onRespond={
+        session.respondToTool &&
+        ((id, approved, reason) => session.respondToTool?.(id, approved, reason))
+      }
+      onRetry={session.retry && (() => session.retry?.())}
       onSaveKey={session.saveKey && ((id, key) => session.saveKey?.(id, key))}
       onSend={(text) => session.send(text)}
       onStop={() => session.stop()}
+      onThinkingLevelChange={
+        session.setThinkingLevel && ((level) => session.setThinkingLevel?.(level))
+      }
       pickerOpen={pickerOpen}
       style={style}
     />

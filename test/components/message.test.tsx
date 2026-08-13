@@ -52,6 +52,60 @@ describe("tool header subtitle", () => {
   });
 });
 
+const run = (parts: ViewToolPart[]): ViewMessage => ({ id: "a0", role: "assistant", parts });
+
+const read = (index: number, over: Partial<ViewToolPart> = {}): ViewToolPart => ({
+  ...call,
+  toolCallId: `call-${index}`,
+  name: "read_file",
+  args: { path: `src/${index}.ts` },
+  status: "done",
+  output: "ok",
+  ...over,
+});
+
+/** The run trigger is the first one — the folded cards are inside it. */
+const trigger = () => document.querySelector('[data-slot="collapsible-trigger"]');
+
+describe("ChatMessage tool run", () => {
+  it("folds settled calls of one tool into a single row", () => {
+    render(<ChatMessage message={run([read(1), read(2), read(3)])} />);
+
+    expect(trigger()?.textContent).toContain("read_file");
+    expect(screen.getByText("× 3")).toBeTruthy();
+    // The calls are still there, closed — the row is a fold, not a summary.
+    expect(screen.getAllByText("read_file").length).toBe(4);
+  });
+
+  it("leaves a single call alone", () => {
+    render(<ChatMessage message={run([read(1)])} />);
+    expect(screen.queryByText(/×/)).toBeNull();
+  });
+
+  it("breaks the run on another tool, and on a gate", () => {
+    render(
+      <ChatMessage
+        message={run([read(1), read(2), { ...read(3), name: "write_file" }, read(4), read(5)])}
+      />,
+    );
+    expect(screen.getAllByText("× 2").length).toBe(2);
+
+    cleanup();
+    render(<ChatMessage message={run([read(1), { ...read(2), status: "pending" }, read(3)])} />);
+    expect(screen.queryByText(/×/)).toBeNull();
+  });
+
+  it("keeps the streaming call out of the run", () => {
+    render(<ChatMessage isStreaming message={run([read(1), read(2), read(3)])} />);
+    expect(screen.getByText("× 2")).toBeTruthy();
+  });
+
+  it("reports the worst status of the run", () => {
+    render(<ChatMessage message={run([read(1), read(2, { status: "error" })])} />);
+    expect(trigger()?.textContent).toContain("Error");
+  });
+});
+
 describe("ChatMessage tool part", () => {
   it("opens the card when the gate asks", () => {
     const { rerender } = render(<ChatMessage message={message(call)} />);

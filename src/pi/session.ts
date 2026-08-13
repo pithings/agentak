@@ -1,3 +1,6 @@
+import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
+import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
+
 import { cachedCatalog, loadCatalog } from "@/pi/catalog";
 import { type AgentOptions, createAgent, SYSTEM_PROMPT } from "@/pi/create-agent";
 import { findModel } from "@/pi/models";
@@ -7,8 +10,10 @@ import {
   storedApiKey,
   storedModelId,
   storedProviderId,
+  storedThinkingLevel,
   storeModelId,
   storeProviderId,
+  storeThinkingLevel,
 } from "@/pi/storage";
 import { createAgentStore } from "@/pi/store";
 import { generateTitle, titleRequest } from "@/pi/title";
@@ -31,6 +36,18 @@ export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "model">
   provider?: string;
   /** Name the conversation with the model rather than the first message. */
   generateTitle?: boolean;
+}
+
+/**
+ * A session this module made, and so one its caller ends.
+ *
+ * `dispose` lives here rather than on `ChatSession` because nothing in the
+ * surface calls it: it is this factory's contract with whoever called it, not
+ * what the chat asks of a harness.
+ */
+export interface PiSession extends ChatSession {
+  /** Stops listening to the agent and drops every listener. */
+  dispose(): void;
 }
 
 /** Keys already in hand: what a host passed, over what the browser stored. */
@@ -72,7 +89,7 @@ const openingProvider = (
  * never loads this module. There is no key screen either: the picker in the
  * composer is the one place anything is chosen.
  */
-export function createPiSession(options: PiSessionOptions = {}): ChatSession {
+export function createPiSession(options: PiSessionOptions = {}): PiSession {
   const { apiKey, provider: openOn, generateTitle: named, ...agentOptions } = options;
 
   // Where the surface runs decides the list: a page drops the providers that
@@ -111,6 +128,28 @@ export function createPiSession(options: PiSessionOptions = {}): ChatSession {
   // model in hand — not whatever the agent happens to hold.
   const ready = () => Boolean(providerId) && model().provider === providerId;
 
+  /** What the current model offers, in order. `off` alone when it cannot reason. */
+  const levels = (): ThinkingLevel[] => getSupportedThinkingLevels(model());
+
+  /**
+   * Run the model at the level this browser last used it at — and never at one
+   * it does not offer, because a level carried over from another model would go
+   * to a provider that refuses it.
+   */
+  const followThinking = () => {
+    if (!providerId) return;
+    const kept = storedThinkingLevel(providerId, model().id);
+    const offered = levels();
+    const stored = offered.find((level) => level === kept);
+    const wanted = stored ?? runtime.agent.state.thinkingLevel;
+    store.setThinkingLevel(offered.includes(wanted) ? wanted : "off");
+  };
+
+  const chooseModel = (next: AnyModel) => {
+    store.setModel(next);
+    followThinking();
+  };
+
   const flush = () => {
     if (!pending || !ready()) return;
     const text = pending;
@@ -124,9 +163,14 @@ export function createPiSession(options: PiSessionOptions = {}): ChatSession {
    * list, because nothing here picks a model for anyone.
    */
   const follow = () => {
-    if (!providerId || models.length === 0 || model().provider === providerId) return;
+    if (!providerId || models.length === 0) return;
+    // Already on this provider's model: only the level is left to restore.
+    if (model().provider === providerId) {
+      followThinking();
+      return;
+    }
     const next = findModel(models, storedModelId(providerId));
-    if (next) store.setModel(next);
+    if (next) chooseModel(next);
     flush();
   };
 
@@ -234,6 +278,8 @@ export function createPiSession(options: PiSessionOptions = {}): ChatSession {
       providerId,
       providers: providerViews(),
       queued: loop.queued,
+      thinkingLevel: live ? loop.thinkingLevel : undefined,
+      thinkingLevels: live ? levels() : undefined,
       title: titled && titled.for === derived ? titled.title : derived,
       usage: live ? loop.usage : undefined,
     };
@@ -279,9 +325,28 @@ export function createPiSession(options: PiSessionOptions = {}): ChatSession {
       store.reset();
     },
 
-    respond: (id, approved) => store.respond(id, approved),
+    respondToTool: (id, approved, reason) => store.respond(id, approved, reason),
 
     dequeue: (id) => store.dequeue(id),
+
+    dismissError() {
+      catalogError = undefined;
+      store.clearError();
+      notify();
+    },
+
+    /**
+     * Whatever the shown error was, again. A catalog that would not load is the
+     * one to load again; anything else is the loop's, and the failed turn runs
+     * once more in place. So the button is never the dead one.
+     */
+    retry() {
+      if (catalogError && providerId) {
+        load(providerId);
+        return;
+      }
+      store.retry();
+    },
 
     selectProvider(id) {
       providerId = id;
@@ -292,9 +357,19 @@ export function createPiSession(options: PiSessionOptions = {}): ChatSession {
     selectModel(id) {
       const next = findModel(models, id);
       if (!next || !providerId) return;
-      store.setModel(next);
+      chooseModel(next);
       storeModelId(providerId, id);
       flush();
+    },
+
+    /**
+     * Kept per provider and model, because one provider carries reasoning
+     * models beside models that take no level at all.
+     */
+    setThinkingLevel(level) {
+      if (!ready() || !providerId) return;
+      store.setThinkingLevel(level);
+      storeThinkingLevel(providerId, model().id, level);
     },
 
     saveKey(id, key) {

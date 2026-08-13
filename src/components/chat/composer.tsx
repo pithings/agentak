@@ -110,6 +110,7 @@ export function ChatComposer({ isStreaming, onSend, onStop, usage, ...picker }: 
               costs={usage.costs}
               maxTokens={usage.maxTokens}
               modelId={usage.modelId}
+              nearLimit={usage.nearLimit}
               style={S.usage}
               usage={usage.usage}
               usedTokens={usage.usedTokens}

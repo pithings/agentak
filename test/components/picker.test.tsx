@@ -91,6 +91,37 @@ describe("ChatPicker", () => {
     expect(row?.getAttribute("aria-selected")).toBe("true");
   });
 
+  it("shows the thinking level only when the model offers a choice", () => {
+    const chosen: string[] = [];
+    const level = (levels?: ("off" | "low" | "high")[]) => (
+      <ChatPicker
+        modelId="gpt-5"
+        models={MODELS}
+        onThinkingLevelChange={(next) => chosen.push(next)}
+        providerId="openai"
+        providers={PROVIDERS}
+        thinkingLevel="low"
+        thinkingLevels={levels}
+      />
+    );
+
+    // One level is no choice, so nothing is offered.
+    const { rerender } = render(level(["off"]));
+    fireEvent.click(screen.getByRole("button", { name: /GPT-5/ }));
+    expect(screen.queryByRole("button", { name: /Thinking level/ })).toBeNull();
+
+    rerender(level(["off", "low", "high"]));
+    fireEvent.click(screen.getByRole("button", { name: "Thinking level: Low" }));
+    expect(screen.getByText("Thinking")).toBeTruthy();
+    // Its own level, so the way back is the models rather than the providers.
+    expect(screen.getByRole("button", { name: /Models/ })).toBeTruthy();
+
+    fireEvent.click(screen.getByText("High"));
+    expect(chosen).toEqual(["high"]);
+    // And back on the models, which is what the level was chosen for.
+    expect(screen.getByPlaceholderText("Search models…")).toBeTruthy();
+  });
+
   it("goes back a level on backspace, once the field is empty", () => {
     render(
       <ChatPicker modelId="gpt-5" models={MODELS} providerId="openai" providers={PROVIDERS} />,

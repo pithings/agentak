@@ -32,3 +32,10 @@ export const storeProviderId = (id: string) => write("provider", id);
 
 export const storedModelId = (provider: string) => read(`model:${provider}`);
 export const storeModelId = (provider: string, id: string) => write(`model:${provider}`, id);
+
+// Per model, not per provider: one provider carries reasoning models beside
+// models that take no level at all.
+export const storedThinkingLevel = (provider: string, model: string) =>
+  read(`thinking:${provider}:${model}`);
+export const storeThinkingLevel = (provider: string, model: string, level: string) =>
+  write(`thinking:${provider}:${model}`, level);

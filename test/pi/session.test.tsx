@@ -46,6 +46,11 @@ const named = turn([{ type: "text", text: "Plans on this page" }], "stop");
 const FREE = "llm7";
 const MODEL = "gemini-3.1-flash-lite";
 
+/** The same, and its catalog carries a reasoning model beside a plain one. */
+const THINKS = "ovhcloud";
+const REASONING_MODEL = "gpt-oss-20b";
+const PLAIN_MODEL = "Qwen3-Coder-30B-A3B-Instruct";
+
 afterEach(cleanup);
 beforeEach(() => localStorage.clear());
 
@@ -93,6 +98,36 @@ describe("createPiSession", () => {
 
     session.send("what is this page?");
     await waitFor(() => expect(session.snapshot().title).toBe("Plans on this page"));
+  });
+
+  it("offers a thinking level only where the model has one", async () => {
+    const session = createPiSession({ provider: THINKS, streamFn: scripted([answer]) });
+    await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
+
+    session.selectModel?.(REASONING_MODEL);
+    expect(session.snapshot().thinkingLevels).toContain("medium");
+    expect(session.snapshot().thinkingLevel).toBe("off");
+
+    // Nothing to choose from, so the picker shows no level at all.
+    session.selectModel?.(PLAIN_MODEL);
+    expect(session.snapshot().thinkingLevels).toEqual(["off"]);
+  });
+
+  it("keeps the thinking level per model, and drops one the next model refuses", async () => {
+    const first = createPiSession({ provider: THINKS, streamFn: scripted([answer]) });
+    await waitFor(() => expect(first.snapshot().models?.length).toBeGreaterThan(0));
+    first.selectModel?.(REASONING_MODEL);
+    first.setThinkingLevel?.("high");
+    expect(first.snapshot().thinkingLevel).toBe("high");
+
+    // A model that cannot reason must not be asked to: the level goes with it.
+    first.selectModel?.(PLAIN_MODEL);
+    expect(first.snapshot().thinkingLevel).toBe("off");
+
+    const next = createPiSession({ provider: THINKS, streamFn: scripted([answer]) });
+    await waitFor(() => expect(next.snapshot().models?.length).toBeGreaterThan(0));
+    next.selectModel?.(REASONING_MODEL);
+    expect(next.snapshot().thinkingLevel).toBe("high");
   });
 
   it("notifies subscribers and keeps the snapshot until it changes", async () => {

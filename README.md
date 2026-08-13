@@ -59,7 +59,7 @@ import { AgentakChat } from "agentak/vue";
 import { createPiSession } from "agentak/pi";
 
 const session = createPiSession();
-onBeforeUnmount(() => session.dispose?.());
+onBeforeUnmount(() => session.dispose());
 </script>
 
 <template>
@@ -78,9 +78,13 @@ onBeforeUnmount(() => session.dispose?.());
 
 `createPiSession()` takes the provider, the key and the loop's own options; it is
 described below. **Whoever makes the session ends it** — the component never calls
-`dispose()`, because it never made the object. One session lasts a whole conversation:
-provider, model and key all change from the picker inside the composer, with the
-transcript kept.
+`dispose()`, because it never made the object. That is why `dispose()` is on the
+`PiSession` that `createPiSession()` returns and not on `ChatSession` itself: it is what
+the factory asks of you, not what the chat asks of a harness.
+
+One session is one conversation, and it lasts the whole of it: provider, model and key
+all change from the picker inside the composer, with the transcript kept. To hold
+several conversations, hold several sessions and swap the prop.
 
 The chat is preact inside, in all three. React and vue therefore give it one `<div>`
 that preact fills, and `actions` and `emptyActions` are preact children — build them
@@ -162,7 +166,7 @@ const session: ChatSession = {
     return () => listeners.delete(listener);
   },
   // The same object until something changes. A new one on every call redraws the
-  // whole transcript.
+  // whole transcript — a dev build says so in the console if you slip.
   snapshot: () => snapshot,
   send(text) {
     snapshot = {
@@ -185,28 +189,43 @@ const session: ChatSession = {
 The framework wrappers take the same object, and they carry no loop either — so
 `agentak/react` over your own harness resolves no pi module, exactly as the root does.
 
-The five methods above and `subscribe` are all that a session must have. Everything
-else is optional, and what you leave out is left out of the UI:
+Those five members — `subscribe`, `snapshot`, `send`, `stop` and `reset` — are all that
+a session must have. Everything else is optional, and what you leave out is left out of
+the UI:
 
-| Optional         | What it adds                              |
-| ---------------- | ----------------------------------------- |
-| `respond`        | approve or deny a tool call               |
-| `dequeue`        | remove a message that waits its turn      |
-| `selectProvider` | the provider level of the picker          |
-| `selectModel`    | the model level                           |
-| `saveKey`        | the key level                             |
-| `setPickerOpen`  | your session opens the picker itself      |
-| `setOptions`     | it receives `generateTitle` from the host |
-| `dispose`        | you call it when the chat goes away       |
+| Optional           | What it adds                                   |
+| ------------------ | ---------------------------------------------- |
+| `respondToTool`    | approve or deny a tool call, and say why       |
+| `dequeue`          | remove a message that waits its turn           |
+| `dismissError`     | a button that closes the error row             |
+| `retry`            | a button that runs the failed turn again       |
+| `selectProvider`   | the provider level of the picker               |
+| `selectModel`      | the model level                                |
+| `setThinkingLevel` | the thinking level, under the chosen model     |
+| `saveKey`          | the key level                                  |
+| `setPickerOpen`    | your session opens and holds the picker itself |
+| `setOptions`       | it receives `generateTitle` from the host      |
+
+`dispose` is not among them: nothing in the library calls it, so it belongs to whatever
+made the session. `createPiSession()` returns one that has it.
 
 The snapshot works the same way. `messages` and `isStreaming` are required; `error`,
-`title`, `agent`, `usage`, `queued`, `providers`, `providerId`, `models`,
-`modelsLoading`, `modelId` and `pickerOpen` each turn on one part of the surface. With
-no `providers`, the picker is your one model list. With no `usage`, the composer shows
-no context meter.
+`title`, `agent`, `usage`, `queued`, `providers`, `providerId`, `providerLabel`,
+`models`, `modelsLoading`, `modelId`, `thinkingLevel`, `thinkingLevels` and `pickerOpen`
+each turn on one part of the surface. With no `providers`, the picker is your one model
+list, headed by `providerLabel`. With no `usage`, the composer shows no context meter —
+and `usage.nearLimit` is what turns that meter amber, so a harness that counts tokens
+decides for itself when the window is as good as spent.
 
-`ChatSnapshot` is a subset of the props of `Chat`, thus the compiler holds the two
-sides together.
+Data and method pair up: `models` with `selectModel`, `providers` with
+`selectProvider`, `queued` with `dequeue`, `thinkingLevels` with `setThinkingLevel`. One
+without the other is a list nothing chooses from, or a method nothing calls.
+`pickerOpen` is the one to watch — a session that answers `setPickerOpen` owns both
+halves, and must then report `pickerOpen` too.
+
+`ChatSnapshot` is a subset of the props of `Chat`, thus the compiler holds the two sides
+together — and it checks the rest of that subset as well, so a prop the surface gains
+cannot go missing from the seam without failing the build.
 
 ### 🧱 Use the parts
 

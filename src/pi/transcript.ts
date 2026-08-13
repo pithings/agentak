@@ -1,4 +1,5 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import { DEFAULT_COMPACTION_SETTINGS, shouldCompact } from "@earendil-works/pi-agent-core";
 import type { ImageContent, TextContent, Usage } from "@earendil-works/pi-ai";
 
 import type { ApprovalRequest } from "@/pi/approvals";
@@ -162,6 +163,11 @@ export interface ContextUsageView {
   usage: LanguageModelUsage;
   modelId: string;
   costs: ContextCosts;
+  /**
+   * The window is nearly spent. pi's own threshold — what it would compact at,
+   * which is the window less the room a summary needs.
+   */
+  nearLimit: boolean;
 }
 
 const EMPTY_COSTS = { input: 0, output: 0, cache: 0, total: 0 };
@@ -208,10 +214,15 @@ export function toContextUsage(
     { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0, cost: EMPTY_COSTS },
   );
 
+  const usedTokens = contextTokens(last.usage) + last.usage.output;
+
   return {
-    usedTokens: contextTokens(last.usage) + last.usage.output,
+    usedTokens,
     maxTokens: model.contextWindow,
     modelId: model.id,
+    // The same call the harness compacts on, so the warning stands exactly
+    // where a compaction would run — see `.agents/session.md`.
+    nearLimit: shouldCompact(usedTokens, model.contextWindow, DEFAULT_COMPACTION_SETTINGS),
     usage: {
       inputTokens: totals.input,
       outputTokens: totals.output,

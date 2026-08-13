@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
 
 import type { AgentRuntime } from "@/pi/create-agent";
 import type { AnyModel } from "@/pi/providers";
@@ -21,6 +21,8 @@ export interface AgentSnapshot {
   usage?: ContextUsageView;
   /** The model of the next turn, whichever provider it belongs to. */
   model: AnyModel;
+  /** How hard that model is asked to think. `off` unless somebody raised it. */
+  thinkingLevel: ThinkingLevel;
   queued: QueuedMessage[];
 }
 
@@ -32,10 +34,22 @@ export interface AgentStore {
   send(text: string): void;
   stop(): void;
   reset(): void;
-  /** Answer a tool confirmation, by tool call id. */
-  respond(id: string, approved: boolean): void;
+  /**
+   * Answer a tool confirmation, by tool call id. A denial's `reason` is what the
+   * model is told instead of the tool's output, so it can take another way.
+   */
+  respond(id: string, approved: boolean, reason?: string): void;
   dequeue(id: string): void;
+  /** Take the current error off the view. The transcript stays. */
+  clearError(): void;
+  /** Run the failed turn again, in place. No-op when there is nothing to retry. */
+  retry(): void;
   setModel(model: AnyModel): void;
+  /**
+   * Raise or drop the reasoning effort of the next turn. The caller checks the
+   * model offers the level — pi sends whatever it is given.
+   */
+  setThinkingLevel(level: ThinkingLevel): void;
   /** Stops listening to the agent. The agent itself is the caller's. */
   dispose(): void;
 }
@@ -45,6 +59,14 @@ const userMessage = (text: string): AgentMessage => ({
   content: [{ type: "text", text }],
   timestamp: Date.now(),
 });
+
+/**
+ * A turn that ended in an error. pi records one as an empty assistant message
+ * carrying `errorMessage`, so this is what stands between the transcript and a
+ * `continue()`, which reads an assistant message as a turn already answered.
+ */
+const isFailedTurn = (message: AgentMessage) =>
+  message.role === "assistant" && Boolean(message.errorMessage);
 
 const isUserText = (message: AgentMessage, text: string) =>
   message.role === "user" &&
@@ -67,6 +89,12 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
   const listeners = new Set<() => void>();
   let cached: AgentSnapshot | undefined;
   let failure: string | undefined;
+  /**
+   * What was dismissed. `agent.state.errorMessage` is the agent's and read-only,
+   * so a dismissed one is masked rather than cleared — and the mask goes with
+   * the next send, so the same error twice over is still shown twice.
+   */
+  let dismissed: string | undefined;
   let queued: QueuedMessage[] = [];
   let nextId = 0;
 
@@ -102,6 +130,7 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
 
   const build = (): AgentSnapshot => {
     const messages = agent.state.messages;
+    const error = failure ?? agent.state.errorMessage;
     return {
       messages: toViewMessages(messages, agent.state.streamingMessage, {
         answers: approvals.answers(),
@@ -110,7 +139,8 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
       usage: toContextUsage(messages, agent.state.model),
       isStreaming: agent.state.isStreaming,
       model: agent.state.model as AnyModel,
-      error: failure ?? agent.state.errorMessage,
+      thinkingLevel: agent.state.thinkingLevel,
+      error: error === dismissed ? undefined : error,
       queued,
     };
   };
@@ -130,6 +160,7 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
       const trimmed = text.trim();
       if (!trimmed) return;
       failure = undefined;
+      dismissed = undefined;
 
       if (agent.state.isStreaming) {
         nextId += 1;
@@ -166,15 +197,55 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
       approvals.clear();
       queued = [];
       failure = undefined;
+      dismissed = undefined;
       notify();
     },
 
-    respond(id, approved) {
-      approvals.respond(id, approved);
+    clearError() {
+      dismissed = failure ?? agent.state.errorMessage;
+      failure = undefined;
+      notify();
+    },
+
+    /**
+     * The failed turn is dropped before the loop runs on: a retry replaces it
+     * rather than following it, and `continue()` refuses a transcript that ends
+     * on an assistant message anyway. What is left must end on the user or a
+     * tool result — anything else is a turn that already answered, and there is
+     * nothing to run again.
+     */
+    retry() {
+      if (agent.state.isStreaming) return;
+
+      const messages = agent.state.messages;
+      let end = messages.length;
+      while (end > 0 && isFailedTurn(messages[end - 1])) end--;
+
+      const last = messages[end - 1];
+      if (!last || (last.role !== "user" && last.role !== "toolResult")) return;
+
+      if (end !== messages.length) agent.state.messages = messages.slice(0, end);
+      failure = undefined;
+      dismissed = undefined;
+
+      agent.continue().catch((error: unknown) => {
+        failure = error instanceof Error ? error.message : String(error);
+        notify();
+      });
+      notify();
+    },
+
+    respond(id, approved, reason) {
+      approvals.respond(id, approved, reason);
     },
 
     setModel(model) {
       agent.state.model = model;
+      notify();
+    },
+
+    setThinkingLevel(level) {
+      agent.state.thinkingLevel = level;
       notify();
     },
 

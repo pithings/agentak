@@ -50,7 +50,7 @@ function fakeSession(): ChatSession & { sent: string[]; say(text: string): void 
 }
 
 describe("a session that is not pi", () => {
-  it("drives the whole surface with six members and no provider", () => {
+  it("drives the whole surface with five members and no provider", () => {
     const session = fakeSession();
     render(<AgentChat session={session} />);
 

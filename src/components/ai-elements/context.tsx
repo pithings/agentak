@@ -71,6 +71,15 @@ const S = {
   contextModel: {
     marginTop: "0.25rem",
   },
+  // Only when the window is nearly spent, so the meter reads as a reading
+  // until it reads as a warning.
+  contextNear: {
+    marginTop: "0.5rem",
+    color: "var(--warning)",
+  },
+  contextNearFill: {
+    background: "var(--warning)",
+  },
   contextMeter: {
     display: "flex",
     height: "0.5rem",
@@ -134,6 +143,11 @@ interface ContextSchema {
   usage?: LanguageModelUsage;
   modelId?: string;
   costs?: ContextCosts;
+  /**
+   * The next turn may not fit. Where the line is belongs to whoever counts the
+   * tokens — the meter only reports it, in the ring and in the panel.
+   */
+  nearLimit?: boolean;
 }
 
 const ContextContext = createContext<ContextSchema | null>(null);
@@ -167,14 +181,15 @@ export const Context = ({
   usage,
   modelId,
   costs,
+  nearLimit,
   className,
   style,
   children,
   ...props
 }: ContextProps) => {
   const value = useMemo(
-    () => ({ costs, maxTokens, modelId, usage, usedTokens }),
-    [costs, maxTokens, modelId, usage, usedTokens],
+    () => ({ costs, maxTokens, modelId, nearLimit, usage, usedTokens }),
+    [costs, maxTokens, modelId, nearLimit, usage, usedTokens],
   );
 
   return (
@@ -206,13 +221,15 @@ export const Context = ({
 
 /** The ring, with the reading inside it — `role="img"` hides the text, so the label carries it. */
 const ContextIcon = () => {
-  const { usedTokens, maxTokens } = useContextValue();
+  const { usedTokens, maxTokens, nearLimit } = useContextValue();
   const circumference = 2 * Math.PI * ICON_RADIUS;
   const used = Math.min(usedTokens / maxTokens, 1);
 
   return (
     <svg
-      aria-label={`Model context usage: ${percent.format(usedTokens / maxTokens)}`}
+      aria-label={`Model context usage: ${percent.format(usedTokens / maxTokens)}${
+        nearLimit ? ", near the limit" : ""
+      }`}
       height="24"
       role="img"
       style={sx(reset.svg, S.contextRing)}
@@ -263,6 +280,7 @@ export type ContextTriggerProps = WithSx<ComponentProps<typeof CollapsibleTrigge
  */
 export const ContextTrigger = ({ className, style, children, ...props }: ContextTriggerProps) => {
   const { focusVisible, handlers, hovered } = useInteraction<HTMLButtonElement>(props);
+  const { nearLimit } = useContextValue();
 
   return (
     <CollapsibleTrigger
@@ -275,7 +293,9 @@ export const ContextTrigger = ({ className, style, children, ...props }: Context
           size: children ? "sm" : "icon-sm",
           variant: "ghost",
         }),
-        !hovered && S.contextTrigger,
+        // The ring is drawn in `currentColor`, so the warning reaches it from
+        // here — the one reading a reader sees without opening the panel.
+        !hovered && (nearLimit ? u.warning : S.contextTrigger),
         style,
       )}
       {...props}
@@ -297,7 +317,7 @@ export const ContextContent = ({ className, style, children, ...props }: Context
 export type ContextContentHeaderProps = WithSx<ComponentProps<"div">>;
 
 export const ContextContentHeader = ({ style, children, ...props }: ContextContentHeaderProps) => {
-  const { usedTokens, maxTokens, modelId } = useContextValue();
+  const { usedTokens, maxTokens, modelId, nearLimit } = useContextValue();
   const used = usedTokens / maxTokens;
 
   return (
@@ -321,11 +341,18 @@ export const ContextContentHeader = ({ style, children, ...props }: ContextConte
           >
             <div
               data-slot="context-meter-fill"
-              style={sx(S.contextMeterFill, {
+              style={sx(S.contextMeterFill, nearLimit && S.contextNearFill, {
                 width: `${(Math.min(used, 1) * PERCENT_MAX).toFixed(1)}%`,
               })}
             />
           </div>
+          {/* Nothing here compacts a conversation yet, so the answer is a new
+              one — say that, rather than only that the window is nearly gone. */}
+          {nearLimit && (
+            <p style={sx(reset.text, S.contextNear)}>
+              Near the context limit. Start a new conversation soon.
+            </p>
+          )}
         </>
       )}
     </div>

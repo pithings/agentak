@@ -85,9 +85,10 @@ the import graph test keeps each one inside its own wrapper.
 `actions` lands at the end of the chat header, so a host puts its own chrome —
 minimise, and the like — on the one title bar the surface already has. `emptyActions`
 lands under the greeting, for a suggestion or a launcher the host owns; it shows only
-before the first message. Provider, model and key are all the composer's picker — the pi
-session's, so a host harness that carries no providers gets no provider level — so the
-chat is the only view there is, with no gate in front of it and no screen to swap to.
+before the first message. Provider, model, thinking level and key are all the composer's
+picker — the pi session's, so a host harness that carries no providers gets no provider
+level, and a model that cannot reason gets no thinking level — so the chat is the only
+view there is, with no gate in front of it and no screen to swap to.
 
 The header names the conversation after the first message. `generateTitle` asks the
 model for the name instead, once, after the first answer lands; it is one extra request,
@@ -162,5 +163,7 @@ Next:
    chatbox is `agentak/vue`, which is what a consumer writes, so the page checks the
    wrapper and the surface at once — including what the page's tailwind preflight now
    reaches, with no shadow root in between.
-4. Compaction. pi exports `compact()`, but it needs a `Models` store, so a long
-   conversation still runs into the window.
+4. Compaction. pi exports `compact()`, but it needs a `Models` store and the harness's
+   own `Entry[]`, so a long conversation still runs into the window. The warning half is
+   in: the context meter turns amber at `shouldCompact()`, which is pure and needs
+   neither — see `pi/transcript.ts`.

@@ -2,8 +2,7 @@
 import { h } from "preact";
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from "vue";
 
-import { createPiSession } from "@/pi/session";
-import type { ChatSession } from "@/session";
+import { createPiSession, type PiSession } from "@/pi/session";
 import { u } from "@/styles/base";
 import { AgentakChat } from "@/vue";
 import { ChatActions, StartDemo } from "../chat-actions";
@@ -76,7 +75,7 @@ const startDemo = h(StartDemo, { onStart: playDemo });
  * for a chat nobody opened. `pre` flush, so it exists before the element that
  * takes it renders, and the demo swap ends it.
  */
-const session = shallowRef<ChatSession>();
+const session = shallowRef<PiSession>();
 
 watch(
   () => chat.mounted && chat.mode === "live",
@@ -85,7 +84,7 @@ watch(
       session.value ??= createPiSession();
       return;
     }
-    session.value?.dispose?.();
+    session.value?.dispose();
     session.value = undefined;
   },
   { immediate: true },
@@ -197,7 +196,7 @@ onBeforeUnmount(() => {
   globalThis.removeEventListener("keydown", onKey);
   phone?.removeEventListener("change", measure);
   desktop?.removeEventListener("change", measure);
-  session.value?.dispose?.();
+  session.value?.dispose();
   session.value = undefined;
 });
 </script>

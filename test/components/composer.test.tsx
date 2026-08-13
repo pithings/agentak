@@ -44,4 +44,25 @@ describe("ChatComposer", () => {
     await Promise.resolve();
     expect((document.activeElement as HTMLElement)?.tagName).toBe("TEXTAREA");
   });
+
+  it("says so in the meter when the window is nearly spent", () => {
+    const meter = (nearLimit: boolean) => (
+      <ChatComposer
+        isStreaming={false}
+        onSend={() => {}}
+        onStop={() => {}}
+        usage={{ maxTokens: 200_000, nearLimit, usedTokens: 190_000 }}
+      />
+    );
+
+    const { rerender } = render(meter(false));
+    // The ring reads the same either way; only the warning is new.
+    const ring = screen.getByRole("img", { name: /95%$/ });
+    fireEvent.click(ring.closest("button") as HTMLButtonElement);
+    expect(screen.queryByText(/Near the context limit/)).toBeNull();
+
+    rerender(meter(true));
+    expect(screen.getByRole("img", { name: /near the limit/ })).toBeTruthy();
+    expect(screen.getByText(/Near the context limit/)).toBeTruthy();
+  });
 });

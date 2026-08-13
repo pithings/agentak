@@ -1,3 +1,4 @@
+import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import type { AgentRuntime } from "@/pi/create-agent";
@@ -11,10 +12,16 @@ export interface ChatState extends AgentSnapshot {
   send(text: string): void;
   stop(): void;
   reset(): void;
-  /** Answer a tool confirmation, by tool call id. */
-  respond(id: string, approved: boolean): void;
+  /** Answer a tool confirmation, by tool call id. A denial can say why. */
+  respond(id: string, approved: boolean, reason?: string): void;
   dequeue(id: string): void;
+  /** Take the current error off the view. The transcript stays. */
+  clearError(): void;
+  /** Run the failed turn again, in place. */
+  retry(): void;
   setModel(model: AnyModel): void;
+  /** How hard the model thinks before it answers. */
+  setThinkingLevel(level: ThinkingLevel): void;
 }
 
 /** Renders again whenever the store says so. See `useSession` for the same guard. */
@@ -53,6 +60,9 @@ export function useAgent(runtime: AgentRuntime): ChatState {
     reset: store.reset,
     respond: store.respond,
     dequeue: store.dequeue,
+    clearError: store.clearError,
+    retry: store.retry,
     setModel: store.setModel,
+    setThinkingLevel: store.setThinkingLevel,
   };
 }

@@ -220,6 +220,20 @@ export const turns: DemoTurn[] = [
           'src/pages/signup.tsx:42:  const password = document.getElementById("password")!.value;',
         ].join("\n"),
       },
+      // A run of one tool, back to back — the transcript folds it into one row.
+      ...[
+        { path: "src/pages/signup.tsx", lines: 62 },
+        { path: "src/api/signup.ts", lines: 41 },
+        { path: "src/validate.ts", lines: 28 },
+        { path: "src/pages/signup.test.tsx", lines: 96 },
+      ].map(({ path, lines }): ViewPart => ({
+        kind: "tool",
+        toolCallId: `call-${stamp}-read-${path}`,
+        name: "read_file",
+        args: { path },
+        status: "done",
+        output: JSON.stringify({ path, lines, truncated: false }, null, 2),
+      })),
       {
         kind: "element",
         name: "file-tree",

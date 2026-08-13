@@ -123,6 +123,91 @@ describe("the wired agent", () => {
     expect(tool.output).toContain("denied");
   });
 
+  it("tells the model why a call was denied, when the reader says", async () => {
+    const { result } = setup([readPageTurn, answerTurn]);
+
+    act(() => result.current.send("read it"));
+    await waitFor(() =>
+      expect(toolOf(result.current.messages[1]?.parts ?? []).status).toBe("pending"),
+    );
+
+    act(() => result.current.respond("call-1", false, "Read the other tab."));
+    await waitFor(() => expect(toolOf(result.current.messages[1].parts).status).toBe("denied"));
+
+    const tool = toolOf(result.current.messages[1].parts);
+    // The reason stands in for the tool's output, so the next turn can take it.
+    expect(tool.output).toContain("Read the other tab.");
+    expect(tool.approval?.reason).toBe("Read the other tab.");
+  });
+
+  it("runs a failed turn again, in place of the failure", async () => {
+    // The provider refuses once, then answers — what a retry is for.
+    const answer = scripted([answerTurn]);
+    let down = true;
+    const flaky: StreamFn = (...args) => {
+      if (!down) return answer(...args);
+      down = false;
+      throw new Error("Provider is down.");
+    };
+
+    const runtime = createAgent({ apiKey: "test-key", approvals: "never", page, streamFn: flaky });
+    const { result } = renderHook(() => useAgent(runtime));
+
+    act(() => result.current.send("what is this page?"));
+    await waitFor(() => expect(result.current.error).toBe("Provider is down."));
+
+    act(() => result.current.retry());
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+
+    // The failed turn is gone rather than answered around: one question, one
+    // answer, and no error left over.
+    expect(result.current.error).toBeUndefined();
+    expect(result.current.messages.map((message) => message.role)).toEqual(["user", "assistant"]);
+    expect(result.current.messages[1].parts[0]).toEqual({ kind: "text", text: "Two plans." });
+  });
+
+  it("carries the thinking level into the request, and sends none when it is off", async () => {
+    const asked: (string | undefined)[] = [];
+    const answer = scripted([answerTurn]);
+    const recording: StreamFn = (model, context, options) => {
+      asked.push(options?.reasoning);
+      return answer(model, context, options);
+    };
+
+    const runtime = createAgent({
+      apiKey: "test-key",
+      approvals: "never",
+      page,
+      streamFn: recording,
+    });
+    const { result } = renderHook(() => useAgent(runtime));
+
+    // `off` is not a level a provider knows — pi drops it rather than sending it.
+    expect(result.current.thinkingLevel).toBe("off");
+    act(() => result.current.send("hello"));
+    await waitFor(() => expect(asked).toHaveLength(1));
+    expect(asked[0]).toBeUndefined();
+
+    act(() => result.current.setThinkingLevel("high"));
+    expect(result.current.thinkingLevel).toBe("high");
+
+    act(() => result.current.send("again"));
+    await waitFor(() => expect(asked).toHaveLength(2));
+    expect(asked[1]).toBe("high");
+  });
+
+  it("leaves an answered transcript alone when there is nothing to retry", async () => {
+    const { result } = setup([answerTurn]);
+
+    act(() => result.current.send("what is this page?"));
+    await waitFor(() => expect(result.current.messages).toHaveLength(2));
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+
+    act(() => result.current.retry());
+    expect(result.current.messages).toHaveLength(2);
+    expect(result.current.isStreaming).toBe(false);
+  });
+
   it("asks nothing when the policy is never", async () => {
     const { result } = setup([readPageTurn, answerTurn], "never");
 

@@ -13,9 +13,11 @@ import { ChatHeader } from "@/components/chat/header";
 import { ChatMessage, type ChatRespond } from "@/components/chat/message";
 import { ChatQueue } from "@/components/chat/queue";
 import type { ChatAgent, ChatQueueItem } from "@/components/chat/types";
+import { Button } from "@/components/ui/button";
 import type { ViewMessage } from "@/types";
+import { RotateCcwIcon, XIcon } from "@/lib/icons";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
-import { u } from "@/styles/base";
+import { reset, u } from "@/styles/base";
 import { sx, type Sx } from "@/styles/sx";
 
 export type {
@@ -23,6 +25,7 @@ export type {
   ChatModel,
   ChatProvider,
   ChatQueueItem,
+  ChatThinkingLevel,
   ChatUsage,
 } from "@/components/chat/types";
 
@@ -68,17 +71,45 @@ const S = {
     "--chat-safe-bottom": "0px",
   },
   error: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "0.25rem",
     borderTop: "1px solid var(--border)",
     background: "var(--destructive-surface)",
     padding: "0.5rem 0.75rem",
     color: "var(--destructive)",
     fontSize: "0.75rem",
   },
+  // Takes the room the dismiss button leaves, and wraps rather than pushing it.
+  errorText: {
+    flex: "1",
+    minWidth: "0",
+  },
+  // Short, so the message keeps the row. The border follows the row's colour
+  // rather than the neutral one an outline button carries.
+  errorRetry: {
+    height: "1.75rem",
+    flexShrink: "0",
+    borderColor: "color-mix(in oklab, var(--destructive) 30%, transparent)",
+    color: "inherit",
+    fontSize: "0.75rem",
+  },
+  // The row paints the colour; the ghost button inherits it rather than the
+  // foreground it would pick for itself.
+  errorDismiss: {
+    marginTop: "-0.125rem",
+    marginRight: "-0.375rem",
+    color: "inherit",
+  },
 } satisfies Record<string, Sx>;
 
 export interface ChatProps extends ChatComposerProps {
   messages: ViewMessage[];
   error?: string;
+  /** Clear the error and keep the transcript. Without it, nothing dismisses one. */
+  onDismissError?: () => void;
+  /** Run the failed turn again. Shown in the error row, beside dismissing it. */
+  onRetry?: () => void;
   onReset: () => void;
   /** What this conversation is about, shown in the header. `toTitle` derives one. */
   title?: string;
@@ -114,6 +145,8 @@ export function Chat({
   messages,
   isStreaming,
   error,
+  onDismissError,
+  onRetry,
   onReset,
   title,
   className,
@@ -160,7 +193,29 @@ export function Chat({
       </Conversation>
 
       <div ref={footRef} style={sx(S.foot, inset > 0 && S.footLifted, { bottom: `${inset}px` })}>
-        {error ? <p style={S.error}>{error}</p> : null}
+        {error ? (
+          <div style={S.error}>
+            <p style={sx(reset.text, S.errorText)}>{error}</p>
+            {onRetry ? (
+              <Button onClick={onRetry} size="sm" style={S.errorRetry} variant="outline">
+                <RotateCcwIcon />
+                Retry
+              </Button>
+            ) : null}
+            {onDismissError ? (
+              <Button
+                aria-label="Dismiss error"
+                onClick={onDismissError}
+                size="icon-sm"
+                style={S.errorDismiss}
+                title="Dismiss error"
+                variant="ghost"
+              >
+                <XIcon />
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
 
         <ChatQueue items={queued} onDequeue={onDequeue} />
 

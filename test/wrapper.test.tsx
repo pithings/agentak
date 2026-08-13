@@ -4,7 +4,7 @@ import { createApp, h } from "vue";
 
 import { mount } from "@/index";
 import { AgentakChat } from "@/preact";
-import type { ChatSession } from "@/session";
+import type { ChatSession, ChatSnapshot } from "@/session";
 import { type AgentakChatProps, AgentakChat as VueAgentakChat } from "@/vue";
 
 afterEach(() => {
@@ -12,12 +12,18 @@ afterEach(() => {
   document.head.querySelector("style[data-agentak-tokens]")?.remove();
 });
 
-/** A harness that answers the six required members, and counts its own end. */
-function fakeSession(): ChatSession & { disposed: number } {
+/**
+ * A harness that answers the five required members, and counts its own end.
+ * The snapshot is one object, not a fresh one per call — the rule every harness
+ * keeps, and `useSession` says so in dev when one does not.
+ */
+function fakeSession(): ChatSession & { disposed: number; dispose(): void } {
+  const snapshot: ChatSnapshot = { isStreaming: false, messages: [] };
+
   return {
     disposed: 0,
     subscribe: () => () => {},
-    snapshot: () => ({ isStreaming: false, messages: [] }),
+    snapshot: () => snapshot,
     send() {},
     stop() {},
     reset() {},

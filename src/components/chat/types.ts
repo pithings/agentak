@@ -23,6 +23,12 @@ export interface ChatProvider {
   note?: string;
 }
 
+/**
+ * How hard a model thinks before it answers. pi's own scale, written out here
+ * so the surface names it without reaching for a loop.
+ */
+export type ChatThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+
 /** What the context meter shows. Produced by `pi/transcript.ts`. */
 export interface ChatUsage {
   usedTokens: number;
@@ -30,6 +36,11 @@ export interface ChatUsage {
   usage?: LanguageModelUsage;
   modelId?: string;
   costs?: ContextCosts;
+  /**
+   * The conversation is close enough to the window that the next turn may not
+   * fit. The meter says so; a harness decides where the line is.
+   */
+  nearLimit?: boolean;
 }
 
 /** The agent behind the chat, shown before the first message. */

@@ -11,15 +11,21 @@ import {
 } from "@/components/ai-elements/confirmation";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
+import { Task, TaskContent, TaskTrigger } from "@/components/ai-elements/task";
 import {
+  getStatusBadge,
   Tool,
   ToolContent,
   ToolHeader,
   ToolInput,
   ToolOutput,
 } from "@/components/ai-elements/tool";
+import { useCollapsible } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
 import { Element } from "@/components/elements";
+import { Chevron, WrenchIcon } from "@/lib/icons";
 import type { ToolState, ViewMessage, ViewPart, ViewToolPart } from "@/types";
+import { u } from "@/styles/base";
 import { sx, type Sx } from "@/styles/sx";
 
 const S = {
@@ -50,6 +56,10 @@ const S = {
   },
   gatePending: {
     justifyContent: "space-between",
+    // The answer row carries a text field now, so it drops under the ask when
+    // the surface is a narrow panel rather than squeezing the two together.
+    flexWrap: "wrap",
+    gap: "0.5rem",
     borderColor: "color-mix(in oklab, var(--warning) 35%, var(--border))",
     background: "color-mix(in oklab, var(--warning) 8%, transparent)",
   },
@@ -63,7 +73,28 @@ const S = {
   },
   // The ask is the line to read, so it takes the foreground the alert muted.
   gateTitle: { color: "var(--foreground)", fontWeight: "500" },
-  gateActions: { alignSelf: "center" },
+  // Takes the room the ask leaves, down to the width the reason field needs —
+  // under that, the whole row wraps.
+  gateActions: { flex: "1 1 15rem", alignSelf: "center", minWidth: "0" },
+  // Only a denial carries it, so it says so rather than asking for a note the
+  // reader would think Allow also sends.
+  gateReason: { flex: "1", minWidth: "0", height: "1.75rem", fontSize: "0.75rem" },
+  // A run reads as one more call in the column, so its trigger repeats the
+  // `ToolHeader` line: title left, status and chevron right.
+  run: { width: "100%" },
+  runTrigger: { padding: "0.25rem 0" },
+  runTitle: {
+    display: "flex",
+    flex: "1",
+    minWidth: "0",
+    alignItems: "center",
+    gap: "0.5rem",
+    overflow: "hidden",
+    textAlign: "left",
+  },
+  runName: { flexShrink: "0", fontSize: "0.875rem", fontWeight: "500" },
+  runCount: { flexShrink: "0", color: "var(--muted-foreground)", fontSize: "0.75rem" },
+  runMeta: { display: "flex", flexShrink: "0", alignItems: "center", gap: "0.5rem" },
 } satisfies Record<string, Sx>;
 
 const TOOL_STATE = {
@@ -74,8 +105,58 @@ const TOOL_STATE = {
   denied: "output-denied",
 } as const satisfies Record<ViewToolPart["status"], ToolState>;
 
-/** Answer a tool confirmation, by tool call id. */
-export type ChatRespond = (toolCallId: string, approved: boolean) => void;
+/**
+ * Answer a tool confirmation, by tool call id. `reason` goes only with a denial
+ * — it is what the model is told in place of the tool's output.
+ */
+export type ChatRespond = (toolCallId: string, approved: boolean, reason?: string) => void;
+
+/** Shortest run of one tool that collapses into a single row. */
+const RUN_MIN = 2;
+
+/** A row of the turn: one part, or a run of calls of the same tool. */
+type ChatRow =
+  | { kind: "part"; part: ViewPart; index: number }
+  | { kind: "run"; parts: ViewToolPart[]; index: number };
+
+/**
+ * Only a settled call folds into a run. A gate has to stay where the reader can
+ * answer it, and a running call is the progress being reported — both would be
+ * hidden inside a collapsed group.
+ */
+const foldable = (part: ViewPart, index: number, active: number): part is ViewToolPart =>
+  part.kind === "tool" &&
+  index !== active &&
+  (part.status === "done" || part.status === "error" || part.status === "denied");
+
+/** Fold each run of ≥2 settled calls of one tool into a row of its own. */
+function chatRows(parts: ViewPart[], active: number): ChatRow[] {
+  const rows: ChatRow[] = [];
+
+  for (let index = 0; index < parts.length; index++) {
+    const part = parts[index];
+    if (!foldable(part, index, active)) {
+      rows.push({ kind: "part", part, index });
+      continue;
+    }
+
+    // Take the whole run at once, so the loop never revisits a folded call.
+    let end = index + 1;
+    while (end < parts.length) {
+      const next = parts[end];
+      if (!foldable(next, end, active) || next.name !== part.name) break;
+      end++;
+    }
+
+    const run = parts.slice(index, end) as ViewToolPart[];
+    rows.push(
+      run.length >= RUN_MIN ? { kind: "run", parts: run, index } : { kind: "part", part, index },
+    );
+    index = end - 1;
+  }
+
+  return rows;
+}
 
 export interface ChatMessageProps {
   message: ViewMessage;
@@ -89,18 +170,27 @@ export function ChatMessage({ message, isStreaming, onRespond }: ChatMessageProp
   const lastPart = message.parts.length - 1;
 
   const isUser = message.role === "user";
+  const rows = chatRows(message.parts, isStreaming ? lastPart : -1);
 
   return (
     <Message from={message.role} style={isUser ? undefined : S.turn}>
       <MessageContent style={isUser ? undefined : S.turnContent}>
-        {message.parts.map((part, index) => (
-          <ChatPart
-            isActive={isStreaming && index === lastPart}
-            key={`${message.id}-${index}`}
-            onRespond={onRespond}
-            part={part}
-          />
-        ))}
+        {rows.map((row) =>
+          row.kind === "run" ? (
+            <ChatToolRun
+              key={`${message.id}-${row.index}`}
+              onRespond={onRespond}
+              parts={row.parts}
+            />
+          ) : (
+            <ChatPart
+              isActive={isStreaming && row.index === lastPart}
+              key={`${message.id}-${row.index}`}
+              onRespond={onRespond}
+              part={row.part}
+            />
+          ),
+        )}
         {message.error ? <p style={S.error}>{message.error}</p> : null}
       </MessageContent>
     </Message>
@@ -132,6 +222,48 @@ function ChatPart({ part, isActive, onRespond }: ChatPartProps) {
   return <ChatToolPart onRespond={onRespond} part={part} />;
 }
 
+/** The status the whole run reports — the worst one in it. */
+function runState(parts: ViewToolPart[]): ToolState {
+  if (parts.some((part) => part.status === "error")) return TOOL_STATE.error;
+  if (parts.some((part) => part.status === "denied")) return TOOL_STATE.denied;
+  return TOOL_STATE.done;
+}
+
+/** The half of the run trigger that reads the open state — a hook, so a component. */
+function ChatRunMeta({ state }: { state: ToolState }) {
+  const { open } = useCollapsible("ChatRunMeta");
+
+  return (
+    <div style={S.runMeta}>
+      {getStatusBadge(state)}
+      <Chevron open={open} style={u.muted} />
+    </div>
+  );
+}
+
+/** A run of settled calls of one tool, closed until the reader opens it. */
+function ChatToolRun({ parts, onRespond }: { parts: ViewToolPart[]; onRespond?: ChatRespond }) {
+  const name = parts[0].name;
+
+  return (
+    <Task defaultOpen={false} style={S.run}>
+      <TaskTrigger style={S.runTrigger} title={name}>
+        <div style={S.runTitle}>
+          <WrenchIcon style={sx(u.icon, u.muted)} />
+          <span style={S.runName}>{name}</span>
+          <span style={S.runCount}>× {parts.length}</span>
+        </div>
+        <ChatRunMeta state={runState(parts)} />
+      </TaskTrigger>
+      <TaskContent>
+        {parts.map((part) => (
+          <ChatToolPart key={part.toolCallId} onRespond={onRespond} part={part} />
+        ))}
+      </TaskContent>
+    </Task>
+  );
+}
+
 function ChatToolPart({ part, onRespond }: { part: ViewToolPart; onRespond?: ChatRespond }) {
   const state = TOOL_STATE[part.status];
   const pending = part.status === "pending";
@@ -145,6 +277,9 @@ function ChatToolPart({ part, onRespond }: { part: ViewToolPart; onRespond?: Cha
   useEffect(() => {
     if (pending) setOpen(true);
   }, [pending]);
+
+  const [reason, setReason] = useState("");
+  const deny = () => onRespond?.(part.toolCallId, false, reason.trim() || undefined);
 
   return (
     <Tool onOpenChange={setOpen} open={open} style={S.tool}>
@@ -170,10 +305,19 @@ function ChatToolPart({ part, onRespond }: { part: ViewToolPart; onRespond?: Cha
           <ConfirmationRequest>
             <ConfirmationTitle style={S.gateTitle}>Run {part.name}?</ConfirmationTitle>
             <ConfirmationActions style={S.gateActions}>
-              <ConfirmationAction
-                onClick={() => onRespond?.(part.toolCallId, false)}
-                variant="outline"
-              >
+              {/* Optional, and Deny stays one click without it. Enter denies,
+                  because typing a reason is already the answer. */}
+              <Input
+                aria-label={`Why not run ${part.name}?`}
+                onInput={(event) => setReason(event.currentTarget.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") deny();
+                }}
+                placeholder="Why not? Optional"
+                style={S.gateReason}
+                value={reason}
+              />
+              <ConfirmationAction onClick={deny} variant="outline">
                 Deny
               </ConfirmationAction>
               <ConfirmationAction onClick={() => onRespond?.(part.toolCallId, true)}>
@@ -182,7 +326,10 @@ function ChatToolPart({ part, onRespond }: { part: ViewToolPart; onRespond?: Cha
             </ConfirmationActions>
           </ConfirmationRequest>
           <ConfirmationAccepted>Allowed</ConfirmationAccepted>
-          <ConfirmationRejected>Denied</ConfirmationRejected>
+          {/* The reason went to the model, so it is shown where it was given. */}
+          <ConfirmationRejected>
+            {approval?.reason ? `Denied — ${approval.reason}` : "Denied"}
+          </ConfirmationRejected>
         </Confirmation>
       </ToolContent>
     </Tool>
