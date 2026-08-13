@@ -2,10 +2,11 @@
 /**
  * Bundle size report for the chat widget.
  *
- * Bundles `src/element.tsx` — the whole widget — with every dependency inlined,
- * preact and md4x and pi included, then prints minified and gzipped sizes. The
- * library build keeps its dependencies external, so this is the only place the
- * shipped weight of the widget is visible.
+ * Bundles `extension/panel.tsx` — the whole widget, the surface mounted over the
+ * pi loop — with every dependency inlined, preact and md4x and pi included, then
+ * prints minified and gzipped sizes. The library build keeps its dependencies
+ * external, so this is the only place the shipped weight of the widget is
+ * visible.
  *
  * Two numbers matter, and the report keeps them apart: the initial chunk, which
  * a page pays for on load, and the chunks behind an `import()` — the markdown
@@ -18,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { rolldown, type OutputChunk } from "rolldown";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const entry = process.argv[2] ?? "src/element.tsx";
+const entry = process.argv[2] ?? "extension/panel.tsx";
 
 // --- colors -----------------------------------------------------------------
 

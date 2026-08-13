@@ -17,15 +17,13 @@ export interface AgentChatProps extends ChatSessionOptions {
   /** Merged over the chat's own box — how a host sizes the element. */
   style?: Sx;
   /**
-   * Host buttons for the end of the header. `<agent-chat>` fills this with a
-   * `<slot name="actions">`, so a page can put its own chrome — minimise, and
-   * whatever else it owns — on the agent's one title bar.
+   * Host buttons for the end of the header, so a page can put its own chrome —
+   * minimise, and whatever else it owns — on the agent's one title bar.
    */
   actions?: ComponentChildren;
   /**
-   * Host content for the chat's empty state — a suggestion, a launcher.
-   * `<agent-chat>` fills this with a `<slot name="empty">`. It shows only before
-   * the first message.
+   * Host content for the chat's empty state — a suggestion, a launcher. It
+   * shows only before the first message.
    */
   emptyActions?: ComponentChildren;
 }
@@ -47,10 +45,9 @@ export function AgentChat({
 }: AgentChatProps) {
   const snapshot = useSession(session);
 
-  // Declared by the host rather than the session — an attribute on
-  // `<agent-chat>` changes without a new session, and so without a lost
-  // transcript. Left out, it is not passed on: a session built with one of its
-  // own keeps it.
+  // Declared by the host rather than the session — the prop changes without a
+  // new session, and so without a lost transcript. Left out, it is not passed
+  // on: a session built with one of its own keeps it.
   useEffect(() => {
     if (generateTitle !== undefined) session.setOptions?.({ generateTitle });
   }, [generateTitle, session]);

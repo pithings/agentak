@@ -37,47 +37,38 @@ Two rules a harness must keep:
 ## Subscribe and snapshot, not a hook
 
 The adapter is a plain object, not a `useSession`-shaped prop. Three reasons: a hook
-prop cannot be swapped without breaking hook order; the surface ships as a custom
-element whose host is usually not preact, and a vue or vanilla author can write
-subscribe/snapshot but not a preact hook; and the pi side was already event-shaped, so
-this is a rewrap rather than a rewrite.
+prop cannot be swapped without breaking hook order; the surface is preact but the app
+around it usually is not, and a vue or vanilla author can write subscribe/snapshot but
+not a preact hook; and the pi side was already event-shaped, so this is a rewrap rather
+than a rewrite.
 
 ## Who chooses the harness
 
-| Entry               | Harness                                        |
-| ------------------- | ---------------------------------------------- |
-| `agentak`           | none — `AgentChat` takes the session as a prop |
-| `agentak/pi`        | `createPiSession()`                            |
-| `agentak/element`   | pi, bound to `<agent-chat>` by `register.ts`   |
-| `defineAgentChat()` | the caller's, under the caller's tag           |
+| Entry        | Harness                                        |
+| ------------ | ---------------------------------------------- |
+| `agentak`    | none — `AgentChat` takes the session as a prop |
+| `agentak/pi` | `createPiSession()`                            |
 
-`element.tsx` holds no loop: `defineAgentChat({ tag, session })` takes a factory and
-registers a subclass carrying it, so a second tag over a second harness does not
-overwrite the first. `tag` defaults to `agent-chat` — the built-in name is not reserved
-for the built-in loop, and `agentak/element` is only the entry that makes the choice for
-a CDN host.
+The choice is the host's, and it is made at the mount: nothing in the library picks a
+loop, and nothing registers anything as a side effect. A host that imports the root and
+its own session never resolves pi.
 
-There is a DOM path too: `element.session = mine`, before the element lands or after,
-and it wins over the registered factory. **Ownership decides disposal** — the element
-disposes what `createSession()` made, on disconnect, and never what a host assigned.
+**The session is required**, and required by the type: `AgentChatProps.session` has no
+default, so a mount without one does not compile.
 
-**The session is required, as far as a custom element can require anything.**
-`DefineAgentChatOptions.session` has no default, so `defineAgentChat({})` does not
-compile, and every tag it registers carries a factory. The one way around it is
-`customElements.define(tag, AgentChatElement)`, which the class cannot refuse — a
-constructor takes no arguments and a reaction callback cannot throw at its caller, since
-the browser reports the exception and carries on. So `connectedCallback` logs what to do
-and paints nothing, which is the loudest signal available. `createSession` is optional in
-the class for that reason alone.
+**Whoever made the session disposes it.** The surface calls nothing on unmount — it
+never made the object, so it does not end it. `extension/panel.tsx` keeps one for the
+life of the document; `playground/src/components/chat-widget.vue` makes one on the first
+live mount and disposes it when the island goes away.
 
-Host-declared preferences travel as props rather than session options, so an attribute
-can change without a new session and a lost transcript: `<agent-chat generate-title>`
-becomes `generateTitle` on `AgentChat`, which forwards it through `setOptions()`.
+Host-declared preferences travel as props rather than session options, so one can change
+without a new session and a lost transcript: `generateTitle` on `AgentChat` is forwarded
+through `setOptions()`.
 
 ## Bringing another harness
 
-```ts
-import { AgentChat, defineAgentChat, type ChatSession } from "agentak";
+```tsx
+import { AgentChat, type ChatSession } from "agentak";
 
 const session: ChatSession = {
   subscribe: (listener) => { … },   // returns the unsubscribe
@@ -87,7 +78,7 @@ const session: ChatSession = {
   reset: () => { … },
 };
 
-defineAgentChat({ tag: "my-chat", session: () => session });
+render(<AgentChat session={session} />, target);
 ```
 
 `ViewPart` was inlined from AI SDK v7 UI types, so an `ai` `useChat` session is mostly a
@@ -97,15 +88,13 @@ snapshot, one `notify()`.
 ## What holds the seam shut
 
 `test/harness.test.tsx` walks the source import graph from each entry and asserts that
-`index.ts`, `components/index.ts`, `agent-chat.tsx` and `element.tsx` reach no
-`@earendil-works/*` package — and that `agent/index.ts` and `register.ts` still do. A
-split that holds only by accident is one an import puts back. The same file renders
-`AgentChat` over a fake session, which is the other half of the claim: the surface runs
-with no loop behind it.
+`index.ts`, `components/index.ts` and `agent-chat.tsx` reach no `@earendil-works/*`
+package — and that `agent/index.ts` still does. A split that holds only by accident is
+one an import puts back. The same file renders `AgentChat` over a fake session, which is
+the other half of the claim: the surface runs with no loop behind it.
 
-The manifest is the honest part: pi stays in `dependencies`, because
-`agentak/element` needs it and an optional peer would break the CDN one-liner. The
-decoupling is in the module graph, not the install — a bundler user who imports the root
-and their own session never resolves pi. `dist/index.mjs` and `dist/components/index.mjs`
-list only preact and rangi; pi lives in the chunk `register.mjs` and `agent/index.mjs`
-share.
+The manifest is the honest part: pi stays in `dependencies`, because `agentak/pi` needs
+it and an optional peer would break the CDN one-liner. The decoupling is in the module
+graph, not the install — a bundler user who imports the root and their own session never
+resolves pi. `dist/index.mjs` and `dist/components/index.mjs` list only preact and rangi;
+pi is `dist/agent/index.mjs` alone.

@@ -99,7 +99,7 @@ curl -sI -X OPTIONS https://opencode.ai/zen/v1/chat/completions \
   -H 'Access-Control-Request-Headers: authorization,content-type'
 ```
 
-A consumer embedding `<agent-chat>` in their own page is in the same position as the
+A consumer embedding the chat in their own page is in the same position as the
 playground: the seven, unless they proxy the rest themselves.
 
 A key is stored per provider, so switching back to one already set up asks nothing.

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { h } from "preact";
-import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from "vue";
 
+import { AgentChat } from "@/agent-chat";
 import { createPiSession } from "@/agent/session";
-import { defineAgentChat } from "@/element";
+import type { ChatSession } from "@/session";
 import { u } from "@/styles/base";
 import { ChatActions, StartDemo } from "../chat-actions";
 import { chat, closeChat, openChat, setChatMode } from "../chat-store";
@@ -13,26 +14,25 @@ import PreactHost from "./preact-host.vue";
 /**
  * The in-page chatbox, the way a host page mounts one.
  *
- * It opens on the live agent — the custom element, so the agent runs behind a
- * shadow root: nothing of this page's tailwind reaches in and nothing of the
- * agent reaches out, and the only thing that crosses is the `--*` tokens,
- * which inherit. The agent starts on no provider: the first message
- * opens its picker, where the free ones need no key.
+ * It opens on the live agent — `AgentChat` over a pi session, mounted as a
+ * preact island like every other piece of the library on this page. The page's
+ * tokens reach it by inheritance, and the page's tailwind preflight reaches it
+ * too: there is no shadow root between them. The agent starts on no provider:
+ * the first message opens its picker, where the free ones need no key.
  *
  * The demo is not a mode a visitor lands on. It is one button under the
- * greeting, and taking it swaps the element for `DemoAgent` — the same surface
- * over the canned turns, mounted as a plain preact island, streaming on mount.
+ * greeting, and taking it swaps the island for `DemoAgent` — the same surface
+ * over the canned turns, streaming on mount.
  *
  * **One title bar.** The surface heads itself — the context meter and a new
  * conversation in the header, the model and the provider in the composer — so
  * the page puts no second bar over it. The page's own buttons go *into* that
- * header, and its demo launcher into the empty state: light DOM under
- * `slot="actions"` and `slot="empty"` for the element, the matching props for
- * the demo island.
+ * header, and its demo launcher into the empty state: the `actions` and
+ * `emptyActions` props, which both surfaces take.
  *
- * `generate-title` is on here: the header names the conversation from the first
+ * `generateTitle` is on here: the header names the conversation from the first
  * message, and the model renames it once the first answer lands. It is one
- * extra request, so the element leaves it off unless a host asks.
+ * extra request, so the surface leaves it off unless a host asks.
  *
  * The panel hides rather than unmounts, so minimising keeps the transcript.
  * Switching surface does not — each holds its own.
@@ -56,18 +56,25 @@ import PreactHost from "./preact-host.vue";
  * surface is minimised. It is a sibling of the rail, never a child: the
  * collapsed wrapper would clip it away.
  */
-// Call it, rather than importing the entry for its side effect: a bare import
-// is what a bundler drops. The session is the argument, because the element
-// carries no loop — this is the page choosing pi, the same choice
-// `agentak/element` makes for a CDN host.
-defineAgentChat({ session: () => createPiSession() });
-
 const playDemo = () => setChatMode("demo");
 const goLive = () => setChatMode("live");
 
+// The surface carries no loop, so the page picks one. Made on the first live
+// mount, and ended with it — this page owns the session, so this page disposes
+// it.
+let session: ChatSession | undefined;
+
 // Stable factories: `PreactHost` remounts its island when the prop changes.
-const liveActions = () => h(ChatActions, { onClose: closeChat });
-const liveEmpty = () => h(StartDemo, { onStart: playDemo });
+const live = () => {
+  session ??= createPiSession();
+  return h(AgentChat, {
+    actions: h(ChatActions, { onClose: closeChat }),
+    emptyActions: h(StartDemo, { onStart: playDemo }),
+    generateTitle: true,
+    session,
+    style: u.fill,
+  });
+};
 
 const demo = () =>
   h(DemoAgent, {
@@ -75,6 +82,20 @@ const demo = () =>
     autoStart: true,
     style: u.fill,
   });
+
+const surface = computed(() => (chat.mode === "live" ? live : demo));
+
+// Neither surface keeps its transcript across the swap. `post`, so the island is
+// already gone when the session it ran ends.
+watch(
+  () => chat.mode,
+  (mode) => {
+    if (mode === "live") return;
+    session?.dispose?.();
+    session = undefined;
+  },
+  { flush: "post" },
+);
 
 /**
  * The two queries that pick the layout, watched rather than read once: a resize
@@ -172,6 +193,8 @@ onBeforeUnmount(() => {
   globalThis.removeEventListener("keydown", onKey);
   phone?.removeEventListener("change", measure);
   desktop?.removeEventListener("change", measure);
+  session?.dispose?.();
+  session = undefined;
 });
 </script>
 
@@ -193,17 +216,8 @@ onBeforeUnmount(() => {
         class="flex flex-col overflow-hidden"
         aria-label="Assistant"
       >
-        <!-- Light DOM: the element places these — the header, and the empty state. -->
-        <agent-chat v-if="chat.mode === 'live'" generate-title class="block min-h-0 flex-1">
-          <div slot="actions" class="contents">
-            <PreactHost class="contents" :preview="liveActions" />
-          </div>
-          <div slot="empty" class="contents">
-            <PreactHost class="contents" :preview="liveEmpty" />
-          </div>
-        </agent-chat>
-
-        <PreactHost v-else class="min-h-0 flex-1" :preview="demo" />
+        <!-- One island, live or demo: a new factory is a new surface. -->
+        <PreactHost class="min-h-0 flex-1" :preview="surface" />
       </section>
     </Transition>
   </div>

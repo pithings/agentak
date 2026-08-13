@@ -3,10 +3,9 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/preact";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { AgentChat } from "@/agent-chat";
-import { AgentChatElement, defineAgentChat } from "@/element";
 import type { ChatSession, ChatSnapshot } from "@/session";
 
 afterEach(cleanup);
@@ -139,64 +138,9 @@ describe("the pi seam", () => {
     expect(pi(packagesFrom("index.ts"))).toEqual([]);
     expect(pi(packagesFrom("components/index.ts"))).toEqual([]);
     expect(pi(packagesFrom("agent-chat.tsx"))).toEqual([]);
-    expect(pi(packagesFrom("element.tsx"))).toEqual([]);
   });
 
-  it("keeps pi in the entries that promise it", () => {
+  it("keeps pi in the entry that promises it", () => {
     expect(pi(packagesFrom("agent/index.ts")).length).toBeGreaterThan(0);
-    // `agentak/element` is the one entry that binds the tag to a loop.
-    expect(pi(packagesFrom("register.ts")).length).toBeGreaterThan(0);
-  });
-});
-
-describe("<agent-chat> over a host session", () => {
-  it("takes one from the property, and leaves it to the host to end", () => {
-    const session = fakeSession();
-    let disposed = 0;
-    session.dispose = () => (disposed += 1);
-
-    defineAgentChat({ session: () => fakeSession(), tag: "host-chat" });
-    const element = document.createElement("host-chat") as AgentChatElement;
-    element.session = session;
-    // Two acts: the mount flushes the effect that subscribes, and only then can
-    // the session's own notify reach the surface.
-    act(() => document.body.append(element));
-    act(() => session.say("Two plans."));
-
-    expect(element.session).toBe(session);
-    expect(element.shadowRoot?.textContent).toContain("Two plans.");
-
-    element.remove();
-    expect(disposed).toBe(0);
-  });
-
-  it("disposes the one it made itself", () => {
-    let disposed = 0;
-    defineAgentChat({
-      session: () => {
-        const session = fakeSession();
-        session.dispose = () => (disposed += 1);
-        return session;
-      },
-      tag: "owned-chat",
-    });
-
-    const element = document.createElement("owned-chat");
-    document.body.append(element);
-    element.remove();
-    expect(disposed).toBe(1);
-  });
-});
-
-describe("a tag registered without one", () => {
-  it("says so instead of painting nothing", () => {
-    // A reaction callback cannot throw at its caller, so this is the loudest a
-    // misregistered tag gets. `defineAgentChat` is what makes it unreachable.
-    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-    customElements.define("bare-chat", class extends AgentChatElement {});
-    document.body.append(document.createElement("bare-chat"));
-
-    expect(errors).toHaveBeenCalledWith(expect.stringContaining("has no session"));
-    errors.mockRestore();
   });
 });

@@ -9,7 +9,7 @@ import type { Sx } from "@/styles/sx";
  * `useAnimation()` — see `spinKeyframes`/`pulseKeyframes` below.
  *
  * A custom property inherits, so this text on the host page's `:root` reaches
- * every component, crosses the `<agent-chat>` shadow boundary, and re-points on
+ * every component — a shadow root of the host's own included — and re-points on
  * `.dark` without a single component branching on theme. Style objects read the
  * names with `var()`.
  *

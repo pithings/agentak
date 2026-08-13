@@ -1,24 +1,17 @@
 {
   "name": "agentak",
   "version": "0.0.0",
-  "description": "Standalone agent chat web component + Chrome extension",
+  "description": "Standalone agent chat surface + Chrome extension",
   "license": "MIT",
   "files": [
     "dist"
   ],
   "type": "module",
-  "sideEffects": [
-    "./src/register.ts",
-    "./dist/register.mjs"
-  ],
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
-    },
-    "./element": {
-      "types": "./dist/register.d.mts",
-      "default": "./dist/register.mjs"
     },
     "./components": {
       "types": "./dist/components/index.d.mts",

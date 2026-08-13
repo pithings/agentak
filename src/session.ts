@@ -33,9 +33,9 @@ export type ChatSnapshot = Pick<
 >;
 
 /**
- * Preferences the host declares rather than the session decides.
- * `<agent-chat>` reads these off its attributes and passes them down, so an
- * attribute can change without a new session and a lost transcript.
+ * Preferences the host declares rather than the session decides. They travel as
+ * props on `AgentChat`, so one can change without a new session and a lost
+ * transcript.
  */
 export interface ChatSessionOptions {
   /** Ask the model to name the conversation. It costs one request. */
@@ -50,9 +50,9 @@ export interface ChatSessionOptions {
  * harness implements this instead and keeps the whole surface.
  *
  * Subscribe and snapshot rather than a hook, so a session can be written in any
- * framework, or none: the chat is a custom element, and its host is usually not
- * preact. Only the first six members are needed; the rest turn on the parts of
- * the surface that answer back.
+ * framework, or none: the surface is preact, but the app around it is usually
+ * not. Only the first six members are needed; the rest turn on the parts of the
+ * surface that answer back.
  */
 export interface ChatSession {
   /** Called on every change. Returns the unsubscribe. */
@@ -80,7 +80,7 @@ export interface ChatSession {
    */
   setPickerOpen?(open: boolean): void;
   setOptions?(options: ChatSessionOptions): void;
-  /** Called by whoever created the session — `<agent-chat>` on disconnect. */
+  /** Called by whoever created the session, when the surface goes away. */
   dispose?(): void;
 }
 

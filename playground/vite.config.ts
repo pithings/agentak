@@ -50,7 +50,7 @@ function markdown(): Plugin {
  *
  * The page is a vue SPA in tailwind; the library it hosts is preact with inline
  * styles. Both plugins run — vue owns `.vue`, preact owns `.tsx` — so the
- * catalog previews and the chat widget mount as preact islands inside vue.
+ * catalog previews and the chat widget alike mount as preact islands inside vue.
  *
  * `@` points at the library source, not at `dist` — the page is where the
  * library is worked on, so every change reloads.
@@ -59,13 +59,7 @@ function markdown(): Plugin {
  * `assets/…` images resolve here the way they do on GitHub.
  */
 export default defineConfig({
-  plugins: [
-    // `<agent-chat>` is the library's custom element, not a vue component.
-    vue({ template: { compilerOptions: { isCustomElement: (tag) => tag === "agent-chat" } } }),
-    preact({ reactAliasesEnabled: false }),
-    tailwindcss(),
-    markdown(),
-  ],
+  plugins: [vue(), preact({ reactAliasesEnabled: false }), tailwindcss(), markdown()],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("../src", import.meta.url)),

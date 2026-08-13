@@ -11,7 +11,7 @@ const outDir = fileURLToPath(new URL("./dist", import.meta.url));
 
 /**
  * WIP MV3 build. `@` points at the library source, as in the playground — the
- * panel is where the element is hosted, not a consumer of `dist`.
+ * panel hosts the surface itself, and is not a consumer of `dist`.
  */
 export default defineConfig({
   plugins: [preact({ reactAliasesEnabled: false }), copyManifest()],

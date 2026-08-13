@@ -5,14 +5,16 @@
 <h1 align="center">Agentak</h1>
 
 <p align="center">
-  An agent chat for any web page. It is one custom element, and it needs one line of
+  An agent chat for any web page. Mount one component, and it needs one line of
   setup.
 </p>
 
-- 🧩 **`<agent-chat>` web component** — it uses shadow DOM. Page styles do not change
-  the chat, and chat styles do not change the page.
-- ⚡ **Use it with any framework, or with no framework.** A preact component is also
-  available.
+- 🧩 **One preact component.** `AgentChat` takes the session that runs it, and nothing
+  else is required.
+- ⚡ **Use it with any framework, or with no framework.** Mount it into any element
+  with preact's `render`.
+- 🎨 **It ships no stylesheet.** Every style is inline on the element that carries it,
+  so the chat changes no page style of yours.
 - 🔄 **The agent is a separate import.** The chat surface holds no loop: it takes a
   `ChatSession`. Use the built-in agent, or put your own harness behind the same UI.
 - 🔌 **9 providers** — OpenAI, Groq, Cerebras, OpenRouter, Vercel AI Gateway, LLM7,
@@ -36,43 +38,29 @@ npx nypm i agentak
 
 ## 🛠️ Usage
 
-### 🧩 As a custom element
+### 🧩 In any page
 
-A build step is not necessary. Import the element from a CDN:
+A build step is not necessary. Import from a CDN and mount:
 
 ```html
-<agent-chat style="height: 600px"></agent-chat>
+<div id="chat" style="height: 600px"></div>
 
 <script type="module">
-  import { tokens } from "https://esm.sh/agentak";
-  // defines <agent-chat>, over the built-in agent
-  import "https://esm.sh/agentak/element";
+  import { h, render } from "https://esm.sh/preact";
+  import { AgentChat, tokens } from "https://esm.sh/agentak";
+  // the built-in agent — this import is what brings the loop
+  import { createPiSession } from "https://esm.sh/agentak/pi";
 
   // Adds the CSS variables that the chat uses.
   const sheet = new CSSStyleSheet();
   sheet.replaceSync(tokens);
   document.adoptedStyleSheets.push(sheet);
+
+  render(
+    h(AgentChat, { session: createPiSession(), style: { height: "100%" } }),
+    document.querySelector("#chat"),
+  );
 </script>
-```
-
-There are two optional slots. Both slots use light DOM, thus your nodes keep your
-styles:
-
-```html
-<agent-chat>
-  <button slot="actions">Minimise</button>
-  <p slot="empty">Ask me about this page.</p>
-</agent-chat>
-```
-
-The `actions` slot shows at the end of the chat header. The `empty` slot shows below
-the greeting, and only before the first message.
-
-The header names the conversation after your first message. Add `generate-title` to ask
-the model for a name instead. This costs one more request, once:
-
-```html
-<agent-chat generate-title></agent-chat>
 ```
 
 ### ⚛️ As a component
@@ -111,10 +99,10 @@ none and the picker asks, then keeps your answers for the next time.
 ### 🔧 Bring your own agent
 
 The surface knows no agent runtime. Write a `ChatSession` and the built-in loop is never
-loaded — `agentak/element` is the only entry that selects one for you.
+loaded — `agentak/pi` is the only entry that carries one.
 
-```ts
-import { AgentChat, defineAgentChat, type ChatSession, type ChatSnapshot } from "agentak";
+```tsx
+import { AgentChat, type ChatSession, type ChatSnapshot } from "agentak";
 
 const listeners = new Set<() => void>();
 let snapshot: ChatSnapshot = { isStreaming: false, messages: [] };
@@ -141,33 +129,23 @@ const session: ChatSession = {
   reset() {},
 };
 
-// `<agent-chat>` over your harness. The built-in tag is not reserved for the
-// built-in loop, so pass `tag` only if you want a second element.
-defineAgentChat({ session: () => session });
+// The same surface, over your harness. No pi module is loaded.
+<AgentChat session={session} />;
 ```
-
-Or give one to an element that exists already, before it lands in the page or after.
-This wins over the session that the tag was registered with:
-
-```js
-document.querySelector("agent-chat").session = session;
-```
-
-A session is necessary: `defineAgentChat` does not accept a call without one.
 
 The five methods above and `subscribe` are all that a session must have. Everything
 else is optional, and what you leave out is left out of the UI:
 
-| Optional         | What it adds                                     |
-| ---------------- | ------------------------------------------------ |
-| `respond`        | approve or deny a tool call                      |
-| `dequeue`        | remove a message that waits its turn             |
-| `selectProvider` | the provider level of the picker                 |
-| `selectModel`    | the model level                                  |
-| `saveKey`        | the key level                                    |
-| `setPickerOpen`  | your session opens the picker itself             |
-| `setOptions`     | it receives `generateTitle` from the host        |
-| `dispose`        | `<agent-chat>` calls it when it made the session |
+| Optional         | What it adds                              |
+| ---------------- | ----------------------------------------- |
+| `respond`        | approve or deny a tool call               |
+| `dequeue`        | remove a message that waits its turn      |
+| `selectProvider` | the provider level of the picker          |
+| `selectModel`    | the model level                           |
+| `saveKey`        | the key level                             |
+| `setPickerOpen`  | your session opens the picker itself      |
+| `setOptions`     | it receives `generateTitle` from the host |
+| `dispose`        | you call it when the chat goes away       |
 
 The snapshot works the same way. `messages` and `isStreaming` are required; `error`,
 `title`, `agent`, `usage`, `queued`, `providers`, `providerId`, `models`,
@@ -188,12 +166,11 @@ import { Message, PromptInput } from "agentak/components"; // the components
 
 ## 📤 Exports
 
-| Import               | What                                                            | Agent loop |
-| -------------------- | --------------------------------------------------------------- | ---------- |
-| `agentak`            | `Chat`, `AgentChat`, `defineAgentChat`, `ChatSession`, `tokens` | no         |
-| `agentak/element`    | defines `<agent-chat>`, over the built-in agent                 | yes        |
-| `agentak/pi`         | `createPiSession()`, and the parts below it                     | yes        |
-| `agentak/components` | every built-in component                                        | no         |
+| Import               | What                                         | Agent loop |
+| -------------------- | -------------------------------------------- | ---------- |
+| `agentak`            | `Chat`, `AgentChat`, `ChatSession`, `tokens` | no         |
+| `agentak/pi`         | `createPiSession()`, and the parts below it  | yes        |
+| `agentak/components` | every built-in component                     | no         |
 
 ## 🧭 Chrome extension
 

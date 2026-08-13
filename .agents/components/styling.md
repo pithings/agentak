@@ -8,9 +8,10 @@ element can carry it. What cannot go inline:
 - **tokens** — the only CSS, and **the host declares it**. `styles/base.ts` exports the
   text as `tokens`, re-exported from the package root. A custom property inherits, and
   inheritance crosses a shadow boundary, so a host page's `:root` reaches every
-  component inside `<agent-chat>`, and `.dark` re-points the same names with no
-  per-component branch. **A `var()` with no token behind it resolves to nothing, not to
-  a default** — a host that skips the snippet gets an unpainted tree.
+  component — one the host mounted in a shadow root of its own included — and `.dark`
+  re-points the same names with no per-component branch. **A `var()` with no token
+  behind it resolves to nothing, not to a default** — a host that skips the snippet gets
+  an unpainted tree.
 - **`box-sizing`** — inline, but only in the style objects where a size meets a padding
   or a border, which is the only place it changes a pixel.
 - **pseudo-elements** — none. The placeholder color comes from `color-scheme`, which
@@ -129,8 +130,9 @@ subcomponent each.
 
 ## The trade
 
-Components render identically wherever they are embedded and a host page cannot break
-them. In exchange a host cannot restyle them either (only the `--*` tokens are
+Components render identically wherever they are embedded. There is no shadow root, so a
+host page's stylesheet reaches them — but an inline style outranks it, and the look is
+inline. In exchange a host cannot restyle them either (only the `--*` tokens are
 open), styles re-emit per element per render, hover and focus cost a render, and **a
 caller's own children get no reset** — a raw `<p>` under `AlertDescription` loses its
 line-height. Children that come through `<Markdown>` are covered, which is every real
@@ -145,8 +147,8 @@ The one thing a host must do:
 ```
 
 The playground and the extension panel both do this in documents that are ours, not a
-host's. `<agent-chat>` itself declares only `display: block`, set in
-`connectedCallback` because there is no `:host` rule to carry it.
+host's. The size is the host's too: `AgentChat` takes a `style` prop, and the element it
+renders into is the one that has a height.
 
 The style objects need modern CSS: `color-mix()` and `field-sizing`. `:has()` ships
 nowhere — it survives only in the playground's own `<style>`.

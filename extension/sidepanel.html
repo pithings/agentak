@@ -5,18 +5,15 @@
     <title>agentak</title>
     <style>
       html,
-      body {
+      body,
+      #root {
         height: 100%;
         margin: 0;
-      }
-      agent-chat {
-        display: block;
-        height: 100%;
       }
     </style>
   </head>
   <body>
-    <agent-chat></agent-chat>
-    <script type="module" src="./panel.ts"></script>
+    <div id="root"></div>
+    <script type="module" src="./panel.tsx"></script>
   </body>
 </html>

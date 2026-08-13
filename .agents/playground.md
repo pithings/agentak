@@ -2,7 +2,7 @@
 
 Two sub-packages that host the library. Both alias `@` to `../src` in their vite
 configs, so they run against the **source**: the page is where the library is
-worked on, and the panel is where the element is hosted. The `agentak` dependency in
+worked on, and the panel is the smallest host there is. The `agentak` dependency in
 each `package.json` is the honest declaration of that; nothing resolves through it.
 
 Both set `reactAliasesEnabled: false`, as the root does.
@@ -13,7 +13,7 @@ Both set `reactAliasesEnabled: false`, as the root does.
 around the library: a topbar, a sidebar that browses every component, a catalog
 grid, and the chatbox — a rail on the right on a desktop, a box in the corner on
 anything narrower. It is the closest thing the repo has to the page a consumer would
-drop the element into.
+drop the chat into.
 
 | File                  | What                                                                  |
 | --------------------- | --------------------------------------------------------------------- |
@@ -40,35 +40,34 @@ The page is vue; every component in the library is preact. They meet in
 neither patches the other's nodes. A catalog preview is one such island; the demo
 chat is another.
 
-The chatbox is not an island. It opens with the page — a phone excepted, where the
-sheet would cover the page a visitor came for, so `chat-store.ts` starts minimised
-and unmounted and the launcher waits. It opens on the **live** agent —
-`<agent-chat>`, the custom element, so the agent runs behind a shadow root: none
-of the page's tailwind reaches in, and nothing of the agent reaches out. Only
-the `--*` tokens cross, because a custom property inherits. That makes the
-widget the real host-page integration, and the one place to check the element
-before the extension ships it. A visitor chooses nothing up front: the first
+The chatbox is one such island too. It opens with the page — a phone excepted, where
+the sheet would cover the page a visitor came for, so `chat-store.ts` starts minimised
+and unmounted and the launcher waits. It opens on the **live** agent: `AgentChat` over
+a pi session the widget makes on the first live mount and disposes with it, since
+whoever makes a session ends it. There is no shadow root between the page and the
+agent — the `--*` tokens reach it by inheritance, and so does tailwind preflight.
+That makes the widget the real host-page integration, and the one place to check the
+surface before the extension ships it. A visitor chooses nothing up front: the first
 message opens the picker, and the free providers need no key.
 
 The demo is the other `ChatMode`, and not a state anything starts in: it is one
-**Play the demo** button under the greeting, which the element projects through
-`slot="empty"`. Taking it swaps the element for `DemoAgent`, an island over the
-canned turns that streams on mount; the arrow in that header goes back to live.
-Neither surface keeps its transcript across the swap.
+**Play the demo** button under the greeting, passed in as `emptyActions`. Taking it
+swaps the island for `DemoAgent` over the canned turns, which streams on mount; the
+arrow in that header goes back to live. `PreactHost` remounts on a new factory, so the
+swap is one changed prop. Neither surface keeps its transcript across it, and the live
+session ends with its island.
 
 **One title bar.** The surface heads itself — context meter and new conversation in
 the header, model and provider in the composer, next to send — so the page puts no
 bar of its own over it. Minimise, back-to-live and the demo launcher are all
-`chat-actions.tsx`, preact components the page renders _into_ the surface: as light
-DOM under `slot="actions"` and `slot="empty"` for the element, and as the `actions`
-prop for the demo island — which needs no launcher of its own. The chat is the only view `AgentChat` has, so the
-box never loses its minimise button; the empty slot shows only before the first
-message.
+`chat-actions.tsx`, preact components the page renders _into_ the surface, through the
+`actions` and `emptyActions` props — the demo island needs no launcher of its own. The
+chat is the only view `AgentChat` has, so the box never loses its minimise button; the
+empty actions show only before the first message.
 
-The panel hides rather than unmounting, so minimising keeps the transcript;
-changing mode does not. Escape minimises it as well, from inside the agent too — a
-keyboard event is composed, so it crosses the shadow boundary. The handler skips a
-`defaultPrevented` Escape, which is how one keystroke dismisses an open popover
+The panel hides rather than unmounting, so minimising keeps the transcript; changing
+mode does not. Escape minimises it as well, from inside the agent too. The handler
+skips a `defaultPrevented` Escape, which is how one keystroke dismisses an open popover
 **or** the box, never both: `PopoverContent` calls `preventDefault()` when it closes
 on Escape. The docked rail is the exception — it covers nothing, so Escape in its
 composer must not take a column of the page away.
@@ -113,9 +112,6 @@ through, and the agent lifts its own composer over the keyboard instead — see
 still under the sheet: `overflow: hidden` and `overscroll-behavior: none` on the root
 while the box is up and narrow.
 
-`vite.config.ts` tells the vue compiler that `agent-chat` is a custom element, else
-the template resolves it as a component and warns.
-
 ### The readme page
 
 `/` is the repo `README.md`. The `markdown()` plugin in `vite.config.ts` renders any
@@ -140,10 +136,11 @@ same names with `@theme inline`, so `bg-page` is `var(--background)` and one
 class repoints when `.dark` repoints the token. The page and the widget cannot
 drift apart.
 
-Tailwind preflight applies to the page **and** to the preview islands, which the
-shadow root spares the widget. A component that forgets a reset can therefore look
-right in a card and wrong in the chat. Nothing catches that — the human checks the
-widget itself.
+Tailwind preflight applies to the page and to every island in it, the chatbox
+included — there is no shadow root anywhere to stop it. An inline style outranks it, so
+what shows through is what no element sets: a component that forgets a reset, or a
+caller's own children. Nothing catches that — the human checks the widget itself, and
+this page is the honest test of it, because a consumer's page carries a stylesheet too.
 
 ### Adding an element to the demo
 
@@ -176,8 +173,8 @@ WIP MV3 side panel. `pnpm build:extension` writes `extension/dist`; load it unpa
 | File             | What                                                         |
 | ---------------- | ------------------------------------------------------------ |
 | `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported |
-| `sidepanel.html` | the panel document, which hosts `<agent-chat>`               |
-| `panel.ts`       | declares the `tokens`, then `defineAgentChat()` over pi      |
+| `sidepanel.html` | the panel document — one full-height `#root` to render into  |
+| `panel.tsx`      | declares the `tokens`, then mounts `AgentChat` over pi       |
 | `background.ts`  | the service worker — opens the panel on the action click     |
 | `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`        |
 
