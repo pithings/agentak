@@ -272,6 +272,22 @@ export const u = {
   notice: { color: "var(--notice)" },
   danger: { color: "var(--danger)" },
 
+  // iOS zooms the page in when it focuses a field under 16px, and does not zoom
+  // back out on blur — the page is left scaled, and scrolled off to the right.
+  // So a text field takes this behind `isTouch()`, and nothing under 16px.
+  noZoom: { fontSize: "16px" },
+
+  // The other two zooms, off for the whole surface: `pan-x pan-y` is
+  // `manipulation` minus the pinch, so a touch that starts inside scrolls and
+  // does nothing else — no pinch, no double-tap zoom. The restriction holds for
+  // every descendant, whatever its own `touch-action`. `text-size-adjust` stops
+  // mobile safari and chrome inflating the text on their own.
+  noZoomSurface: {
+    touchAction: "pan-x pan-y",
+    WebkitTextSizeAdjust: "100%",
+    textSizeAdjust: "100%",
+  },
+
   muted: { color: "var(--muted-foreground)" },
   mono: { fontFamily: "var(--font-mono)" },
   fill: { height: "100%" },
@@ -323,13 +339,21 @@ export const spinOptions: KeyframeAnimationOptions = {
  * One word arriving mid-stream — see `components/markdown.tsx`. It plays once
  * per word, on mount, so the resting style is the element's own: opacity 1,
  * no blur, which is also what a reduced-motion reader gets.
+ *
+ * Kept short and barely blurred on purpose. Nothing throttles the stream, so a
+ * fast provider mounts a word every frame or two and every word still inside
+ * its fade is unreadable at once — the tail smears rather than one word
+ * softening. The blur therefore clears by `0.55`, leaving opacity to finish
+ * alone: the tip is sharp within ~100ms whatever the token rate, and 2px is
+ * softness at body size where 4px was a full x-height.
  */
 export const fadeInKeyframes: Keyframe[] = [
-  { opacity: 0, filter: "blur(4px)" },
-  { opacity: 1, filter: "blur(0)" },
+  { offset: 0, opacity: 0, filter: "blur(2px)" },
+  { offset: 0.55, opacity: 1, filter: "blur(0)" },
+  { offset: 1, opacity: 1, filter: "blur(0)" },
 ];
 export const fadeInOptions: KeyframeAnimationOptions = {
-  duration: 300,
+  duration: 180,
   easing: "ease-out",
 };
 

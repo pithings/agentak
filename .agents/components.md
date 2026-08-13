@@ -45,6 +45,24 @@ declare the `tokens` text:
 skips the snippet gets an unpainted tree. Everything else about the system, and the
 rules that cost the most to learn, is in [components/styling.md](components/styling.md).
 
+## The foot floats
+
+In `chat.tsx` the error line, the queue and the composer are one **absolute** row over
+the foot of the transcript, not a flex row under it. `ConversationContent` and the
+scroll button end above it, by the height a `ResizeObserver` reads off that row.
+
+That is what makes room for a virtual keyboard without moving the surface.
+`useKeyboardInset` reports how much of the layout viewport the keyboard covers —
+`innerHeight - visualViewport.height - visualViewport.offsetTop`, touch only — and the
+foot lifts by it. The header and the transcript stay where they are, and only the
+composer rides up; the transcript keeps its height and scrolls under it. Where the
+browser honours `interactive-widget=resizes-content` the layout viewport shrinks on
+its own, the inset is 0, and the same code does nothing.
+
+A lifted foot is nowhere near the home bar, so `Chat` sets `--chat-safe-bottom: 0px`
+there; the composer's `padding-bottom` reads that var with `env(safe-area-inset-bottom)`
+as its fallback, so a composer used on its own still clears the bar.
+
 ## Exports
 
 `src/index.ts` exports the shell, not single elements, so a new component needs no

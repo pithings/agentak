@@ -21,7 +21,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 import type { ToolDefinition } from "@/types";
 
 import { CodeBlock } from "./code-block";
-import { toolBodySx } from "./tool";
+import { toolBodySx, toolCodeSx } from "./tool";
 
 const S = {
   agent: {
@@ -193,7 +193,7 @@ export const AgentTool = memo(({ className, tool, value, ...props }: AgentToolPr
       </AccordionTrigger>
       <AccordionContent style={S.agentToolBody}>
         <div style={toolBodySx}>
-          <CodeBlock code={JSON.stringify(schema, null, 2)} language="json" />
+          <CodeBlock code={JSON.stringify(schema, null, 2)} language="json" style={toolCodeSx} />
         </div>
       </AccordionContent>
     </AccordionItem>
@@ -208,7 +208,7 @@ export const AgentOutput = memo(({ className, schema, style, ...props }: AgentOu
   <div className={className} style={sx(S.agentSection, style)} {...props}>
     <span style={S.agentLabel}>Output Schema</span>
     <div style={toolBodySx}>
-      <CodeBlock code={schema} language="ts" />
+      <CodeBlock code={schema} language="ts" style={toolCodeSx} />
     </div>
   </div>
 ));

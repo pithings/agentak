@@ -99,10 +99,12 @@ export const WebPreviewDemo = ({ url, logs = [] }: WebPreviewDemoProps) => (
   // The preview fills its parent, so the demo gives it a height.
   <WebPreview defaultUrl={url} style={{ height: "22rem" }}>
     <WebPreviewNavigation>
-      <WebPreviewNavigationButton tooltip="Reload">
-        <RotateCcwIcon style={u.icon} />
-      </WebPreviewNavigationButton>
-      <WebPreviewUrl />
+      {/* The address is read-only here — the transcript has no history to go back to. */}
+      <WebPreviewUrl>
+        <WebPreviewNavigationButton size="icon-xs" tooltip="Reload">
+          <RotateCcwIcon style={u.icon} />
+        </WebPreviewNavigationButton>
+      </WebPreviewUrl>
     </WebPreviewNavigation>
     <WebPreviewBody />
     <WebPreviewConsole

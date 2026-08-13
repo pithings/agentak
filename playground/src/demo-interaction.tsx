@@ -9,7 +9,6 @@
  */
 import {
   Commit,
-  CommitActions,
   CommitAuthor,
   CommitAuthorAvatar,
   CommitContent,
@@ -145,24 +144,24 @@ export interface CommitDemoProps {
 export const CommitDemo = ({ hash, message, author, initials, date, files }: CommitDemoProps) => (
   <Commit defaultOpen>
     <CommitHeader>
-      <CommitHeaderTrigger>
-        <CommitAuthor>
-          <CommitAuthorAvatar initials={initials} />
-        </CommitAuthor>
-        <CommitInfo>
+      <CommitAuthor>
+        <CommitAuthorAvatar initials={initials} />
+      </CommitAuthor>
+      <CommitInfo>
+        {/* The trigger is the message line alone — the copy button below is a
+            button too, and a button cannot nest in one. */}
+        <CommitHeaderTrigger>
           <CommitMessage>{message}</CommitMessage>
-          <CommitMetadata>
-            <CommitHash>{hash}</CommitHash>
-            <CommitSeparator />
-            <span>{author}</span>
-            <CommitSeparator />
-            <CommitTimestamp date={new Date(date)} />
-          </CommitMetadata>
-        </CommitInfo>
-      </CommitHeaderTrigger>
-      <CommitActions>
-        <CommitCopyButton hash={hash} title="Copy the hash" />
-      </CommitActions>
+        </CommitHeaderTrigger>
+        <CommitMetadata>
+          <CommitHash>{hash}</CommitHash>
+          <CommitCopyButton hash={hash} title="Copy the hash" />
+          <CommitSeparator />
+          <span>{author}</span>
+          <CommitSeparator />
+          <CommitTimestamp date={new Date(date)} />
+        </CommitMetadata>
+      </CommitInfo>
     </CommitHeader>
     <CommitContent>
       <CommitFiles>

@@ -65,6 +65,9 @@ Worth knowing before reading a ported file against its registry source.
   has to say what is chosen.
 - **`agent`** is a `Collapsible`: the card body is dense reference, so `AgentHeader` is
   the trigger and the card starts closed. Upstream has no toggle.
+- **`snippet`** copies on a click anywhere on it, not on the button alone, so the copy
+  state lives on `Snippet` — `onCopy`, `onError` and `timeout` are its props, and
+  `SnippetCopyButton` only reads them off the context.
 - **`accordion`** keeps `string[]` for both `type="single"` and `"multiple"`, where
   radix carries a bare string for `single`.
 - **`environment-variables`** honours its controlled prop through

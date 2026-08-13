@@ -1,4 +1,4 @@
-import type { ComponentProps } from "preact";
+import type { ComponentChildren, ComponentProps } from "preact";
 import { cloneElement, toChildArray } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
@@ -33,7 +33,6 @@ const S = {
   },
   commitHeaderTrigger: {
     display: "flex",
-    flex: "1",
     minWidth: "0",
     alignItems: "center",
     gap: "0.75rem",
@@ -83,12 +82,11 @@ const S = {
     alignItems: "center",
     gap: "0.25rem",
   },
-  // Overrides Button's own inline width/height (size="icon"), so it has to be
-  // a `style` prop on Button rather than a compound-selector class.
+  // Size is `icon-xs` on the Button — the metadata line it sits on is 0.75rem.
+  // The negative margin pulls it back against the hash it copies.
   commitCopy: {
-    width: "1.75rem",
-    height: "1.75rem",
     flexShrink: "0",
+    marginInlineStart: "-0.25rem",
   },
   commitContent: {
     borderTop: "1px solid var(--border)",
@@ -143,11 +141,19 @@ const S = {
     fontFamily: "var(--font-mono)",
     fontSize: "0.75rem",
   },
+  // Inline-flex, not inline: the count must never wrap under the icon when the
+  // row is tight.
+  commitChange: {
+    display: "inline-flex",
+    flexShrink: "0",
+    alignItems: "center",
+    gap: "0.125rem",
+    whiteSpace: "nowrap",
+  },
   commitChangeIcon: {
-    display: "inline-block",
     width: "0.75rem",
     height: "0.75rem",
-    verticalAlign: "-0.125rem",
+    flexShrink: "0",
   },
   // Status hues, not theme colours — the same tokens the tool badges use.
   commitAdded: {
@@ -174,8 +180,9 @@ export type CommitHeaderProps = WithSx<ComponentProps<"div">>;
 
 /**
  * Upstream makes the whole header the collapsible trigger. Here the trigger is
- * a real `<button>`, so `CommitActions` — which holds buttons of its own — sits
- * beside `CommitHeaderTrigger` rather than inside it.
+ * a real `<button>`, so anything with a button of its own — `CommitActions`, or
+ * `CommitCopyButton` beside the hash — stays outside `CommitHeaderTrigger`. The
+ * trigger wraps the message line alone; see `CommitDemo` in the playground.
  */
 export const CommitHeader = ({ className, style, ...props }: CommitHeaderProps) => (
   <div className={className} style={sx(S.commitHeader, style)} {...props} />
@@ -196,20 +203,22 @@ export const CommitHeaderTrigger = ({ className, style, ...props }: CommitHeader
   );
 };
 
+/**
+ * Size a caller's own icon. Only for caller children — `toChildArray` flattens
+ * arrays but not fragments, so a fragment built here would arrive as one opaque
+ * child and never match. The defaults below carry their style themselves.
+ */
+const sizeIcons = (children: ComponentChildren, iconSx: Sx) =>
+  toChildArray(children).map((child) =>
+    isIconChild(child) ? cloneElement(child, { style: sx(iconSx, child.props.style) }) : child,
+  );
+
 export type CommitHashProps = WithSx<ComponentProps<"span">>;
 
 export const CommitHash = ({ className, children, style, ...props }: CommitHashProps) => (
   <span className={className} style={sx(S.commitHash, style)} {...props}>
-    {toChildArray(
-      <>
-        <GitCommitIcon />
-        {children}
-      </>,
-    ).map((child) =>
-      isIconChild(child)
-        ? cloneElement(child, { style: sx(S.commitHashIcon, child.props.style) })
-        : child,
-    )}
+    <GitCommitIcon style={S.commitHashIcon} />
+    {sizeIcons(children, S.commitHashIcon)}
   </span>
 );
 
@@ -334,13 +343,13 @@ export const CommitCopyButton = ({
   return (
     <Button
       onClick={copy}
-      size="icon"
+      size="icon-xs"
       style={sx(S.commitCopy, style)}
       type="button"
       variant="ghost"
       {...props}
     >
-      {children ?? <Icon size={14} />}
+      {children ?? <Icon />}
     </Button>
   );
 };
@@ -437,18 +446,14 @@ export const CommitFileAdditions = ({
   if (count <= 0) return null;
 
   return (
-    <span className={className} style={sx(S.commitAdded, style)} {...props}>
-      {toChildArray(
-        children ?? (
-          <>
-            <PlusIcon />
-            {count}
-          </>
-        ),
-      ).map((child) =>
-        isIconChild(child)
-          ? cloneElement(child, { style: sx(S.commitChangeIcon, child.props.style) })
-          : child,
+    <span className={className} style={sx(S.commitChange, S.commitAdded, style)} {...props}>
+      {children === undefined ? (
+        <>
+          <PlusIcon style={S.commitChangeIcon} />
+          {count}
+        </>
+      ) : (
+        sizeIcons(children, S.commitChangeIcon)
       )}
     </span>
   );
@@ -464,18 +469,14 @@ export const CommitFileDeletions = ({
   if (count <= 0) return null;
 
   return (
-    <span className={className} style={sx(S.commitDeleted, style)} {...props}>
-      {toChildArray(
-        children ?? (
-          <>
-            <MinusIcon />
-            {count}
-          </>
-        ),
-      ).map((child) =>
-        isIconChild(child)
-          ? cloneElement(child, { style: sx(S.commitChangeIcon, child.props.style) })
-          : child,
+    <span className={className} style={sx(S.commitChange, S.commitDeleted, style)} {...props}>
+      {children === undefined ? (
+        <>
+          <MinusIcon style={S.commitChangeIcon} />
+          {count}
+        </>
+      ) : (
+        sizeIcons(children, S.commitChangeIcon)
       )}
     </span>
   );

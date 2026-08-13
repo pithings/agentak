@@ -18,7 +18,7 @@ import {
   XCircleIcon,
 } from "@/lib/icons";
 import { useAnimation } from "@/lib/use-animation";
-import { pulseKeyframes, pulseOptions, reset, u } from "@/styles/base";
+import { pulseKeyframes, pulseOptions, u } from "@/styles/base";
 import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 import { CodeBlock } from "./code-block";
@@ -35,6 +35,13 @@ export const toolBodySx = {
   color: "var(--foreground)",
   fontSize: "0.75rem",
 } satisfies Sx;
+
+/**
+ * A `CodeBlock` inside one of those bodies. The body already paints the
+ * surface, and the block paints the same one — two tints would stack into a
+ * box darker than either.
+ */
+export const toolCodeSx = { background: "transparent" } satisfies Sx;
 
 export const toolBodyErrorSx = {
   background: "var(--destructive-surface)",
@@ -60,12 +67,35 @@ const S = {
   },
   toolTitle: {
     display: "flex",
+    flex: "1",
+    minWidth: "0",
     alignItems: "center",
     gap: "0.5rem",
+    overflow: "hidden",
+    textAlign: "left",
   },
   toolName: {
+    flexShrink: "0",
     fontSize: "0.875rem",
     fontWeight: "500",
+  },
+  // The input on the header line, when it is short enough to read there. It is
+  // the part that gives, so it takes the ellipsis and the name never does.
+  toolSummary: {
+    minWidth: "0",
+    overflow: "hidden",
+    color: "var(--muted-foreground)",
+    fontFamily: "var(--font-mono)",
+    fontSize: "0.75rem",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  // Status and chevron, held to the right of whatever the title does.
+  toolMeta: {
+    display: "flex",
+    flexShrink: "0",
+    alignItems: "center",
+    gap: "0.5rem",
   },
   toolContent: {
     display: "flex",
@@ -79,18 +109,39 @@ const S = {
   // attribute. An inline `display` would outrank the UA `[hidden]` rule, so
   // closing has to be driven from here too, in the same expression.
   hidden: { display: "none" },
+  // The label rides the body itself, so a section is the body and nothing else.
   toolSection: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
+    position: "relative",
     overflow: "hidden",
   },
+  // A badge in the corner of the surface, not a heading over it — one line of
+  // height saved per section, and the box still says which one it is.
   toolLabel: {
+    position: "absolute",
+    top: "0",
+    right: "0",
+    zIndex: "1",
+    padding: "0.125rem 0.375rem",
+    borderBottomLeftRadius: "var(--radius-sm)",
+    background: "var(--muted-surface)",
     color: "var(--muted-foreground)",
-    fontSize: "0.75rem",
+    fontSize: "0.625rem",
     fontWeight: "500",
     letterSpacing: "0.05em",
+    lineHeight: "1.4",
     textTransform: "uppercase",
+    pointerEvents: "none",
+  },
+  toolLabelError: {
+    background: "var(--destructive-surface)",
+    color: "var(--destructive)",
+  },
+  // Output that is not a `CodeBlock` — plain text with no padding of its own,
+  // and room at the top right for the badge.
+  toolText: {
+    overflowX: "auto",
+    padding: "0.5rem 0.75rem",
+    paddingRight: "5rem",
   },
   // Sized by whatever `style` a caller clones onto it — see `PulsingClockIcon`.
   pulseIconWrap: { display: "inline-flex" },
@@ -107,6 +158,8 @@ export type ToolPart = ToolUIPart | DynamicToolUIPart;
 
 export type ToolHeaderProps = {
   title?: string;
+  /** The call's input. A short one reads as the header subtitle — `toolSummary`. */
+  input?: ToolPart["input"];
   className?: string;
   style?: Sx;
 } & (
@@ -165,10 +218,53 @@ export const getStatusBadge = (status: ToolPart["state"]) => (
   </Badge>
 );
 
+/** Longest subtitle drawn on the header line; anything past it is an ellipsis. */
+const SUMMARY_MAX = 72;
+
+const summaryValue = (value: unknown): string | undefined => {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (value && typeof value === "object") return JSON.stringify(value);
+  return undefined;
+};
+
+/** `cut` is true when the header shows less than the whole input. */
+const summarize = (input: ToolPart["input"]): { text: string; cut: boolean } | undefined => {
+  let text: string | undefined;
+
+  if (input && typeof input === "object") {
+    if (Array.isArray(input)) return undefined;
+    const entries = Object.entries(input as Record<string, unknown>);
+    if (entries.length !== 1) return undefined;
+    const [key, value] = entries[0];
+    const shown = summaryValue(value);
+    text = shown === undefined ? undefined : `${key}: ${shown}`;
+  } else {
+    text = summaryValue(input);
+  }
+
+  // One line, whatever the input holds — a newline would grow the header row.
+  const line = text?.replace(/\s+/g, " ").trim();
+  if (!line) return undefined;
+
+  return line.length > SUMMARY_MAX
+    ? { text: `${line.slice(0, SUMMARY_MAX - 1)}…`, cut: true }
+    : { text: line, cut: text !== line };
+};
+
+/**
+ * The one-line form of a call's input, for the header: a bare value as it
+ * stands, a single-key object as `key: value`. Two keys never read on one line,
+ * so a wider input stays in the Parameters box alone and the header shows the
+ * name by itself.
+ */
+export const toolSummary = (input: ToolPart["input"]): string | undefined => summarize(input)?.text;
+
 export const ToolHeader = ({
   className,
   style,
   title,
+  input,
   type,
   state,
   toolName,
@@ -176,15 +272,24 @@ export const ToolHeader = ({
 }: ToolHeaderProps) => {
   const derivedName = type === "dynamic-tool" ? toolName : type.split("-").slice(1).join("-");
   const { open } = useCollapsible("ToolHeader");
+  const summary = toolSummary(input);
 
   return (
     <CollapsibleTrigger className={className} style={sx(S.toolHeader, style)} {...props}>
       <div style={S.toolTitle}>
         <WrenchIcon style={sx(u.icon, u.muted)} />
         <span style={S.toolName}>{title ?? derivedName}</span>
-        {getStatusBadge(state)}
+        {/* The native `title` carries what the ellipsis cuts — there is no tooltip. */}
+        {summary ? (
+          <span style={S.toolSummary} title={summary}>
+            {summary}
+          </span>
+        ) : null}
       </div>
-      <Chevron open={open} style={u.muted} />
+      <div style={S.toolMeta}>
+        {getStatusBadge(state)}
+        <Chevron open={open} style={u.muted} />
+      </div>
     </CollapsibleTrigger>
   );
 };
@@ -204,17 +309,41 @@ export const ToolContent = ({ className, style, ...props }: ToolContentProps) =>
 };
 
 export type ToolInputProps = WithSx<ComponentProps<"div">> & {
+  /**
+   * Renders nothing when `ToolHeader` would carry this whole input as its
+   * subtitle, so pass the same value to both — a header without it leaves a
+   * short input nowhere on the card.
+   */
   input: ToolPart["input"];
 };
 
-export const ToolInput = ({ className, style, input, ...props }: ToolInputProps) => (
-  <div className={className} style={sx(S.toolSection, style)} {...props}>
-    <h4 style={sx(reset.text, S.toolLabel)}>Parameters</h4>
-    <div style={toolBodySx}>
-      <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
+export const ToolInput = ({ className, style, input, ...props }: ToolInputProps) => {
+  // A call with no arguments has nothing to show, and `JSON.stringify` returns
+  // undefined for one — an empty box, or a code block with no code.
+  const empty =
+    input === undefined ||
+    input === null ||
+    (typeof input === "object" && Object.keys(input).length === 0);
+
+  // The header subtitle already reads the whole input — `toolSummary` cut
+  // nothing — so the box below would repeat it in a bigger type.
+  const summary = summarize(input);
+
+  if (empty || (summary && !summary.cut)) {
+    return null;
+  }
+
+  return (
+    <div className={className} style={sx(toolBodySx, S.toolSection, style)} {...props}>
+      <span style={S.toolLabel}>Parameters</span>
+      {typeof input === "string" ? (
+        <div style={S.toolText}>{input}</div>
+      ) : (
+        <CodeBlock code={JSON.stringify(input, null, 2)} language="json" style={toolCodeSx} />
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 export type ToolOutputProps = WithSx<ComponentProps<"div">> & {
   output: ToolPart["output"];
@@ -226,21 +355,27 @@ export const ToolOutput = ({ className, style, output, errorText, ...props }: To
     return null;
   }
 
-  let Output = <div>{output as ComponentChildren}</div>;
+  let Output = <div style={S.toolText}>{output as ComponentChildren}</div>;
 
   if (typeof output === "object" && !isValidElement(output)) {
-    Output = <CodeBlock code={JSON.stringify(output, null, 2)} language="json" />;
+    Output = (
+      <CodeBlock code={JSON.stringify(output, null, 2)} language="json" style={toolCodeSx} />
+    );
   } else if (typeof output === "string") {
-    Output = <CodeBlock code={output} language="json" />;
+    Output = <CodeBlock code={output} language="json" style={toolCodeSx} />;
   }
 
   return (
-    <div className={className} style={sx(S.toolSection, style)} {...props}>
-      <h4 style={sx(reset.text, S.toolLabel)}>{errorText ? "Error" : "Result"}</h4>
-      <div style={sx(toolBodySx, Boolean(errorText) && toolBodyErrorSx)}>
-        {errorText && <div>{errorText}</div>}
-        {Output}
-      </div>
+    <div
+      className={className}
+      style={sx(toolBodySx, S.toolSection, Boolean(errorText) && toolBodyErrorSx, style)}
+      {...props}
+    >
+      <span style={sx(S.toolLabel, Boolean(errorText) && S.toolLabelError)}>
+        {errorText ? "Error" : "Result"}
+      </span>
+      {errorText && <div style={S.toolText}>{errorText}</div>}
+      {output ? Output : null}
     </div>
   );
 };

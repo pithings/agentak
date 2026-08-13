@@ -18,36 +18,59 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useControllableState } from "@/lib/use-controllable-state";
+import { isTouch } from "@/lib/utils";
 import { ArrowLeftIcon, ExternalLinkIcon, PlugIcon } from "@/lib/icons";
 import { u } from "@/styles/base";
 import { sx, type Sx } from "@/styles/sx";
 
 const S = {
-  // Spans the composer row, so the popover — which is `maxWidth: 100%` of this
-  // box — opens as wide as the composer rather than as wide as the trigger.
+  // Spans the composer row, so the panel — clamped to this box by `S.content`
+  // below — opens as wide as the composer rather than as wide as the trigger.
   picker: {
     display: "flex",
     minWidth: "0",
     flex: "1",
   },
-  // Under the search input, never over it: the popover gives its focus to the
-  // first focusable child, which must stay the input. Outside the list too, so
-  // the filter can never hide the way back.
+  // A percentage max-width resolves against the `Popover` root, which is
+  // `S.picker`. PopoverContent clamps to the viewport by default, which is too
+  // wide for a chat surface narrower than the panel — the chatbox.
+  content: { maxWidth: "100%" },
+  // The last row of the panel, never the first: the popover gives its focus to
+  // the first focusable child, which must stay the input. Outside the list too,
+  // so the filter can never hide the way back.
   strip: {
     display: "flex",
+    flexShrink: "0",
     alignItems: "center",
-    borderBottom: "1px solid var(--border)",
   },
+  // Only where the strip follows the list. Where the field is between them —
+  // a phone, see `listFirst` — the field's own bottom border is that line.
+  stripLine: { borderTop: "1px solid var(--border)" },
+  // `xs` for the text and the glyphs, which is what a row of the list runs at.
+  // The height is the one thing it keeps of `sm` — a strip is still a target.
+  stripButton: { height: "2rem", borderRadius: "0" },
   back: {
     flex: "1",
     justifyContent: "flex-start",
-    borderRadius: "0",
     color: "var(--muted-foreground)",
   },
+  // The key that does the same thing, on the far side of the same button. The
+  // glyph is missing from many mono faces, so it takes the button's own font
+  // rather than the `kbd` default.
+  backHint: {
+    marginLeft: "auto",
+    fontFamily: "inherit",
+    fontSize: "0.875rem",
+    lineHeight: "1",
+    opacity: "0.7",
+  },
+  // Scrolls rather than overflows: with a keyboard up, the panel may be shorter
+  // than the field, the link and the note together.
   key: {
     display: "flex",
     flexDirection: "column",
     gap: "0.5rem",
+    overflowY: "auto",
     padding: "0.75rem",
   },
   keyLabel: {
@@ -81,6 +104,26 @@ const S = {
 } satisfies Record<string, Sx>;
 
 const compact = new Intl.NumberFormat("en-US", { notation: "compact" });
+
+const touch = isTouch();
+
+/** Both fields the panel focuses — search and key — carry it on a phone. */
+const noZoom = touch ? u.noZoom : undefined;
+
+/**
+ * On a phone the list goes **above** the field, not below it.
+ *
+ * The panel is bottom-anchored — it grows up from the trigger — so anything
+ * that takes room off the top moves every row down except the last. A keyboard
+ * opening is exactly that, and the tap that opened it is on the field: with the
+ * field first, it drops out from under the finger before the tap resolves, the
+ * tap lands on whatever row took its place, and nothing is focused. Last, it
+ * cannot move — the list gives the height up instead — and it sits against the
+ * keyboard, which is where a field being typed into belongs.
+ */
+// It carries the line under it too: the strip drops its own, so the seams stay
+// one per row wherever the field sits.
+const listFirst = touch ? { borderBottom: "1px solid var(--border)", order: "-1" } : undefined;
 
 /** Which of the three lists the panel is showing. */
 type Level = "providers" | "models" | "key";
@@ -183,11 +226,23 @@ export function ChatPicker({
     go("providers");
   };
 
-  // The panel takes focus once, on open, so a level reached from inside it must
-  // hand the focus over itself — the search input it came from is unmounted.
-  const keyRef = useRef<HTMLDivElement>(null);
+  // The panel takes focus once, on open, so every level reached from inside it
+  // must hand the focus back itself: a row or a strip button keeps the focus it
+  // was clicked with, which leaves both typing and the arrow keys dead.
+  //
+  // On a phone too. The field was left alone there once, so the keyboard would
+  // not take half the room the list opens into — but that is a panel you cannot
+  // type in until you find the field and tap it, and the field is how a level is
+  // filtered. The room is handled where it belongs: the panel caps itself to
+  // what the keyboard leaves, and the field sits under the list, against the
+  // keyboard, so nothing it needs moves.
+  //
+  // The panel comes from a bubbled `focusin` rather than a ref, because a ref on
+  // a component is the component — preact forwards none to the element.
+  const panelRef = useRef<HTMLElement | null>(null);
   useLayoutEffect(() => {
-    if (shown === "key") keyRef.current?.querySelector("input")?.focus();
+    // One field to a level: the search, or the key.
+    panelRef.current?.querySelector("input")?.focus();
   }, [shown]);
 
   return (
@@ -201,7 +256,7 @@ export function ChatPicker({
       style={S.picker}
       value={modelId}
     >
-      <ModelSelectorTrigger size="sm" variant="ghost">
+      <ModelSelectorTrigger variant="ghost">
         {/* Model and provider, because one model id says nothing about where it
             runs — a gateway carries the same names as the vendor. */}
         <ModelSelectorValue>
@@ -211,46 +266,25 @@ export function ChatPicker({
       </ModelSelectorTrigger>
 
       {/* Upwards: the composer is the last row of the surface. */}
-      <ModelSelectorContent onSearchChange={setSearch} search={search} side="top">
+      <ModelSelectorContent
+        onFocusIn={(event) => {
+          panelRef.current = event.currentTarget;
+        }}
+        onSearchChange={setSearch}
+        search={search}
+        side="top"
+        style={S.content}
+      >
         {shown !== "key" && (
           <ModelSelectorInput
             onKeyDown={back}
             placeholder={shown === "providers" ? "Search providers…" : "Search models…"}
+            style={noZoom}
           />
         )}
 
-        {shown !== "providers" && providers && (
-          <div style={S.strip}>
-            <Button
-              onClick={() => go("providers")}
-              size="sm"
-              style={S.back}
-              // The composer is a form: a bare button would submit it.
-              type="button"
-              variant="ghost"
-            >
-              <ArrowLeftIcon style={u.icon} />
-              Providers
-            </Button>
-            {shown === "models" && provider?.keyed && (
-              <Button
-                onClick={() => {
-                  setKeying(provider);
-                  go("key");
-                }}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                <PlugIcon style={u.icon} />
-                Key
-              </Button>
-            )}
-          </div>
-        )}
-
         {shown === "key" && keying ? (
-          <div ref={keyRef} style={S.key}>
+          <div style={S.key}>
             <span style={S.keyLabel}>{keying.label} API key</span>
             <div style={S.keyRow}>
               <Input
@@ -263,6 +297,7 @@ export function ChatPicker({
                   save();
                 }}
                 placeholder={keying.keyPlaceholder}
+                style={noZoom}
                 type="password"
                 value={draft}
               />
@@ -276,14 +311,14 @@ export function ChatPicker({
                 <ExternalLinkIcon style={u.icon} />
               </a>
             )}
-            <p style={sx(u.muted, S.keyNote)}>
+            {/* <p style={sx(u.muted, S.keyNote)}>
               {keying.hasKey
                 ? "A key is saved. A new one replaces it."
                 : "Kept in this browser, and sent only to the provider you pick."}
-            </p>
+            </p> */}
           </div>
         ) : (
-          <ModelSelectorList>
+          <ModelSelectorList style={listFirst}>
             {shown === "models" && modelsLoading && (
               <div style={S.loading}>
                 <Spinner />
@@ -331,6 +366,44 @@ export function ChatPicker({
               </ModelSelectorGroup>
             )}
           </ModelSelectorList>
+        )}
+
+        {shown !== "providers" && providers && (
+          <div style={sx(S.strip, !touch && S.stripLine)}>
+            <Button
+              // The key, not a second name for the button: the glyph is hidden
+              // from the reader, which gets the shortcut as a shortcut.
+              aria-keyshortcuts="Backspace"
+              onClick={() => go("providers")}
+              size="xs"
+              style={sx(S.stripButton, S.back)}
+              // The composer is a form: a bare button would submit it.
+              type="button"
+              variant="ghost"
+            >
+              <ArrowLeftIcon />
+              Providers
+              {/* Only while the field it listens on is empty — see `back`. */}
+              <kbd aria-hidden="true" style={S.backHint} title="Backspace">
+                ⌫
+              </kbd>
+            </Button>
+            {shown === "models" && provider?.keyed && (
+              <Button
+                onClick={() => {
+                  setKeying(provider);
+                  go("key");
+                }}
+                size="xs"
+                style={S.stripButton}
+                type="button"
+                variant="ghost"
+              >
+                <PlugIcon />
+                Key
+              </Button>
+            )}
+          </div>
         )}
       </ModelSelectorContent>
     </ModelSelector>

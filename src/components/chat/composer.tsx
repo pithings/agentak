@@ -1,3 +1,5 @@
+import { useRef } from "preact/hooks";
+
 import {
   Context,
   ContextContent,
@@ -20,14 +22,21 @@ import {
   PromptInputTextarea,
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
-import type { Sx } from "@/styles/sx";
+import { isTouch } from "@/lib/utils";
+import { u } from "@/styles/base";
+import { sx, type Sx } from "@/styles/sx";
 
 const S = {
   // Tight, because the surface is a side panel or a corner box: every row the
-  // chrome takes is a row the transcript does not get.
+  // chrome takes is a row the transcript does not get. The foot adds the safe
+  // area, so a full-height surface on a phone clears the home bar and the
+  // rounded corner; the inset is 0 everywhere else. `--chat-safe-bottom` is the
+  // surface's override — a composer already lifted over a virtual keyboard is
+  // nowhere near the home bar, and `Chat` zeroes it there.
   composer: {
     borderTop: "1px solid var(--border)",
     padding: "0.5rem",
+    paddingBottom: "calc(0.5rem + var(--chat-safe-bottom, env(safe-area-inset-bottom, 0px)))",
   },
   textarea: {
     minHeight: "3rem",
@@ -65,19 +74,35 @@ export interface ChatComposerProps extends ChatPickerProps {
 
 /** The last row of the surface: what to say, which model says it, and send. */
 export function ChatComposer({ isStreaming, onSend, onStop, usage, ...picker }: ChatComposerProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  // A chosen model closes the panel, which hands the focus back to the trigger —
+  // but the reason to pick one is to then say something. Taken here, while the
+  // panel still stands, so its own restore sees the focus already gone and
+  // leaves it. The textarea is uncontrolled and preact forwards no ref through a
+  // component, so it is read from the DOM by the name the form submits it under.
+  const focusInput = () =>
+    ref.current?.querySelector<HTMLTextAreaElement>('textarea[name="message"]')?.focus();
+
   return (
-    <div style={S.composer}>
+    <div ref={ref} style={S.composer}>
       <PromptInput onSubmit={(message) => message.text.trim() && onSend(message.text)}>
         <PromptInputBody>
           <PromptInputTextarea
             placeholder={isStreaming ? "Queue a message…" : "Ask about this page…"}
-            style={S.textarea}
+            style={sx(S.textarea, isTouch() && u.noZoom)}
           />
         </PromptInputBody>
         <PromptInputFooter>
           <PromptInputTools style={S.tools}>
             {Boolean(picker.providers?.length || picker.models?.length) && (
-              <ChatPicker {...picker} />
+              <ChatPicker
+                {...picker}
+                onModelChange={(id) => {
+                  picker.onModelChange?.(id);
+                  focusInput();
+                }}
+              />
             )}
           </PromptInputTools>
           {usage && (

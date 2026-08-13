@@ -33,8 +33,11 @@ const S = {
     background: "var(--background)",
     color: "var(--foreground)",
   },
+  // Never shrinks: where the palette is capped — a popover over a phone
+  // keyboard — the list gives the height up, not the field being typed in.
   commandInputWrap: {
     display: "flex",
+    flexShrink: "0",
     alignItems: "center",
     gap: "0.5rem",
     borderBottom: "1px solid var(--border)",

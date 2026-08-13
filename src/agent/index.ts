@@ -40,5 +40,12 @@ export {
   type PageSnapshot,
 } from "@/agent/page-bridge";
 export { createPageTools } from "@/agent/tools";
+export {
+  generateTitle,
+  type GenerateTitleOptions,
+  type TitleOptions,
+  toTitle,
+  useTitle,
+} from "@/agent/title";
 export { type ContextUsageView, toContextUsage, toViewMessages } from "@/agent/transcript";
 export { type ChatState, type QueuedMessage, useAgent } from "@/agent/use-agent";

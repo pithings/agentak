@@ -203,8 +203,16 @@ function InputGroupAddon({
         data-align={align}
         data-slot="input-group-addon"
         onClick={(event) => {
-          if ((event.target as HTMLElement).closest("button")) return;
-          event.currentTarget.parentElement?.querySelector("input")?.focus();
+          const target = event.target as HTMLElement;
+          // A popover opened from the addon is a DOM child of it, but it is its
+          // own surface: a click on a row there is not a click on the addon, and
+          // taking the focus from it kills the panel's own keyboard handling.
+          if (target.closest('button,[data-slot="popover-content"]')) return;
+          // The group's own control, which is a textarea as often as an input —
+          // the composer holds one, with the panel's search field beside it.
+          event.currentTarget.parentElement
+            ?.querySelector<HTMLElement>('[data-slot="input-group-control"]')
+            ?.focus();
         }}
         role="group"
         style={sx(S.addon, placement.sx, has("button") && placement.button, style)}

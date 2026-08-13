@@ -26,10 +26,14 @@ const S = {
     padding: "0.5rem 0.75rem",
     boxShadow: "var(--shadow-xs)",
   },
+  // A row — indicator, text, actions. The description and the attachments carry
+  // `width: 100%` and an `order`, so they wrap onto their own line below whatever
+  // their place in the source is.
   queueItem: {
     display: "flex",
-    flexDirection: "column",
-    gap: "0.25rem",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "0.25rem 0.5rem",
     borderRadius: "var(--radius-md)",
     padding: "0.25rem 0.75rem",
     fontSize: "0.875rem",
@@ -39,9 +43,9 @@ const S = {
   queueIndicator: {
     boxSizing: "border-box",
     display: "inline-block",
+    flexShrink: "0",
     width: "0.625rem",
     height: "0.625rem",
-    marginTop: "0.125rem",
     border: "1px solid color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
     borderRadius: "9999px",
   },
@@ -51,13 +55,16 @@ const S = {
   },
   queueText: {
     flexGrow: "1",
+    minWidth: "0",
     overflow: "hidden",
     overflowWrap: "break-word",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
   queueDescription: {
-    marginLeft: "1.5rem",
+    order: "1",
+    width: "100%",
+    marginLeft: "1.125rem",
     fontSize: "0.75rem",
   },
   // The "done" state repaints the color on both, so the plain-state color has
@@ -69,6 +76,8 @@ const S = {
   },
   queueActions: {
     display: "flex",
+    flexShrink: "0",
+    alignItems: "center",
     gap: "0.25rem",
   },
   // Overrides the icon button's own size, radius, colour and transition. It
@@ -85,10 +94,12 @@ const S = {
   },
   queueActionShown: { opacity: "1" },
   queueAttachment: {
+    order: "2",
     display: "flex",
     flexWrap: "wrap",
+    width: "100%",
     gap: "0.5rem",
-    marginTop: "0.25rem",
+    marginLeft: "1.125rem",
   },
   queueImage: {
     boxSizing: "border-box",

@@ -149,7 +149,7 @@ import { Markdown } from "@/components/markdown";
 import { Element } from "@/components/elements";
 // Registers the demo renderers `Element` looks up. Side effect: import it.
 import "./demo-elements";
-import { replies } from "./demo-chat";
+import { turns } from "./demo-chat";
 import { BotIcon, CopyIcon, RotateCcwIcon, SearchIcon } from "@/lib/icons";
 import { useInteraction } from "@/lib/use-interaction";
 import { u } from "@/styles/base";
@@ -597,7 +597,12 @@ const surface: CatalogEntry[] = [
     name: "tool",
     render: () => (
       <Tool defaultOpen>
-        <ToolHeader state="output-available" toolName="read_page" type="dynamic-tool" />
+        <ToolHeader
+          input={{ maxChars: 8000 }}
+          state="output-available"
+          toolName="read_page"
+          type="dynamic-tool"
+        />
         <ToolContent>
           <ToolInput input={{ maxChars: 8000 }} />
           <ToolOutput
@@ -755,8 +760,12 @@ const composed: CatalogEntry[] = [
  */
 const elements: CatalogEntry[] = [
   ...new Map(
-    replies
-      .flatMap((reply) => reply(0))
+    turns
+      // The dictated prompt carries elements too, so both sides count.
+      .flatMap((turn) => [
+        ...(typeof turn.prompt === "string" ? [] : turn.prompt),
+        ...turn.reply(0),
+      ])
       .flatMap((part) =>
         part.kind === "element"
           ? [

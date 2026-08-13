@@ -69,6 +69,28 @@ describe("ChatPicker", () => {
     expect(screen.getByPlaceholderText("Search providers…")).toBeTruthy();
   });
 
+  it("hands the focus back to the search on every level, so the keys still work", () => {
+    render(
+      <ChatPicker modelId="gpt-5" models={MODELS} providerId="openai" providers={PROVIDERS} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /GPT-5/ }));
+    const models = screen.getByPlaceholderText("Search models…");
+    expect(document.activeElement).toBe(models);
+
+    // A click takes the focus with it — the level behind must take it back.
+    const back = screen.getByRole("button", { name: "Providers" });
+    back.focus();
+    fireEvent.click(back);
+    const providers = screen.getByPlaceholderText("Search providers…");
+    expect(document.activeElement).toBe(providers);
+
+    // Which is what the arrow keys need: they are the panel's, not the field's.
+    fireEvent.keyDown(providers, { key: "ArrowDown" });
+    const row = screen.getByText("OpenAI").closest("[aria-selected]");
+    expect(row?.getAttribute("aria-selected")).toBe("true");
+  });
+
   it("goes back a level on backspace, once the field is empty", () => {
     render(
       <ChatPicker modelId="gpt-5" models={MODELS} providerId="openai" providers={PROVIDERS} />,

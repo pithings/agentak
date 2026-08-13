@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 import { useRoute, useRouter } from "vue-router";
 
 import { CATALOG, ENTRIES, matches } from "../catalog";
+import { turns } from "../demo-chat";
 
 defineProps<{ open: boolean }>();
 
@@ -99,6 +100,15 @@ onBeforeUnmount(() => globalThis.removeEventListener("keydown", onKey));
         class="block rounded-md px-2 py-1.5 text-soft hover:bg-fill hover:text-ink"
       >
         Readme
+      </RouterLink>
+
+      <RouterLink
+        to="/demo"
+        exact-active-class="bg-fill text-ink"
+        class="mt-0.5 flex items-center justify-between rounded-md px-2 py-1.5 text-soft hover:bg-fill hover:text-ink"
+      >
+        <span>Demo conversation</span>
+        <span class="font-mono text-[0.6875rem]">{{ turns.length }}</span>
       </RouterLink>
 
       <RouterLink

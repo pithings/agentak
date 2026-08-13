@@ -1,507 +1,738 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import type { ViewMessage, ViewPart } from "@/types";
 
-/** Stands in for a model-generated image, so no binary blob sits in the source. */
-const swatch = btoa(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="120">` +
-    `<defs><linearGradient id="g"><stop offset="0" stop-color="#6366f1"/>` +
-    `<stop offset="1" stop-color="#ec4899"/></linearGradient></defs>` +
-    `<rect width="320" height="120" fill="url(#g)"/></svg>`,
+/** Stands in for a screenshot, so no binary blob sits in the source. */
+const shot = btoa(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="150">` +
+    `<rect width="320" height="150" rx="8" fill="#f8fafc"/>` +
+    `<rect x="16" y="14" width="96" height="10" rx="5" fill="#0f172a"/>` +
+    `<rect x="16" y="38" width="288" height="22" rx="6" fill="#e2e8f0"/>` +
+    `<rect x="16" y="68" width="288" height="22" rx="6" fill="#e2e8f0"/>` +
+    `<rect x="16" y="98" width="140" height="22" rx="6" fill="#e2e8f0"/>` +
+    `<rect x="164" y="98" width="140" height="22" rx="6" fill="#e2e8f0"/>` +
+    `<rect x="16" y="128" width="80" height="14" rx="7" fill="#6366f1"/></svg>`,
 );
 
+/** One scripted exchange: what the user sent, and the reply it gets. */
+export interface DemoTurn {
+  /** The user turn. A string is one text part; parts carry a dictated turn. */
+  prompt: string | ViewPart[];
+  /** The assistant turn, replayed part by part. */
+  reply: (stamp: number) => ViewPart[];
+}
+
 /**
- * Canned assistant turns, cycled per send so every renderer is exercised.
+ * One conversation, start to end: a signup form breaks after a deploy, the
+ * agent reads the page, traces the handler, patches it, tests it and commits.
+ * Every renderer the chat can reach appears where that step would put it, so
+ * the reel reads as a session rather than a component gallery.
  */
-export const replies: ((stamp: number) => ViewPart[])[] = [
-  (stamp) => [
-    { kind: "thinking", text: "Demo mode — replaying a canned turn." },
-    {
-      kind: "tool",
-      toolCallId: `call-${stamp}`,
-      name: "read_page",
-      args: { maxChars: 8000 },
-      status: "done",
-      output: JSON.stringify({ title: document.title, url: location.href }, null, 2),
-    },
-    {
-      kind: "text",
-      text: [
-        "This is **demo mode** — `useDemoChat` replays canned turns so the chat surface",
-        "stays testable on its own. The real loop is one hook away:",
-        "",
-        "```ts [src/agent-chat.tsx]",
-        'import { Chat } from "@/components/chat";',
-        'import { createAgent } from "@/agent/create-agent";',
-        'import { useAgent } from "@/agent/use-agent";',
-        "",
-        "const [runtime] = useState(() => createAgent({ apiKey }));",
-        "const chat = useAgent(runtime);",
-        "```",
-      ].join("\n"),
-    },
-  ],
-
-  () => [
-    { kind: "thinking", text: "Picking the snippet that shows a tool definition." },
-    {
-      kind: "text",
-      text: [
-        "Tools are plain objects with a schema and a handler:",
-        "",
-        "```ts [src/agent/tools.ts]",
-        "export const findElements = {",
-        '  name: "find_elements",',
-        '  description: "Find elements on the page by CSS selector.",',
-        "  parameters: {",
-        '    type: "object",',
-        '    properties: { selector: { type: "string" } },',
-        '    required: ["selector"],',
-        "  },",
-        "  async run({ selector }: { selector: string }, page: PageBridge) {",
-        "    const nodes = await page.query(selector);",
-        "    return nodes.slice(0, 20);",
-        "  },",
-        "} satisfies ToolDefinition;",
-        "```",
-        "",
-        "Register it with the agent, then run the playground:",
-        "",
-        "```bash",
-        "pnpm dev        # http://localhost:4050",
-        "pnpm vitest run",
-        "```",
-      ].join("\n"),
-    },
-  ],
-
-  (stamp) => [
-    {
-      kind: "tool",
-      toolCallId: `call-${stamp}`,
-      name: "find_elements",
-      args: { selector: "h1, h2" },
-      status: "done",
-      output: JSON.stringify(
-        [
-          { tag: "h1", text: "agentak", selector: "body > h1" },
-          { tag: "h2", text: "Playground", selector: "main > h2" },
-        ],
-        null,
-        2,
-      ),
-    },
-    {
-      kind: "text",
-      text: [
-        "Headings found. The patch below drops the stub:",
-        "",
-        "```diff [src/agent-chat.tsx]",
-        '-import { useDemoChat } from "@/demo-chat";',
-        '+import { useAgent } from "@/agent/use-agent";',
-        "",
-        "-  const chat = useDemoChat();",
-        "+  const chat = useAgent(agent);",
-        "```",
-        "",
-        "Other renderers this turn does not touch:",
-        "",
-        "- inline `code`, *emphasis* and [links](https://github.com/pi0/rangi)",
-        "- tables, task lists, block quotes",
-        "",
-        "> Markdown goes through md4x; fences go through rangi.",
-      ].join("\n"),
-    },
-  ],
-
-  () => [
-    { kind: "thinking", text: "Showing an image part, carried as base64." },
-    {
-      kind: "element",
-      name: "image",
-      props: { base64: swatch, mediaType: "image/svg+xml", alt: "A gradient swatch" },
-    },
-    {
-      kind: "text",
-      text: "A model-generated image arrives as base64, not a URL, so `Image` builds the data URL itself.",
-    },
-  ],
-
-  // One reply per porting group, so every ported element has a fixture.
-  // group:progress — chain-of-thought, task, plan, agent
-  () => [
-    { kind: "thinking", text: "Showing how a turn reports its own progress." },
-    {
-      kind: "element",
-      name: "chain-of-thought",
-      props: {
-        title: "Reading the page",
-        steps: [
-          {
-            label: "Collected the visible text",
-            description: "8,000 characters, headings first",
-            status: "complete",
-          },
-          {
-            label: "Looked for a pricing table",
-            results: ["table.pricing", "section#plans"],
-            status: "complete",
-          },
-          { label: "Comparing the two plans", status: "active" },
-          { label: "Writing the summary", status: "pending" },
-        ],
+export const turns: DemoTurn[] = [
+  // 1 — read the page, say what is there, plan the rest.
+  {
+    prompt: "Signup broke after this morning's deploy. The button does nothing. Can you look?",
+    reply: (stamp) => [
+      {
+        kind: "thinking",
+        text: "Read the page first. The markup says what the handler needs, and the console says what broke.",
       },
-    },
-    {
-      kind: "element",
-      name: "task",
-      props: {
-        title: "Searched the page for prices",
-        items: [
-          { text: "Read", files: ["section#plans"] },
-          { text: "Found 2 plans: Pro and Team" },
-          { text: "Skipped the footer" },
-        ],
+      {
+        kind: "tool",
+        toolCallId: `call-${stamp}-read`,
+        name: "read_page",
+        args: { maxChars: 8000 },
+        status: "done",
+        output: JSON.stringify(
+          {
+            title: document.title,
+            url: location.href,
+            forms: [{ id: "signup", action: "/api/v1/signup", method: "post", fields: 4 }],
+          },
+          null,
+          2,
+        ),
       },
-    },
-    {
-      kind: "element",
-      name: "plan",
-      props: {
-        title: "Summarise the pricing",
-        description: "Three steps, no page changes.",
-        steps: [
-          "Read the plan names and prices",
-          "Compare the included limits",
-          "Answer in one short table",
-        ],
-      },
-    },
-    {
-      kind: "element",
-      name: "agent",
-      props: {
-        name: "Assistant",
-        model: "claude-sonnet-4-5",
-        instructions: "Answer only from the page. Say so when the page does not carry the answer.",
-        tools: [
-          {
-            name: "read_page",
-            description: "Read the visible text of the page.",
-            inputSchema: {
-              type: "object",
-              properties: { maxChars: { type: "number" } },
-            },
-          },
-          {
-            name: "find_elements",
-            description: "Find elements on the page by CSS selector.",
-            inputSchema: {
-              type: "object",
-              properties: { selector: { type: "string" } },
-              required: ["selector"],
-            },
-          },
-        ],
-        output: "type Answer = {\n  summary: string;\n  citations: string[];\n};",
-      },
-    },
-    {
-      kind: "text",
-      text: "Progress elements are presentational — the agent loop feeds them later.",
-    },
-  ],
-
-  // group:output — sources, snippet, file-tree, package-info
-  () => [
-    { kind: "thinking", text: "Citing what I read, then showing where the change lands." },
-    {
-      kind: "element",
-      name: "sources",
-      props: {
-        sources: [
-          {
-            href: "https://developer.mozilla.org/docs/Web/API/Web_components",
-            title: "Web components — MDN",
-          },
-          {
-            href: "https://preactjs.com/guide/v10/web-components",
-            title: "Web components — Preact",
-          },
-        ],
-      },
-    },
-    {
-      kind: "element",
-      name: "file-tree",
-      props: {
-        expanded: ["src", "src/components"],
-        selected: "src/components/markdown.tsx",
-        nodes: [
-          {
-            name: "src",
-            path: "src",
-            children: [
-              {
-                name: "components",
-                path: "src/components",
-                children: [
-                  { name: "chat.tsx", path: "src/components/chat.tsx" },
-                  { name: "markdown.tsx", path: "src/components/markdown.tsx" },
-                ],
-              },
-              { name: "element.tsx", path: "src/element.tsx" },
-            ],
-          },
-          { name: "package.json", path: "package.json" },
-        ],
-      },
-    },
-    {
-      kind: "element",
-      name: "package-info",
-      props: { name: "md4x", currentVersion: "0.2.1", newVersion: "0.3.0", changeType: "minor" },
-    },
-    {
-      kind: "element",
-      name: "snippet",
-      props: { label: "$", code: "pnpm add md4x@0.3.0" },
-    },
-    {
-      kind: "text",
-      text: "`Sources` lists the pages read, `FileTree` marks the file to change, and the `Snippet` is the command to run.",
-    },
-  ],
-  // group:diagnostics — test-results, stack-trace
-  () => [
-    { kind: "thinking", text: "Reading the vitest report, then the failing frame." },
-    {
-      kind: "element",
-      name: "test-results",
-      props: {
-        summary: { passed: 7, failed: 1, skipped: 1, total: 9, duration: 1240 },
-        suites: [
-          {
-            name: "src/markdown.test.tsx",
-            status: "failed",
-            tests: [
-              { name: "renders a fence as a code block", status: "passed", duration: 14 },
-              { name: "drops a javascript: link", status: "passed", duration: 3 },
-              {
-                name: "heals an unclosed bold",
-                status: "failed",
-                duration: 21,
-                error: {
-                  message: "expected '**bold' to be 'bold'",
-                  stack: "at heal (src/lib/markdown.ts:48:11)",
-                },
-              },
-              { name: "renders math", status: "skipped" },
-            ],
-          },
-          {
-            name: "src/render.test.tsx",
-            status: "passed",
-            tests: [
-              { name: "renders a transcript", status: "passed", duration: 31 },
-              { name: "declares every class the chat renders", status: "passed", duration: 12 },
-            ],
-          },
-        ],
-      },
-    },
-    {
-      kind: "element",
-      name: "stack-trace",
-      props: {
-        defaultOpen: true,
-        trace: [
-          "AssertionError: expected '**bold' to be 'bold'",
-          "    at heal (/app/src/lib/markdown.ts:48:11)",
-          "    at parseMarkdown (/app/src/lib/markdown.ts:72:18)",
-          "    at Object.<anonymous> (/app/src/markdown.test.tsx:24:5)",
-          "    at runTest (/app/node_modules/@vitest/runner/dist/index.js:781:15)",
+      {
+        kind: "text",
+        text: [
+          "The page holds one form, `form#signup`, that posts to `/api/v1/signup`. Four fields,",
+          "one submit button, no inline script. So the markup is not the fault by itself — the",
+          "handler or the request is.",
+          "",
+          "Here is what I want to do:",
         ].join("\n"),
       },
-    },
-    {
-      kind: "text",
-      text: "One test fails: `heal` leaves the delimiters in place when the bold never closes. The frames above the `node_modules` one are the ones to read.",
-    },
-  ],
+      {
+        kind: "element",
+        name: "plan",
+        props: {
+          title: "Find why signup fails",
+          description: "Read only. Nothing on the page changes until you allow it.",
+          steps: [
+            "Read the console for the error",
+            "Trace the handler in the repo",
+            "Check the field names against the page",
+            "Patch, test, commit",
+          ],
+        },
+      },
+      {
+        kind: "element",
+        name: "suggestion",
+        props: {
+          suggestions: [
+            "Check the console for errors",
+            "Show me the deploy diff",
+            "Roll back instead",
+          ],
+        },
+      },
+    ],
+  },
 
-  // group:interaction — confirmation, suggestion, queue, checkpoint, commit
-  () => [
-    { kind: "thinking", text: "Asking before I touch the page, then showing what landed." },
-    {
-      kind: "element",
-      name: "confirmation",
-      props: {
-        title: "Run find_elements with the selector `form#signup input`?",
-        state: "approval-requested",
-        approval: { id: "approval-1" },
+  // 2 — the console: one throw, one 404, and the pages that explain them.
+  {
+    prompt: "Check the console for errors",
+    reply: (stamp) => [
+      {
+        kind: "thinking",
+        text: "Two entries matter. The stylesheet 404 is cosmetic, the TypeError is the one that stops the submit.",
       },
-    },
-    {
-      kind: "element",
-      name: "queue",
-      props: {
-        label: "queued",
-        items: [
-          { id: "q1", title: "Read the pricing table", completed: true },
-          { id: "q2", title: "Compare Pro and Team", description: "Limits and seats only" },
-          { id: "q3", title: "Answer in one short table" },
-        ],
+      {
+        kind: "tool",
+        toolCallId: `call-${stamp}-console`,
+        name: "read_console",
+        args: { levels: ["warn", "error"] },
+        status: "done",
+        output: JSON.stringify(
+          [
+            {
+              level: "error",
+              text: "TypeError: Cannot read properties of null (reading 'value')",
+              source: "signup.tsx:41",
+            },
+            { level: "error", text: "GET /assets/style.css 404" },
+            { level: "warn", text: "form#signup submitted, no handler completed" },
+          ],
+          null,
+          2,
+        ),
       },
-    },
-    {
-      kind: "element",
-      name: "checkpoint",
-      props: { label: "Checkpoint · before the edit", tooltip: "Restore the page to this point" },
-    },
-    {
-      kind: "element",
-      name: "commit",
-      props: {
-        hash: "a1b2c3d",
-        message: "Adopt the sheet in the shadow root",
-        author: "Pooya Parsa",
-        initials: "PP",
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        files: [
-          { path: "src/element.tsx", status: "modified", additions: 12, deletions: 3 },
-          { path: "src/styles/sheet.tsx", status: "modified", additions: 4, deletions: 1 },
-          { path: "src/styles/adopt.ts", status: "deleted", deletions: 28 },
-        ],
+      // The 404 again, this time as a failed call — the tool card carries the error.
+      {
+        kind: "tool",
+        toolCallId: `call-${stamp}-fetch`,
+        name: "fetch",
+        args: { url: "/assets/style.css" },
+        status: "error",
+        output: "404 Not Found — the file is not in this build.",
       },
-    },
-    {
-      kind: "element",
-      name: "suggestion",
-      props: {
-        suggestions: [
-          "Summarise this page",
-          "List every link",
-          "Find the pricing table",
-          "What does the form ask for?",
-        ],
+      {
+        kind: "element",
+        name: "web-preview",
+        props: {
+          url: "about:blank",
+          logs: [
+            { level: "log", message: "hydrated in 412 ms", at: "2026-08-13T09:15:00Z" },
+            {
+              level: "error",
+              message: "TypeError: Cannot read properties of null (reading 'value')",
+              at: "2026-08-13T09:15:04Z",
+            },
+            { level: "error", message: "GET /assets/style.css 404", at: "2026-08-13T09:15:04Z" },
+            {
+              level: "warn",
+              message: "form#signup submitted, no handler completed",
+              at: "2026-08-13T09:15:05Z",
+            },
+          ],
+        },
       },
-    },
-    {
-      kind: "text",
-      text: "`Confirmation` gates the tool call, `Queue` holds the rest of the turn, and `Suggestion` offers the next one. The buttons are static here — the agent loop wires them later.",
-    },
-  ],
+      {
+        kind: "text",
+        text: [
+          "The submit throws before it sends anything:",
+          "",
+          "> TypeError: Cannot read properties of null (reading 'value') — `signup.tsx:41`",
+          "",
+          "`null` means the handler looked an element up and did not find it. The 404 is a",
+          "separate, smaller problem: the stylesheet is missing from the build, which is why",
+          "the form looks unstyled.",
+        ].join("\n"),
+      },
+      {
+        kind: "element",
+        name: "sources",
+        props: {
+          sources: [
+            {
+              href: "https://developer.mozilla.org/docs/Web/API/HTMLFormElement/submit_event",
+              title: "submit event — MDN",
+            },
+            {
+              href: "https://developer.mozilla.org/docs/Web/API/FormData",
+              title: "FormData — MDN",
+            },
+          ],
+        },
+      },
+    ],
+  },
 
-  // group:panels — schema-display, sandbox, artifact, web-preview
-  () => [
-    { kind: "thinking", text: "Showing the endpoint, the run, the draft and the preview." },
-    {
-      kind: "element",
-      name: "schema-display",
-      props: {
-        method: "POST",
-        path: "/v1/pages/{pageId}/summary",
-        description: "Summarise one page and return the citations used.",
-        parameters: [
-          { name: "pageId", type: "string", required: true, location: "path" },
-          { name: "locale", type: "string", location: "query", description: "Defaults to en." },
-        ],
-        requestBody: [
-          { name: "maxChars", type: "number", description: "Read at most this many characters." },
-          {
-            name: "options",
-            type: "object",
-            properties: [
-              { name: "citations", type: "boolean", required: true },
-              { name: "tone", type: "string" },
-            ],
-          },
-        ],
-        responseBody: [
-          { name: "summary", type: "string", required: true },
-          { name: "citations", type: "array", items: { name: "url", type: "string" } },
-        ],
+  // 3 — trace it to a file.
+  {
+    prompt: "Where does that come from in our code?",
+    reply: (stamp) => [
+      { kind: "thinking", text: "Line 41 reads a field by id. Find who renamed that id." },
+      {
+        kind: "element",
+        name: "chain-of-thought",
+        props: {
+          title: "Tracing the handler",
+          steps: [
+            {
+              label: "Searched the repo for the form id",
+              description: "2 files",
+              results: ["src/pages/signup.tsx", "src/api/signup.ts"],
+              status: "complete",
+            },
+            {
+              label: "Read the submit handler",
+              description: "src/pages/signup.tsx:36-52",
+              status: "complete",
+            },
+            {
+              label: "Compared it with the deploy diff",
+              results: ["#email → #email-address"],
+              status: "complete",
+            },
+          ],
+        },
       },
-    },
-    {
-      kind: "element",
-      name: "sandbox",
-      props: {
-        title: "summary.ts",
-        state: "output-available",
-        tabs: [
-          {
-            value: "code",
-            label: "Code",
-            language: "ts",
-            code: [
-              "const page = await readPage({ maxChars: 8000 });",
-              "const summary = await summarise(page);",
-              "console.log(summary.citations.length);",
-            ].join("\n"),
-          },
-          { value: "output", label: "Output", language: "bash", code: "2" },
-        ],
+      {
+        kind: "tool",
+        toolCallId: `call-${stamp}-grep`,
+        name: "run_command",
+        args: { command: 'rg -n "getElementById" src' },
+        status: "done",
+        output: [
+          'src/pages/signup.tsx:41:  const email = document.getElementById("email")!.value;',
+          'src/pages/signup.tsx:42:  const password = document.getElementById("password")!.value;',
+        ].join("\n"),
       },
-    },
-    {
-      kind: "element",
-      name: "artifact",
-      props: {
-        title: "summary.md",
-        description: "Draft, 2 citations",
-        body: "The page compares two plans, Pro and Team. Team adds shared workspaces and SSO.",
+      {
+        kind: "element",
+        name: "file-tree",
+        props: {
+          expanded: ["src", "src/pages"],
+          selected: "src/pages/signup.tsx",
+          nodes: [
+            {
+              name: "src",
+              path: "src",
+              children: [
+                {
+                  name: "pages",
+                  path: "src/pages",
+                  children: [
+                    { name: "signup.tsx", path: "src/pages/signup.tsx" },
+                    { name: "signup.test.tsx", path: "src/pages/signup.test.tsx" },
+                  ],
+                },
+                {
+                  name: "api",
+                  path: "src/api",
+                  children: [{ name: "signup.ts", path: "src/api/signup.ts" }],
+                },
+                { name: "validate.ts", path: "src/validate.ts" },
+              ],
+            },
+            { name: "package.json", path: "package.json" },
+          ],
+        },
       },
-    },
-    {
-      kind: "element",
-      name: "web-preview",
-      props: {
-        url: "about:blank",
-        logs: [
-          { level: "log", message: "summary rendered", at: "2026-01-01T09:15:00Z" },
-          { level: "warn", message: "no favicon", at: "2026-01-01T09:15:01Z" },
-          { level: "error", message: "GET /style.css 404", at: "2026-01-01T09:15:02Z" },
-        ],
+      {
+        kind: "text",
+        text: [
+          "Here is the handler as it stands:",
+          "",
+          "```tsx [src/pages/signup.tsx:38]",
+          "function handleSubmit(event: SubmitEvent) {",
+          "  event.preventDefault();",
+          '  const email = document.getElementById("email")!.value;',
+          '  const password = document.getElementById("password")!.value;',
+          '  return post("/api/v1/signup", { email, password });',
+          "}",
+          "```",
+          "",
+          "1. The deploy renamed the field to `email-address`.",
+          '2. `getElementById("email")` now returns `null`.',
+          "3. The non-null assertion hides it at build time, so it throws at run time.",
+        ].join("\n"),
       },
-    },
-    {
-      kind: "text",
-      text: "Panels are presentational: the preview frame is sandboxed and points at `about:blank`.",
-    },
-  ],
-  // group:input — transcription, speech-input, environment-variables
-  () => [
-    { kind: "thinking", text: "Showing the voice and secret surfaces, with canned data." },
-    {
-      kind: "element",
-      name: "transcription",
-      props: {
-        currentTime: 3.4,
-        segments: [
-          { text: "Open the pricing page,", startSecond: 0, endSecond: 1.8 },
-          { text: "read the plan names,", startSecond: 1.8, endSecond: 3.2 },
-          { text: "then compare the two cheapest.", startSecond: 3.2, endSecond: 5.4 },
-        ],
+    ],
+  },
+
+  // 4 — the gate: this one touches the live page, so it waits.
+  {
+    prompt: "Read the field names off the page so we are sure.",
+    reply: (stamp) => [
+      {
+        kind: "thinking",
+        text: "The page is the ground truth. Reading the live DOM needs your word.",
       },
-    },
-    { kind: "element", name: "speech-input", props: {} },
-    {
-      kind: "element",
-      name: "environment-variables",
-      props: {
-        variables: [
-          { name: "ANTHROPIC_API_KEY", value: "sk-ant-api03-7Qd1", required: true },
-          { name: "ANTHROPIC_MODEL", value: "claude-sonnet-4-5" },
-          { name: "WEB_AGENT_PORT", value: "4050" },
-        ],
+      {
+        kind: "tool",
+        toolCallId: `call-${stamp}`,
+        name: "find_elements",
+        args: { selector: "form#signup input" },
+        status: "pending",
       },
-    },
-    {
-      kind: "text",
-      text: "Segments colour by playback time, the mic button is idle until clicked, and the switch unmasks the values.",
-    },
-  ],
+      {
+        kind: "text",
+        text: "Allow that and I will match the four field names against the handler.",
+      },
+    ],
+  },
+
+  // 5 — the answer to the gate: ids, and a shot of the form.
+  {
+    prompt: "Allowed. Take a shot of the form too.",
+    reply: (stamp) => [
+      { kind: "thinking", text: "Reading the ids, then framing the form for the screenshot." },
+      {
+        kind: "tool",
+        toolCallId: `call-${stamp}-shot`,
+        name: "screenshot",
+        args: { selector: "form#signup" },
+        status: "done",
+        output: JSON.stringify({ width: 320, height: 150, bytes: 18_244 }, null, 2),
+      },
+      {
+        kind: "element",
+        name: "image",
+        props: {
+          base64: shot,
+          mediaType: "image/svg+xml",
+          alt: "The signup form, unstyled",
+        },
+      },
+      {
+        kind: "text",
+        text: [
+          "| Field | id on the page | id in the handler |",
+          "| --- | --- | --- |",
+          "| Email | `email-address` | `email` |",
+          "| Password | `password` | `password` |",
+          "| First name | `given-name` | — |",
+          "| Last name | `family-name` | — |",
+          "",
+          "One row is wrong, and it is the first one the handler reads. The shot also shows the",
+          "missing stylesheet — the form renders, it is only unstyled.",
+        ].join("\n"),
+      },
+    ],
+  },
+
+  // 6 — the edit: queue, ask, checkpoint, patch.
+  {
+    prompt: "Fix it. Keep the change small.",
+    reply: (stamp) => [
+      {
+        kind: "thinking",
+        text: "One line. Read the values off the form instead of by id, so a rename cannot break it again.",
+      },
+      {
+        kind: "element",
+        name: "queue",
+        props: {
+          label: "This session",
+          items: [
+            { id: "q1", title: "Read the console", completed: true },
+            { id: "q2", title: "Trace the handler", completed: true },
+            { id: "q3", title: "Patch the field lookup", description: "src/pages/signup.tsx:41" },
+            { id: "q4", title: "Run the tests" },
+            { id: "q5", title: "Commit" },
+          ],
+        },
+      },
+      {
+        kind: "element",
+        name: "confirmation",
+        props: {
+          title: "Write src/pages/signup.tsx? Two lines change.",
+          state: "approval-requested",
+          approval: { id: "approval-patch" },
+        },
+      },
+      {
+        kind: "element",
+        name: "checkpoint",
+        props: {
+          label: "Checkpoint · before the patch",
+          tooltip: "Restore the file to this point",
+        },
+      },
+      {
+        kind: "tool",
+        toolCallId: `call-${stamp}-patch`,
+        name: "apply_patch",
+        args: { path: "src/pages/signup.tsx" },
+        status: "done",
+        output: "1 file changed, 2 insertions(+), 2 deletions(-)",
+      },
+      {
+        kind: "text",
+        text: [
+          "```diff [src/pages/signup.tsx]",
+          '-  const email = document.getElementById("email")!.value;',
+          '-  const password = document.getElementById("password")!.value;',
+          "+  const data = new FormData(event.currentTarget as HTMLFormElement);",
+          "+  const { email, password } = Object.fromEntries(data) as Record<string, string>;",
+          "```",
+          "",
+          "`FormData` reads the `name` attributes, which the deploy left alone. The ids can move",
+          "again and the handler will not notice.",
+        ].join("\n"),
+      },
+      {
+        kind: "element",
+        name: "task",
+        props: {
+          title: "Patched the submit handler",
+          items: [
+            { text: "Read", files: ["src/pages/signup.tsx"] },
+            { text: "Replaced two id lookups with one FormData read" },
+            { text: "Left the stylesheet 404 alone — different fault" },
+          ],
+        },
+      },
+    ],
+  },
+
+  // 7 — tests, and the one that fails.
+  {
+    prompt: "Run the tests.",
+    reply: (stamp) => [
+      {
+        kind: "thinking",
+        text: "Running the page tests only. The whole suite is slower than this turn.",
+      },
+      {
+        kind: "tool",
+        toolCallId: `call-${stamp}-test`,
+        name: "run_command",
+        args: { command: "pnpm vitest run src/pages" },
+        status: "done",
+        output: [
+          " ❯ src/pages/signup.test.tsx (4 tests | 1 failed)",
+          " ✓ src/pages/fields.test.tsx (5 tests)",
+          "",
+          " Tests  7 passed | 1 failed | 1 skipped (9)",
+        ].join("\n"),
+      },
+      {
+        kind: "element",
+        name: "test-results",
+        props: {
+          summary: { passed: 7, failed: 1, skipped: 1, total: 9, duration: 1240 },
+          suites: [
+            {
+              name: "src/pages/signup.test.tsx",
+              status: "failed",
+              tests: [
+                { name: "submits the form values", status: "passed", duration: 18 },
+                { name: "keeps working after an id rename", status: "passed", duration: 9 },
+                {
+                  name: "rejects an empty email",
+                  status: "failed",
+                  duration: 21,
+                  error: {
+                    message: "expected post() not to be called",
+                    stack: "at handleSubmit (src/pages/signup.tsx:41:9)",
+                  },
+                },
+                { name: "reports a server error", status: "skipped" },
+              ],
+            },
+            {
+              name: "src/pages/fields.test.tsx",
+              status: "passed",
+              tests: [
+                { name: "labels every input", status: "passed", duration: 31 },
+                { name: "marks the required fields", status: "passed", duration: 12 },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        kind: "element",
+        name: "stack-trace",
+        props: {
+          defaultOpen: true,
+          trace: [
+            "AssertionError: expected post() not to be called",
+            "    at handleSubmit (/app/src/pages/signup.tsx:41:9)",
+            "    at submit (/app/src/pages/signup.test.tsx:52:5)",
+            "    at runTest (/app/node_modules/@vitest/runner/dist/index.js:781:15)",
+          ].join("\n"),
+        },
+      },
+      {
+        kind: "text",
+        text: [
+          "The submit works again, but I dropped a guard with the old lookup: the empty check sat",
+          "on the id read, so an empty email now posts.",
+          "",
+          "- [x] Submit sends the values",
+          "- [x] A rename cannot break it",
+          "- [ ] An empty email is refused",
+        ].join("\n"),
+      },
+    ],
+  },
+
+  // 8 — the second fix, tried in the sandbox, then committed.
+  {
+    prompt: "Fix that one too, then commit both.",
+    reply: (stamp) => [
+      { kind: "thinking", text: "Trying the guard on its own before it goes into the file." },
+      {
+        kind: "element",
+        name: "sandbox",
+        props: {
+          title: "validate.ts",
+          state: "output-available",
+          tabs: [
+            {
+              value: "code",
+              label: "Code",
+              language: "ts",
+              code: [
+                'import { validate } from "./src/validate.ts";',
+                "",
+                'console.log(validate({ email: "", password: "hunter2" }));',
+                'console.log(validate({ email: "a@b.co", password: "hunter2" }));',
+              ].join("\n"),
+            },
+            {
+              value: "output",
+              label: "Output",
+              language: "bash",
+              code: '{ ok: false, field: "email" }\n{ ok: true }',
+            },
+          ],
+        },
+      },
+      {
+        kind: "tool",
+        toolCallId: `call-${stamp}-patch2`,
+        name: "apply_patch",
+        args: { path: "src/pages/signup.tsx" },
+        status: "done",
+        output: "1 file changed, 3 insertions(+)",
+      },
+      {
+        kind: "tool",
+        toolCallId: `call-${stamp}-retest`,
+        name: "run_command",
+        args: { command: "pnpm vitest run src/pages" },
+        status: "done",
+        output: " Tests  9 passed (9)",
+      },
+      {
+        kind: "element",
+        name: "test-results",
+        props: {
+          summary: { passed: 9, failed: 0, skipped: 0, total: 9, duration: 1180 },
+          suites: [
+            {
+              name: "src/pages/signup.test.tsx",
+              status: "passed",
+              tests: [
+                { name: "submits the form values", status: "passed", duration: 17 },
+                { name: "keeps working after an id rename", status: "passed", duration: 8 },
+                { name: "rejects an empty email", status: "passed", duration: 11 },
+                { name: "reports a server error", status: "passed", duration: 14 },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        kind: "element",
+        name: "commit",
+        props: {
+          hash: "a1b2c3d",
+          message: "Read the signup fields from FormData, guard the empty email",
+          author: "Pooya Parsa",
+          initials: "PP",
+          date: new Date(Date.now() - 26 * 60 * 1000).toISOString(),
+          files: [
+            { path: "src/pages/signup.tsx", status: "modified", additions: 5, deletions: 2 },
+            { path: "src/validate.ts", status: "modified", additions: 6, deletions: 0 },
+            { path: "src/pages/signup.test.tsx", status: "modified", additions: 9, deletions: 1 },
+          ],
+        },
+      },
+      { kind: "text", text: "Green, and committed on the branch. Nothing is pushed." },
+    ],
+  },
+
+  // 9 — what is left before it ships.
+  {
+    prompt: "What is left before I deploy?",
+    reply: () => [
+      {
+        kind: "thinking",
+        text: "The endpoint contract, the environment, and the package that renamed the ids.",
+      },
+      {
+        kind: "element",
+        name: "schema-display",
+        props: {
+          method: "POST",
+          path: "/api/v1/signup",
+          description: "Create an account and send the confirmation mail.",
+          parameters: [
+            { name: "locale", type: "string", location: "query", description: "Defaults to en." },
+          ],
+          requestBody: [
+            { name: "email", type: "string", required: true },
+            { name: "password", type: "string", required: true },
+            {
+              name: "options",
+              type: "object",
+              properties: [
+                { name: "marketing", type: "boolean" },
+                { name: "source", type: "string" },
+              ],
+            },
+          ],
+          responseBody: [
+            { name: "userId", type: "string", required: true },
+            { name: "confirmationSent", type: "boolean" },
+          ],
+        },
+      },
+      {
+        kind: "text",
+        text: "The handler now sends exactly those two fields. The environment it needs on the server:",
+      },
+      {
+        kind: "element",
+        name: "environment-variables",
+        props: {
+          variables: [
+            { name: "SIGNUP_MAIL_KEY", value: "sk-mail-9f21c8", required: true },
+            { name: "APP_ORIGIN", value: "https://northwind.app", required: true },
+            { name: "NODE_ENV", value: "production" },
+          ],
+        },
+      },
+      {
+        kind: "text",
+        text: "And the rename itself came from a dependency, so pin it before the next build moves again:",
+      },
+      {
+        kind: "element",
+        name: "package-info",
+        props: {
+          name: "@northwind/forms",
+          currentVersion: "1.4.2",
+          newVersion: "1.5.0",
+          changeType: "minor",
+        },
+      },
+      {
+        kind: "element",
+        name: "snippet",
+        props: { label: "$", code: "pnpm add @northwind/forms@1.5.0" },
+      },
+      {
+        kind: "text",
+        text: [
+          "Three things, in order:",
+          "",
+          "1. Pin `@northwind/forms` and rebuild — that also restores `/assets/style.css`.",
+          "2. Set `SIGNUP_MAIL_KEY` on the deploy target. It is the only missing one.",
+          "3. Push the branch and let CI run the full suite.",
+        ].join("\n"),
+      },
+    ],
+  },
+
+  // 10 — a dictated turn, and the hand-off it asks for.
+  {
+    prompt: [
+      { kind: "element", name: "speech-input", props: {} },
+      {
+        kind: "element",
+        name: "transcription",
+        props: {
+          currentTime: 3.4,
+          segments: [
+            { text: "Good. Write the pull request description,", startSecond: 0, endSecond: 2.1 },
+            { text: "and hand the docs page to a sub agent.", startSecond: 2.1, endSecond: 4.6 },
+          ],
+        },
+      },
+    ],
+    reply: () => [
+      { kind: "thinking", text: "Drafting from the diff, then delegating the docs page." },
+      {
+        kind: "element",
+        name: "agent",
+        props: {
+          name: "Docs writer",
+          model: "claude-sonnet-4-5",
+          instructions:
+            "Update docs/signup.md to match the new field names. Change nothing outside that file.",
+          tools: [
+            {
+              name: "read_file",
+              description: "Read one file from the repo.",
+              inputSchema: {
+                type: "object",
+                properties: { path: { type: "string" } },
+                required: ["path"],
+              },
+            },
+            {
+              name: "apply_patch",
+              description: "Write one file, as a unified diff.",
+              inputSchema: {
+                type: "object",
+                properties: { path: { type: "string" }, patch: { type: "string" } },
+                required: ["path", "patch"],
+              },
+            },
+          ],
+          output: "type DocsEdit = {\n  path: string;\n  summary: string;\n};",
+        },
+      },
+      {
+        kind: "element",
+        name: "artifact",
+        props: {
+          title: "PR — Fix the signup submit",
+          description: "Draft · 1 commit · 3 files",
+          body: [
+            "The deploy renamed the signup field ids, and the submit handler still read them by",
+            "id, so it threw before it sent anything.",
+            "",
+            "The handler now reads FormData, which uses the name attributes the rename left alone.",
+            "The empty-email guard moved with it and has a test.",
+          ].join("\n"),
+        },
+      },
+      {
+        kind: "text",
+        text: "The docs agent is running. Say the word and I open the pull request.",
+      },
+    ],
+  },
 ];
 
 /** Playback pacing, ms. */
@@ -510,12 +741,52 @@ const TOKEN_STEP = 40;
 const TOKENS_PER_STEP = 2;
 const PART_GAP = 220;
 const TOOL_RUN = 700;
-const TURN_GAP = 600;
+const PROMPT_GAP = 500;
+const TURN_GAP = 900;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Words with their trailing whitespace, so newlines survive the split. */
 const tokenize = (text: string) => text.match(/\S+\s*/g) ?? [];
+
+/** The user turn as parts, whether it was written as a string or as parts. */
+export const promptParts = (prompt: DemoTurn["prompt"]): ViewPart[] =>
+  typeof prompt === "string" ? [{ kind: "text", text: prompt }] : prompt;
+
+/**
+ * Answer the canned approval gate, so the card can be seen in both states. The
+ * replayed chat and the static transcript both close it this way.
+ */
+export function answerApproval(
+  messages: ViewMessage[],
+  toolCallId: string,
+  approved: boolean,
+): ViewMessage[] {
+  return messages.map((message) => ({
+    ...message,
+    parts: message.parts.map((part) =>
+      part.kind === "tool" && part.toolCallId === toolCallId
+        ? {
+            ...part,
+            status: approved ? ("done" as const) : ("denied" as const),
+            approval: { id: toolCallId, approved },
+            output: approved
+              ? JSON.stringify(
+                  [
+                    { tag: "input", id: "email-address", name: "email", type: "email" },
+                    { tag: "input", id: "password", name: "password", type: "password" },
+                    { tag: "input", id: "given-name", name: "given_name", type: "text" },
+                    { tag: "input", id: "family-name", name: "family_name", type: "text" },
+                  ],
+                  null,
+                  2,
+                )
+              : "The user denied this call.",
+          }
+        : part,
+    ),
+  }));
+}
 
 /**
  * Replay one canned turn as a stream: text and thinking arrive token by token,
@@ -533,12 +804,18 @@ async function play(
     if (signal.aborted) return;
 
     if (part.kind === "tool") {
-      shown.push({ ...part, status: "running", output: undefined });
-      emit([...shown]);
-      await sleep(TOOL_RUN);
-      if (signal.aborted) return;
-      shown[shown.length - 1] = part;
-      emit([...shown]);
+      // A gate is asked, not run — it shows as pending from the start.
+      if (part.status === "pending") {
+        shown.push(part);
+        emit([...shown]);
+      } else {
+        shown.push({ ...part, status: "running", output: undefined });
+        emit([...shown]);
+        await sleep(TOOL_RUN);
+        if (signal.aborted) return;
+        shown[shown.length - 1] = part;
+        emit([...shown]);
+      }
     } else if (part.kind === "element") {
       // A rendered element arrives whole — there is nothing to stream.
       shown.push(part);
@@ -565,7 +842,7 @@ async function play(
  * agent hook that returns the same shape.
  */
 export interface DemoChatOptions {
-  /** Play every canned turn on mount. The playground sets this; a host page does not. */
+  /** Play the whole conversation on mount. The playground sets this; a host page does not. */
   autoStart?: boolean;
 }
 
@@ -601,7 +878,8 @@ export function useDemoChat({ autoStart = false }: DemoChatOptions = {}) {
       run.current = controller;
 
       const stamp = Date.now();
-      const parts = replies[turn.current % replies.length](stamp);
+      // Whatever the visitor types, the next scripted turn answers it.
+      const { reply } = turns[turn.current % turns.length];
       turn.current += 1;
 
       setMessages((current) => [
@@ -610,7 +888,7 @@ export function useDemoChat({ autoStart = false }: DemoChatOptions = {}) {
       ]);
       setIsStreaming(true);
 
-      play(parts, emitter(`assistant-${stamp}`), controller.signal).finally(() => {
+      play(reply(stamp), emitter(`assistant-${stamp}`), controller.signal).finally(() => {
         if (run.current === controller) run.current = null;
         if (!controller.signal.aborted) setIsStreaming(false);
       });
@@ -619,8 +897,8 @@ export function useDemoChat({ autoStart = false }: DemoChatOptions = {}) {
   );
 
   /**
-   * Stream every canned turn back to back, with no prompt in between — the
-   * playground opens on a reel of each renderer rather than an empty pane.
+   * Replay the whole conversation, prompts included — the playground opens on a
+   * session in progress rather than an empty pane.
    */
   const showcase = useCallback(() => {
     abort();
@@ -629,11 +907,19 @@ export function useDemoChat({ autoStart = false }: DemoChatOptions = {}) {
     setIsStreaming(true);
 
     void (async () => {
-      for (const [index, reply] of replies.entries()) {
+      for (const [index, scripted] of turns.entries()) {
         if (controller.signal.aborted) break;
         turn.current = index + 1;
         const stamp = Date.now();
-        await play(reply(stamp), emitter(`showcase-${index}`), controller.signal);
+
+        setMessages((current) => [
+          ...current,
+          { id: `demo-user-${index}`, role: "user", parts: promptParts(scripted.prompt) },
+        ]);
+        await sleep(PROMPT_GAP);
+        if (controller.signal.aborted) break;
+
+        await play(scripted.reply(stamp), emitter(`demo-${index}`), controller.signal);
         await sleep(TURN_GAP);
       }
       if (run.current === controller) run.current = null;
@@ -645,10 +931,17 @@ export function useDemoChat({ autoStart = false }: DemoChatOptions = {}) {
     if (autoStart) showcase();
   }, [autoStart, showcase]);
 
+  const respond = useCallback(
+    (toolCallId: string, approved: boolean) =>
+      setMessages((current) => answerApproval(current, toolCallId, approved)),
+    [],
+  );
+
   return {
     messages,
     isStreaming,
     send,
+    respond,
     stop: useCallback(() => {
       abort();
       setIsStreaming(false);

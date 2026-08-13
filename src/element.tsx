@@ -27,8 +27,13 @@ const TAG = "agent-chat";
  * the library's.
  *
  * Both slots are `display: contents`, so an unfilled one takes no room.
+ *
+ * One attribute: `generate-title` asks the model to name the conversation
+ * instead of taking the name from the first message. It costs one request.
  */
 export class AgentChatElement extends HTMLElement {
+  static observedAttributes = ["generate-title"];
+
   #root: ShadowRoot;
 
   constructor() {
@@ -38,18 +43,29 @@ export class AgentChatElement extends HTMLElement {
 
   connectedCallback() {
     if (!this.style.display) this.style.display = "block";
-    render(
-      <AgentChat
-        actions={<slot name="actions" style={u.contents} />}
-        emptyActions={<slot name="empty" style={u.contents} />}
-        style={u.fill}
-      />,
-      this.#root,
-    );
+    this.#render();
+  }
+
+  attributeChangedCallback() {
+    if (this.isConnected) this.#render();
   }
 
   disconnectedCallback() {
     render(null, this.#root);
+  }
+
+  // A second render into the same root is a diff, so the transcript survives an
+  // attribute change.
+  #render() {
+    render(
+      <AgentChat
+        actions={<slot name="actions" style={u.contents} />}
+        emptyActions={<slot name="empty" style={u.contents} />}
+        generateTitle={this.hasAttribute("generate-title")}
+        style={u.fill}
+      />,
+      this.#root,
+    );
   }
 }
 

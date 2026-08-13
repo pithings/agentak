@@ -26,8 +26,7 @@ import {
 import { buttonSx, type ButtonSize, type ButtonVariant } from "@/components/ui/button";
 import { useControllableState } from "@/lib/use-controllable-state";
 import { useInteraction } from "@/lib/use-interaction";
-import { CheckIcon, ChevronsUpDownIcon } from "@/lib/icons";
-import { u } from "@/styles/base";
+import { CheckIcon, ChevronsUpDownIcon, SearchIcon } from "@/lib/icons";
 import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 /**
@@ -41,7 +40,20 @@ const S = {
   // Was the `.popover-content.model-selector-content` compound: the
   // popover's own padding and width are wrong for a list, so this must reach
   // PopoverContent as `style` to keep outranking it.
-  modelSelectorContent: { boxSizing: "border-box", width: "20rem", padding: "0" },
+  //
+  // A column capped at the room the popover measured, which a virtual keyboard
+  // takes most of. `Command` and its list both clip, so both may shrink under
+  // it: the search field and the strip keep their height and the list gives up
+  // the rest, scrolling in what is left rather than opening off the top of the
+  // surface with no way to reach the first row.
+  modelSelectorContent: {
+    boxSizing: "border-box",
+    display: "flex",
+    flexDirection: "column",
+    width: "17rem",
+    maxHeight: "var(--popover-available, none)",
+    padding: "0",
+  },
   // The trigger renders `PopoverTrigger`, not `Button`, so its box comes from
   // `buttonSx()` (ui/button.tsx) over the `variant`/`size` props, plus the
   // properties Button does not set — `justifyContent`/`minWidth`/`maxWidth`
@@ -60,13 +72,37 @@ const S = {
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
+  // Shrinks to an ellipsis but never grows: the tick sits against the name, and
+  // the shortcut keeps the far side to itself over its own `margin-left: auto`.
   modelSelectorName: {
-    flex: "1",
+    flex: "0 1 auto",
+    minWidth: "0",
     overflow: "hidden",
     textAlign: "left",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
+  // A model list is long and reads as secondary chrome, so the text runs one
+  // step below `ui/command.tsx`. The boxes do not follow it down: a row is a
+  // finger target first, so it keeps a height a thumb can hit.
+  modelSelectorIcon: { width: "0.875rem", height: "0.875rem" },
+  // The tick is the last child, so the two `order`s put it back beside the name
+  // and leave the shortcut at the end of the row.
+  modelSelectorCheck: { order: "1" },
+  // Replacing the default magnifier drops what `CommandInput` set on it.
+  modelSelectorSearchIcon: { flexShrink: "0", color: "var(--muted-foreground)" },
+  modelSelectorInput: { height: "2.75rem", fontSize: "0.8125rem" },
+  modelSelectorList: { maxHeight: "18rem" },
+  modelSelectorEmpty: { padding: "1.25rem 0.75rem", fontSize: "0.75rem" },
+  // `minHeight` rather than `height`: a row that wraps grows, and the padding
+  // then keeps the text off the edges.
+  modelSelectorItem: {
+    gap: "0.5rem",
+    minHeight: "2.5rem",
+    padding: "0.5rem 0.625rem",
+    fontSize: "0.8125rem",
+  },
+  modelSelectorShortcut: { order: "2", fontSize: "0.6875rem" },
 } satisfies Record<string, Sx>;
 
 interface ModelSelectorContextValue {
@@ -125,7 +161,7 @@ function ModelSelectorTrigger({
   style,
   children,
   variant = "outline",
-  size = "sm",
+  size = "xs",
   ...props
 }: ModelSelectorTriggerProps) {
   const { focusVisible, handlers, hovered } = useInteraction<HTMLButtonElement>(props);
@@ -143,7 +179,7 @@ function ModelSelectorTrigger({
       {...handlers}
     >
       {children ?? <ModelSelectorValue />}
-      <ChevronsUpDownIcon style={sx(u.icon, S.modelSelectorChevron)} />
+      <ChevronsUpDownIcon style={sx(S.modelSelectorIcon, S.modelSelectorChevron)} />
     </PopoverTrigger>
   );
 }
@@ -219,20 +255,26 @@ function ModelSelectorContent({
 
 export type ModelSelectorInputProps = ComponentProps<typeof CommandInput>;
 
-const ModelSelectorInput = (props: ModelSelectorInputProps) => (
-  <CommandInput data-slot="model-selector-input" placeholder="Search models…" {...props} />
+const ModelSelectorInput = ({ style, ...props }: ModelSelectorInputProps) => (
+  <CommandInput
+    data-slot="model-selector-input"
+    icon={<SearchIcon style={sx(S.modelSelectorIcon, S.modelSelectorSearchIcon)} />}
+    placeholder="Search models…"
+    style={sx(S.modelSelectorInput, style)}
+    {...props}
+  />
 );
 
 export type ModelSelectorListProps = ComponentProps<typeof CommandList>;
 
-const ModelSelectorList = (props: ModelSelectorListProps) => (
-  <CommandList data-slot="model-selector-list" {...props} />
+const ModelSelectorList = ({ style, ...props }: ModelSelectorListProps) => (
+  <CommandList data-slot="model-selector-list" style={sx(S.modelSelectorList, style)} {...props} />
 );
 
 export type ModelSelectorEmptyProps = ComponentProps<typeof CommandEmpty>;
 
-const ModelSelectorEmpty = ({ children, ...props }: ModelSelectorEmptyProps) => (
-  <CommandEmpty data-slot="model-selector-empty" {...props}>
+const ModelSelectorEmpty = ({ children, style, ...props }: ModelSelectorEmptyProps) => (
+  <CommandEmpty data-slot="model-selector-empty" style={sx(S.modelSelectorEmpty, style)} {...props}>
     {children ?? "No models found."}
   </CommandEmpty>
 );
@@ -248,14 +290,23 @@ export type ModelSelectorItemProps = CommandItemProps & {
   checked?: boolean;
 };
 
-function ModelSelectorItem({ children, checked, value, ...props }: ModelSelectorItemProps) {
+function ModelSelectorItem({ children, checked, style, value, ...props }: ModelSelectorItemProps) {
   const { value: chosen } = useModelSelector("ModelSelectorItem");
   const ticked = checked ?? chosen === value;
 
   return (
-    <CommandItem data-checked={ticked} data-slot="model-selector-item" value={value} {...props}>
+    <CommandItem
+      data-checked={ticked}
+      data-slot="model-selector-item"
+      style={sx(S.modelSelectorItem, style)}
+      value={value}
+      {...props}
+    >
       {children}
-      <CheckIcon data-checked={ticked} style={sx(u.icon, !ticked && { visibility: "hidden" })} />
+      <CheckIcon
+        data-checked={ticked}
+        style={sx(S.modelSelectorIcon, S.modelSelectorCheck, !ticked && { visibility: "hidden" })}
+      />
     </CommandItem>
   );
 }
@@ -273,8 +324,12 @@ const ModelSelectorName = ({ className, style, ...props }: ModelSelectorNameProp
 
 export type ModelSelectorShortcutProps = ComponentProps<typeof CommandShortcut>;
 
-const ModelSelectorShortcut = (props: ModelSelectorShortcutProps) => (
-  <CommandShortcut data-slot="model-selector-shortcut" {...props} />
+const ModelSelectorShortcut = ({ style, ...props }: ModelSelectorShortcutProps) => (
+  <CommandShortcut
+    data-slot="model-selector-shortcut"
+    style={sx(S.modelSelectorShortcut, style)}
+    {...props}
+  />
 );
 
 export type ModelSelectorSeparatorProps = ComponentProps<typeof CommandSeparator>;

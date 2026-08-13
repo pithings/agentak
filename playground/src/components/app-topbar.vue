@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ENTRIES } from "../catalog";
-import { openChat } from "../chat-store";
+import { chat, toggleChat } from "../chat-store";
 import { theme, toggleTheme } from "../theme";
 
 const emit = defineEmits<{ (event: "toggle-nav"): void }>();
@@ -28,76 +27,68 @@ const emit = defineEmits<{ (event: "toggle-nav"): void }>();
         >
           wa
         </span>
-        <span class="text-sm font-semibold tracking-tight">agentak</span>
-        <span
-          class="hidden rounded-full border border-line px-2 py-0.5 text-[0.6875rem] text-soft sm:inline"
-        >
-          workbench
-        </span>
+        <span class="text-sm font-semibold tracking-tight">Agentak</span>
       </RouterLink>
 
-      <span class="ml-auto hidden text-xs text-soft md:inline"
-        >{{ ENTRIES.length }} components</span
-      >
-
-      <button
-        type="button"
-        class="rounded-md border border-line p-2 text-soft hover:bg-fill hover:text-ink"
-        :aria-label="theme === 'dark' ? 'Use the light theme' : 'Use the dark theme'"
-        @click="toggleTheme()"
-      >
-        <svg
-          v-if="theme === 'dark'"
-          viewBox="0 0 24 24"
-          class="size-4"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
+      <div class="ml-auto flex items-center gap-3">
+        <button
+          type="button"
+          class="rounded-md border border-line p-2 text-soft hover:bg-fill hover:text-ink"
+          :aria-label="theme === 'dark' ? 'Use the light theme' : 'Use the dark theme'"
+          @click="toggleTheme()"
         >
-          <circle cx="12" cy="12" r="4" />
-          <path
-            d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"
-            stroke-linecap="round"
-          />
-        </svg>
-        <svg
-          v-else
-          viewBox="0 0 24 24"
-          class="size-4"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke-linejoin="round" />
-        </svg>
-      </button>
+          <svg
+            v-if="theme === 'dark'"
+            viewBox="0 0 24 24"
+            class="size-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"
+              stroke-linecap="round"
+            />
+          </svg>
+          <svg
+            v-else
+            viewBox="0 0 24 24"
+            class="size-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke-linejoin="round" />
+          </svg>
+        </button>
 
-      <button
-        type="button"
-        class="hidden items-center gap-1.5 rounded-md bg-brand px-3 py-2 text-xs font-medium text-brand-ink hover:opacity-90 sm:inline-flex"
-        @click="openChat()"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          class="size-3.5"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
+        <button
+          type="button"
+          class="hidden items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium hover:opacity-90 sm:inline-flex"
+          :class="
+            chat.open
+              ? 'border border-line text-soft hover:bg-fill hover:text-ink'
+              : 'border border-transparent bg-brand text-brand-ink'
+          "
+          :aria-expanded="chat.open"
+          @click="toggleChat()"
         >
-          <path
-            d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-4-.8L3 21l1.9-4.6A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"
-            stroke-linejoin="round"
-          />
-        </svg>
-        Ask the agent
-      </button>
-
-      <span
-        class="grid size-7 place-items-center rounded-full bg-fill text-[0.6875rem] font-medium text-soft"
-        title="Signed in"
-      >
-        PP
-      </span>
+          <svg
+            viewBox="0 0 24 24"
+            class="size-3.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-4-.8L3 21l1.9-4.6A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"
+              stroke-linejoin="round"
+            />
+          </svg>
+          {{ chat.open ? "Hide the agent" : "Ask the agent" }}
+        </button>
+      </div>
     </div>
   </header>
 </template>

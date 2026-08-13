@@ -68,26 +68,27 @@ const tokenizeLines = (code: string, language: CodeLanguage): KeyedLine[] => {
 };
 
 const S = {
+  // A surface in the flow, not a card on it: the tint alone sets the code off
+  // from the text around it, at the width of that text.
   code: {
     boxSizing: "border-box",
     position: "relative",
     width: "100%",
     overflow: "hidden",
-    border: "1px solid var(--border)",
     borderRadius: "var(--radius-md)",
-    background: "var(--background)",
+    background: "var(--muted-surface)",
     color: "var(--foreground)",
     contentVisibility: "auto",
     containIntrinsicSize: "auto 200px",
   },
+  // The header floats on that surface — it labels the fence, it does not head
+  // a panel, so it takes no rule and no bar of its own.
   codeHeader: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: "0.5rem",
-    borderBottom: "1px solid var(--border)",
-    background: "color-mix(in oklab, var(--muted) 80%, transparent)",
-    padding: "0.5rem 0.75rem",
+    padding: "0.5rem 0.75rem 0",
     color: "var(--muted-foreground)",
     fontSize: "0.75rem",
   },
@@ -108,13 +109,13 @@ const S = {
   },
   codePre: {
     margin: "0",
-    padding: "1rem",
+    padding: "0.75rem",
     color: "var(--shj-fg)",
-    fontSize: "0.875rem",
+    fontSize: "0.8125rem",
   },
   codeBody: {
     fontFamily: "var(--font-mono)",
-    fontSize: "0.875rem",
+    fontSize: "0.8125rem",
   },
   codeLine: {
     display: "block",

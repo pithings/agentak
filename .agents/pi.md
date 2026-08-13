@@ -23,6 +23,7 @@ useAgent: every event -> toViewMessages(agent.state) -> Chat
 | `tools.ts`        | `read_page`, `find_elements`                              |
 | `transcript.ts`   | `AgentMessage[]` -> renderable parts, and the usage panel |
 | `use-agent.ts`    | preact state over `Agent` events                          |
+| `title.ts`        | the conversation's name — derived, or asked of the model  |
 
 ## Imports stay dynamic
 
@@ -113,6 +114,18 @@ The panel opens on the models of the chosen provider, with a strip under the sea
 input that goes back to the providers — outside the list, so the filter cannot hide the
 way back; backspace on an empty field does the same. Picking a model assigns
 `agent.state.model` and closes.
+
+**On a phone the list goes above the field**, by `order` alone — the DOM keeps the
+field first, so the focus the popover gives out and the tab order are unchanged. The
+panel is bottom-anchored, growing up from a trigger in the composer, so anything that
+takes room off the top moves every row down but the last: a keyboard opening, or the
+composer dropping back when one closes. With the field first, it moved out from under
+the finger that was tapping it, the tap landed on the row that took its place, and
+nothing was focused. Last, it cannot move — the list gives the height up — and it sits
+against the keyboard, where a field being typed into belongs. The field takes the focus
+on open there as well as on a desktop: a panel you cannot type in until you find the
+field and tap it is worse than one that costs a keyboard, and the keyboard's room is
+handled by the cap rather than by leaving the field cold.
 
 **Picking a provider is half a choice**, so it goes on to that provider's models
 instead of closing. Nothing picks a model for anyone: the effect in `AgentChat` restores

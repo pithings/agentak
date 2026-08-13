@@ -13,7 +13,8 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
  * the `Popover` root, which is the anchor. So it moves with the anchor on
  * scroll for free, and it is clipped by an ancestor with `overflow: hidden`.
  * `side`/`align` are plain CSS; the only collision handling is a flip to the
- * opposite side, see `fitSide`.
+ * opposite side and a `--popover-available` height for a panel that can give
+ * some back, see `fit`.
  */
 // The box and the side/align choice are inline (see S.content, SIDE_OFFSET and
 // ALIGN below), so DropdownMenu, ModelSelector, InlineCitation and OpenInChat
@@ -26,7 +27,13 @@ const S = {
     position: "absolute",
     zIndex: "50",
     width: "18rem",
-    maxWidth: "100%",
+    // Against the viewport, not the anchor. A percentage would resolve against
+    // the containing block — the `Popover` root, which is inline-block around
+    // the trigger — so a wide panel on a small trigger, an InlineCitation
+    // badge, would be squeezed to the badge. A panel that must instead stay
+    // inside its anchor's row passes `maxWidth: "100%"` itself; `chat/picker.tsx`
+    // is the one that does.
+    maxWidth: "var(--popover-max-width, calc(100vw - 1rem))",
     border: "1px solid var(--border)",
     borderRadius: "var(--radius-md)",
     background: "var(--background)",
@@ -102,33 +109,104 @@ function focusables(node: HTMLElement): HTMLElement[] {
   );
 }
 
+/** Kept between the panel and the edge it stops at. */
+const EDGE = 8;
+
+/** A panel is never capped below this — under it, nothing is usable anyway. */
+const FLOOR = 128;
+
+interface Fit {
+  side: PopoverSide;
+  /** Room left on that side, or `null` where nothing constrains the panel. */
+  available: number | null;
+}
+
+/** Up out of a shadow tree as well as up the tree: a panel may be in one. */
+function up(node: Element): Element | null {
+  if (node.parentElement) return node.parentElement;
+  const root = node.getRootNode();
+  return root instanceof ShadowRoot ? root.host : null;
+}
+
+/**
+ * The nearest ancestor that clips the panel, or null for none.
+ *
+ * Resolved once per open: the chain cannot change while the panel is up, only
+ * the rects can — and the fit is read every frame, so the walk must not be.
+ */
+function clipper(panel: HTMLElement, view: Window): Element | null {
+  for (let node = up(panel); node; node = up(node)) {
+    const style = view.getComputedStyle(node);
+    if (style.overflowX !== "visible" || style.overflowY !== "visible") return node;
+  }
+  return null;
+}
+
+/**
+ * What the panel opens into: the visible band of the viewport, narrowed to the
+ * clipping ancestor.
+ *
+ * The **visual** viewport, because a virtual keyboard takes the foot of the
+ * layout viewport without resizing it — a panel measured against the layout
+ * viewport would size itself to open behind the keyboard. The clipping ancestor
+ * matters just as much: the chat surface is `overflow: hidden`, so a corner box
+ * cuts a panel off long before the viewport does.
+ */
+function bounds(clip: Element | null, view: Window) {
+  const viewport = view.visualViewport;
+  const top = viewport?.offsetTop ?? 0;
+  const left = viewport?.offsetLeft ?? 0;
+  const box = {
+    bottom: top + (viewport?.height ?? view.innerHeight),
+    left,
+    right: left + (viewport?.width ?? view.innerWidth),
+    top,
+  };
+
+  if (!clip) return box;
+
+  const rect = clip.getBoundingClientRect();
+  return {
+    bottom: Math.min(box.bottom, rect.bottom),
+    left: Math.max(box.left, rect.left),
+    right: Math.min(box.right, rect.right),
+    top: Math.max(box.top, rect.top),
+  };
+}
+
 /**
  * Flip to the opposite side when the panel does not fit on the wanted one and
- * does fit opposite. Measured against the viewport only — no clipping ancestor
- * is read, and the panel is never shifted along its axis or clamped. `side` is
- * always the wanted side, never the resolved one, so this cannot oscillate.
+ * does fit opposite, and report the room the resolved side leaves. The panel is
+ * never shifted along its axis. `side` is always the wanted side, never the
+ * resolved one, so this cannot oscillate.
  */
-function fitSide(
+function fit(
   side: PopoverSide,
   offset: number,
   panel: HTMLElement,
   anchor: HTMLElement | null,
-): PopoverSide {
-  const view = panel.ownerDocument.defaultView;
-  if (!anchor || !view) return side;
+  clip: Element | null,
+  view: Window,
+): Fit {
+  if (!anchor) return { available: null, side };
 
   const box = anchor.getBoundingClientRect();
   const rect = panel.getBoundingClientRect();
+  const edge = bounds(clip, view);
   const room = {
-    bottom: view.innerHeight - box.bottom,
-    left: box.left,
-    right: view.innerWidth - box.right,
-    top: box.top,
+    bottom: edge.bottom - box.bottom,
+    left: box.left - edge.left,
+    right: edge.right - box.right,
+    top: box.top - edge.top,
   };
   const needed = (side === "top" || side === "bottom" ? rect.height : rect.width) + offset;
   const opposite = OPPOSITE[side];
+  const resolved = room[side] < needed && room[opposite] >= needed ? opposite : side;
 
-  return room[side] < needed && room[opposite] >= needed ? opposite : side;
+  return {
+    available: Math.round(Math.max(room[resolved] - offset - EDGE, FLOOR)),
+    side: resolved,
+  };
 }
 
 export type PopoverProps = WithSx<Omit<ComponentProps<"div">, "onToggle">> & {
@@ -227,6 +305,8 @@ export type PopoverContentProps = WithSx<ComponentProps<"div">> & {
   avoidCollisions?: boolean;
   /** Focus the panel on open, keep Tab inside it, and give focus back on close. */
   trapFocus?: boolean;
+  /** Focus the first control inside on open. Off leaves it on the panel itself. */
+  autoFocus?: boolean;
 };
 
 function PopoverContent({
@@ -237,13 +317,14 @@ function PopoverContent({
   sideOffset = 4,
   avoidCollisions = true,
   trapFocus = true,
+  autoFocus = true,
   onKeyDown,
   ref,
   ...props
 }: PopoverContentProps) {
   const { open, setOpen, contentId, triggerId, triggerRef, rootRef } = usePopover("PopoverContent");
   const contentRef = useRef<HTMLDivElement>(null);
-  const [resolvedSide, setResolvedSide] = useState(side);
+  const [fitted, setFitted] = useState<Fit>({ available: null, side });
 
   // Merged, not overridden: the panel needs its own ref for dismissal and focus,
   // so a caller's ref is forwarded alongside it rather than replacing it.
@@ -289,26 +370,48 @@ function PopoverContent({
     };
   }, [open, setOpen, triggerRef]);
 
-  // The panel scrolls with its anchor, so only the flip decision goes stale.
+  /**
+   * The fit, read every frame the panel is open.
+   *
+   * Not on `resize` and `scroll`: the anchor moves for reasons neither event
+   * reports. The chat composer lifts over a phone keyboard and drops back when
+   * it closes — a state change, one frame *after* the viewport event that
+   * caused it — and the textarea under the panel grows as it is typed in. A
+   * panel measured on the event alone keeps whatever room the old layout had,
+   * which is how one opened over a keyboard stayed at its floor after the
+   * keyboard was gone.
+   *
+   * A frame costs three rects. The clipping ancestor is resolved once, so the
+   * walk and its `getComputedStyle` are not per-frame, and the state is only
+   * written when a number actually changes.
+   */
   useEffect(() => {
     const node = contentRef.current;
     if (!open || !node || !avoidCollisions) {
-      setResolvedSide(side);
+      setFitted({ available: null, side });
       return;
     }
 
-    const measure = () => setResolvedSide(fitSide(side, sideOffset, node, rootRef.current));
-    measure();
-
     const view = node.ownerDocument.defaultView;
     if (!view) return;
-    view.addEventListener("resize", measure);
-    view.addEventListener("scroll", measure, { capture: true, passive: true });
 
-    return () => {
-      view.removeEventListener("resize", measure);
-      view.removeEventListener("scroll", measure, { capture: true });
+    const clip = clipper(node, view);
+    let frame = 0;
+    let last = "";
+
+    const tick = () => {
+      const next = fit(side, sideOffset, node, rootRef.current, clip, view);
+      const key = `${next.side}:${next.available}`;
+      if (key !== last) {
+        last = key;
+        setFitted(next);
+      }
+      frame = view.requestAnimationFrame(tick);
     };
+
+    tick();
+
+    return () => view.cancelAnimationFrame(frame);
   }, [avoidCollisions, open, rootRef, side, sideOffset]);
 
   useEffect(() => {
@@ -317,7 +420,7 @@ function PopoverContent({
     const root = node.getRootNode() as Document | ShadowRoot;
     const trigger = triggerRef.current;
 
-    const first = focusables(node)[0];
+    const first = autoFocus ? focusables(node)[0] : undefined;
     if (first) first.focus();
     else node.focus();
 
@@ -327,19 +430,30 @@ function PopoverContent({
       const active = root.activeElement;
       if (!active || active === node.ownerDocument.body || node.contains(active)) trigger?.focus();
     };
-  }, [open, trapFocus, triggerRef]);
+  }, [autoFocus, open, trapFocus, triggerRef]);
 
   // Unmounted rather than hidden, so nothing inside stays reachable or stale.
   if (!open) return null;
 
+  const resolvedSide = fitted.side;
+
   // Merged, not overridden: a caller's own `style` must not drop the offset.
   // The offset is a custom property because SIDE_OFFSET's margin reads it, and
   // callers may still set `--popover-offset` on the panel directly.
+  //
+  // `--popover-available` is the room measured on the resolved side, for a panel
+  // that can give height back — `model-selector.tsx` caps its list with it.
+  // Always written, never left off: a custom property inherits, and a panel
+  // inside a panel would otherwise read the outer one's room as its own.
   const styles = sx(
     S.content,
     SIDE_OFFSET[resolvedSide],
     ALIGN[`${resolvedSide}-${align}`],
-    { "--popover-offset": `${sideOffset}px` } as Sx,
+    {
+      "--popover-available":
+        fitted.available == null ? "none" : `${Math.round(fitted.available)}px`,
+      "--popover-offset": `${sideOffset}px`,
+    } as Sx,
     style,
   );
 

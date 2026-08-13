@@ -18,9 +18,27 @@ pointer and focus after a delay.
   `HoverCardContent` sets `trapFocus={false}`, so a hover card never moves the caret.
 - **No floating-ui.** The panel is an absolutely positioned child of the anchor, so it
   scrolls with it but is clipped by any ancestor with `overflow: hidden`. Collision
-  handling is one flip to the opposite side (`fitSide`), measured on open, resize and
-  scroll; nothing is shifted along its axis and nothing is clamped. `side` stays the
-  wanted side, never the resolved one, so the flip cannot oscillate.
+  handling is one flip to the opposite side (`fit`); nothing is shifted along its
+  axis. `side` stays the wanted side, never the resolved one, so the flip cannot
+  oscillate.
+- **The fit is read every frame the panel is open**, not on `resize` and `scroll`. The
+  anchor moves for reasons neither event reports: the chat composer lifts over a phone
+  keyboard and drops back when it closes — a state change, a frame _after_ the viewport
+  event that caused it — and the textarea under the panel grows as it is typed in. A
+  panel measured on the event alone keeps the room the old layout had, which is how one
+  opened over a keyboard stayed at its floor once the keyboard was gone. A frame costs
+  three rects: the clipping ancestor is resolved once per open (`clipper`), so neither
+  the walk nor its `getComputedStyle` is per-frame, and the state is written only when a
+  number changes.
+- **`--popover-available` is the room the resolved side leaves**, written on every
+  panel — a panel that can give height back caps itself with it, and
+  `model-selector.tsx` is the one that does. `bounds()` measures it against the
+  **visual** viewport intersected with the nearest clipping ancestor: a virtual
+  keyboard takes the foot of the layout viewport without resizing it, and the chat
+  surface is `overflow: hidden`, so neither the viewport alone nor the ancestor alone
+  is the edge the panel stops at. It is always written, `none` where nothing constrains
+  the panel — a custom property inherits, so a panel inside a panel would otherwise
+  read the outer one's room as its own.
 - **No portal, no arrow, no `collisionBoundary`/`collisionPadding`/`sticky`, no exit
   animation** — the panel unmounts when closed.
 - **No menu semantics.** The panel is a `dialog`. That layer is `dropdown-menu`.

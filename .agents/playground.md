@@ -11,25 +11,27 @@ Both set `reactAliasesEnabled: false`, as the root does.
 
 `pnpm dev` serves it on `:4050`. A vue SPA in tailwind — a host app, not a shell
 around the library: a topbar, a sidebar that browses every component, a catalog
-grid, and the chatbox in the corner. It is the closest thing the repo has to the
-page a consumer would drop the element into.
+grid, and the chatbox — a rail on the right on a desktop, a box in the corner on
+anything narrower. It is the closest thing the repo has to the page a consumer would
+drop the element into.
 
-| File                | What                                                                  |
-| ------------------- | --------------------------------------------------------------------- |
-| `main.ts`           | declares the `tokens` in a `<style>`, then mounts the app on `#app`   |
-| `app.vue`           | the shell: topbar, sidebar, `<RouterView>`, chatbox                   |
-| `router.ts`         | `/` the readme, `/components` the catalog, `/c/:name` one component   |
-| `styles.css`        | `@import "tailwindcss"`, and the `@theme` that reads the `--*` names  |
-| `theme.ts`          | `.dark` on the root — the whole theme switch, page and widget         |
-| `chat-store.ts`     | the widget state the topbar and the catalog both reach for            |
-| `components/*.vue`  | topbar, sidebar, chatbox, preview card, and the preact bridge         |
-| `views/*.vue`       | the readme home, the catalog grid, and the single-component page      |
-| `catalog.tsx`       | every component with fixture data, plus the lookups the routes use    |
-| `demo-chat.ts`      | the canned turns and the catalog fixtures; `autoStart` streams them   |
-| `demo-agent.tsx`    | `Chat` over the canned turns — no loop, no key                        |
-| `chat-actions.tsx`  | the page's own buttons — minimise, back to live, play the demo        |
-| `demo-elements.tsx` | the demo renderers, registered into the element registry              |
-| `demo-*.tsx`        | data-driven wrappers, so the demo drives compound elements from props |
+| File                  | What                                                                  |
+| --------------------- | --------------------------------------------------------------------- |
+| `main.ts`             | declares the `tokens` in a `<style>`, then mounts the app on `#app`   |
+| `app.vue`             | the shell: topbar, sidebar, `<RouterView>`, chatbox                   |
+| `router.ts`           | `/` readme, `/components` catalog, `/demo` transcript, `/c/:name` one |
+| `styles.css`          | `@import "tailwindcss"`, and the `@theme` that reads the `--*` names  |
+| `theme.ts`            | `.dark` on the root — the whole theme switch, page and widget         |
+| `chat-store.ts`       | the widget state the topbar and the catalog both reach for            |
+| `components/*.vue`    | topbar, sidebar, chatbox, preview card, and the preact bridge         |
+| `views/*.vue`         | readme home, catalog grid, demo transcript, single-component page     |
+| `catalog.tsx`         | every component with fixture data, plus the lookups the routes use    |
+| `demo-chat.ts`        | the scripted conversation; `autoStart` streams it, prompts included   |
+| `demo-transcript.tsx` | the same turns settled, with no playback — the `/demo` page           |
+| `demo-agent.tsx`      | `Chat` over the canned turns — no loop, no key                        |
+| `chat-actions.tsx`    | the page's own buttons — minimise, back to live, play the demo        |
+| `demo-elements.tsx`   | the demo renderers, registered into the element registry              |
+| `demo-*.tsx`          | data-driven wrappers, so the demo drives compound elements from props |
 
 ### Two frameworks, one page
 
@@ -38,7 +40,9 @@ The page is vue; every component in the library is preact. They meet in
 neither patches the other's nodes. A catalog preview is one such island; the demo
 chat is another.
 
-The chatbox is not an island. It opens with the page on the **live** agent —
+The chatbox is not an island. It opens with the page — a phone excepted, where the
+sheet would cover the page a visitor came for, so `chat-store.ts` starts minimised
+and unmounted and the launcher waits. It opens on the **live** agent —
 `<agent-chat>`, the custom element, so the agent runs behind a shadow root: none
 of the page's tailwind reaches in, and nothing of the agent reaches out. Only
 the `--*` tokens cross, because a custom property inherits. That makes the
@@ -61,23 +65,53 @@ prop for the demo island — which needs no launcher of its own. The chat is the
 box never loses its minimise button; the empty slot shows only before the first
 message.
 
-The panel hides with `v-show` rather than unmounting, so minimising keeps the
-transcript; changing mode does not. Escape minimises it as well, from inside the
-agent too — a keyboard event is composed, so it crosses the shadow boundary. The
-handler skips a `defaultPrevented` Escape, which is how one keystroke dismisses an
-open popover **or** the box, never both: `PopoverContent` calls `preventDefault()`
-when it closes on Escape.
+The panel hides rather than unmounting, so minimising keeps the transcript;
+changing mode does not. Escape minimises it as well, from inside the agent too — a
+keyboard event is composed, so it crosses the shadow boundary. The handler skips a
+`defaultPrevented` Escape, which is how one keystroke dismisses an open popover
+**or** the box, never both: `PopoverContent` calls `preventDefault()` when it closes
+on Escape. The docked rail is the exception — it covers nothing, so Escape in its
+composer must not take a column of the page away.
 
-The launcher and the panel share the bottom-right corner — the button is the one
-element in flow, the panel is absolute over it, and both scale from that corner —
-so the bubble grows into the box and shrinks back out of it. The launcher is gone
-while the box is up, and the header chevron is what minimises it. Both transitions
-carry `motion-reduce:transition-none`.
+### Three layouts, one surface
 
-Under `sm` the panel leaves the corner: `max-sm:` turns it `fixed` and full width,
-a sheet on the bottom edge that scales from the bottom — a phone gets the whole
-width, with no gutter to eat the transcript. The library constrains no width of its
-own, so this is the host page's call and lives in the widget alone.
+Two media queries in the widget pick between them, watched rather than read once, so
+a resize restyles the one agent instead of mounting a second and losing the
+transcript. The library constrains no size of its own: all of this is the host
+page's call and lives in the widget alone.
+
+| Width        | Shape                                                    |
+| ------------ | -------------------------------------------------------- |
+| `lg` and up  | a rail docked on the right, a column of the shell's row  |
+| `sm` to `lg` | the floating box, over the bottom-right corner           |
+| under `sm`   | a sheet on the whole viewport, no rounding and no border |
+
+**The rail** is chrome of the page, not a box over it. `app.vue` puts the widget in
+the same flex row as the sidebar and `<main>`, opposite the sidebar and sticky under
+the topbar at full height, so the page narrows to make room and takes it back when
+the rail collapses. Minimising animates the wrapper's `width` to `0`; the panel keeps
+the rail width inside that wrapper and is clipped by it, so it travels out past the
+right edge rather than reflowing its transcript on the way. Because the panel stays
+displayed while clipped, `inert` is what keeps the hidden transcript out of the tab
+order.
+
+**Below `lg`** the wrapper is `display: contents` and puts nothing in the row: the
+panel is `fixed` on its own, in the corner or over the whole screen. It scales from
+the corner it sits in, and the launcher — `fixed` in that same corner in every
+layout, and a sibling of the rail, never a child that the collapse would clip —
+scales from the same point, so the bubble grows into the box and shrinks back out of
+it. The launcher shows only while the surface is minimised, and the header chevron is
+what minimises it. Both transitions carry `motion-reduce:transition-none`.
+
+The sheet keeps that full height when the keyboard opens — it does **not** resize
+itself to the visual viewport. It did once, and the cost was a strip of page showing
+below it: a browser that overlays the keyboard rather than shrinking the layout
+viewport leaves `visualViewport` a frame behind the animation, and every pixel the
+sheet gives up is a pixel of the page behind it. `fixed inset-0` has nothing to show
+through, and the agent lifts its own composer over the keyboard instead — see
+`useKeyboardInset` in the library. What the widget does own is holding the document
+still under the sheet: `overflow: hidden` and `overscroll-behavior: none` on the root
+while the box is up and narrow.
 
 `vite.config.ts` tells the vue compiler that `agent-chat` is a custom element, else
 the template resolves it as a component and warns.

@@ -10,7 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  useCollapsible,
+} from "@/components/ui/collapsible";
 import { buttonSx } from "@/components/ui/button";
 import { ChevronsUpDownIcon } from "@/lib/icons";
 import { useInteraction } from "@/lib/use-interaction";
@@ -44,13 +49,11 @@ const S = {
   planDescription: {
     textWrap: "balance",
   },
-  // Was the `.card-header.plan-header` compound: a flex row instead of
-  // the card's own grid. CardHeader's display and alignment are inline now
-  // (see ui/card.tsx), so this has to reach it as `style` to still win.
-  planHeader: {
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
+  // Title and description toggle too, so they read as part of the trigger.
+  // The button stays the keyboard path — these are pointer only.
+  planToggle: {
+    cursor: "pointer",
+    userSelect: "none",
   },
   planSteps: {
     paddingLeft: "1.25rem",
@@ -96,19 +99,30 @@ export const Plan = ({ className, isStreaming = false, children, style, ...props
 
 export type PlanHeaderProps = ComponentProps<typeof CardHeader>;
 
-export const PlanHeader = ({ style, ...props }: PlanHeaderProps) => (
-  <CardHeader data-slot="plan-header" style={sx(S.planHeader, style)} {...props} />
+// The card header's own grid is the layout: title on the first row,
+// description under it, the action in a column of its own.
+export const PlanHeader = (props: PlanHeaderProps) => (
+  <CardHeader data-slot="plan-header" {...props} />
 );
 
 export type PlanTitleProps = Omit<ComponentProps<typeof CardTitle>, "children"> & {
   children: string;
 };
 
-export const PlanTitle = ({ children, ...props }: PlanTitleProps) => {
+export const PlanTitle = ({ children, onClick, style, ...props }: PlanTitleProps) => {
   const { isStreaming } = usePlan();
+  const { open, setOpen } = useCollapsible("PlanTitle");
 
   return (
-    <CardTitle data-slot="plan-title" {...props}>
+    <CardTitle
+      data-slot="plan-title"
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) setOpen(!open);
+      }}
+      style={sx(S.planToggle, style)}
+      {...props}
+    >
       {isStreaming ? <Shimmer>{children}</Shimmer> : children}
     </CardTitle>
   );
@@ -118,14 +132,25 @@ export type PlanDescriptionProps = Omit<ComponentProps<typeof CardDescription>, 
   children: string;
 };
 
-export const PlanDescription = ({ className, children, style, ...props }: PlanDescriptionProps) => {
+export const PlanDescription = ({
+  className,
+  children,
+  onClick,
+  style,
+  ...props
+}: PlanDescriptionProps) => {
   const { isStreaming } = usePlan();
+  const { open, setOpen } = useCollapsible("PlanDescription");
 
   return (
     <CardDescription
       className={className}
       data-slot="plan-description"
-      style={sx(S.planDescription, style)}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) setOpen(!open);
+      }}
+      style={sx(S.planDescription, S.planToggle, style)}
       {...props}
     >
       {isStreaming ? <Shimmer>{children}</Shimmer> : children}

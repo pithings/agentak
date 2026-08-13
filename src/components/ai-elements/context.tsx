@@ -33,8 +33,8 @@ const S = {
   // Only while the pointer is away: the ghost variant repaints the colour on
   // hover, and it is `buttonSx` that paints it now.
   contextTrigger: { color: "var(--muted-foreground)" },
-  // The ring is bigger than a button icon.
-  contextRing: { width: "1.25rem", height: "1.25rem" },
+  // Bigger than a button icon, because the reading sits inside it.
+  contextRing: { width: "1.5rem", height: "1.5rem" },
   // The ring is drawn from 12 o'clock, so the arc turns a quarter back.
   contextRingTrack: {
     opacity: "0.25",
@@ -43,6 +43,13 @@ const S = {
     opacity: "0.7",
     transform: "rotate(-90deg)",
     transformOrigin: "center",
+  },
+  // In user units, so the reading scales with the ring.
+  contextRingLabel: {
+    fill: "currentColor",
+    fontSize: "9px",
+    fontWeight: "500",
+    fontVariantNumeric: "tabular-nums",
   },
   contextContent: {
     boxSizing: "border-box",
@@ -197,6 +204,7 @@ export const Context = ({
   );
 };
 
+/** The ring, with the reading inside it — `role="img"` hides the text, so the label carries it. */
 const ContextIcon = () => {
   const { usedTokens, maxTokens } = useContextValue();
   const circumference = 2 * Math.PI * ICON_RADIUS;
@@ -204,12 +212,12 @@ const ContextIcon = () => {
 
   return (
     <svg
-      aria-label="Model context usage"
-      height="20"
+      aria-label={`Model context usage: ${percent.format(usedTokens / maxTokens)}`}
+      height="24"
       role="img"
       style={sx(reset.svg, S.contextRing)}
       viewBox={`0 0 ${ICON_VIEWBOX} ${ICON_VIEWBOX}`}
-      width="20"
+      width="24"
     >
       <circle
         cx={ICON_CENTER}
@@ -232,6 +240,16 @@ const ContextIcon = () => {
         stroke-width={ICON_STROKE_WIDTH}
         style={S.contextRingArc}
       />
+      {/* Whole percent only — a fraction does not fit the ring. */}
+      <text
+        dominant-baseline="central"
+        style={S.contextRingLabel}
+        text-anchor="middle"
+        x={ICON_CENTER}
+        y={ICON_CENTER}
+      >
+        {Math.round(used * PERCENT_MAX)}
+      </text>
     </svg>
   );
 };
@@ -240,30 +258,30 @@ export type ContextTriggerProps = WithSx<ComponentProps<typeof CollapsibleTrigge
 
 /**
  * A `CollapsibleTrigger`, not a `Button` — so it carries the whole button look
- * itself, states included. The default children end with the ring, which is the
- * icon `:has(> svg)` used to see.
+ * itself, states included. The default child is the ring alone, the reading
+ * inside it, so the trigger is a square the size of any other footer icon.
  */
 export const ContextTrigger = ({ className, style, children, ...props }: ContextTriggerProps) => {
-  const { usedTokens, maxTokens } = useContextValue();
   const { focusVisible, handlers, hovered } = useInteraction<HTMLButtonElement>(props);
 
   return (
     <CollapsibleTrigger
       className={className}
       style={sx(
-        buttonSx({ focusVisible, hasIcon: !children, hovered, size: "sm", variant: "ghost" }),
+        buttonSx({
+          focusVisible,
+          hasIcon: !children,
+          hovered,
+          size: children ? "sm" : "icon-sm",
+          variant: "ghost",
+        }),
         !hovered && S.contextTrigger,
         style,
       )}
       {...props}
       {...handlers}
     >
-      {children ?? (
-        <>
-          <span>{percent.format(usedTokens / maxTokens)}</span>
-          <ContextIcon />
-        </>
-      )}
+      {children ?? <ContextIcon />}
     </CollapsibleTrigger>
   );
 };

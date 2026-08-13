@@ -1,5 +1,6 @@
 import type { ComponentChildren } from "preact";
 
+import { toTitle } from "@/agent/title";
 import { Chat } from "@/components/chat";
 import type { Sx } from "@/styles/sx";
 
@@ -34,9 +35,13 @@ export function DemoAgent({
       isStreaming={chat.isStreaming}
       messages={chat.messages}
       onReset={chat.reset}
+      onRespond={chat.respond}
       onSend={chat.send}
       onStop={chat.stop}
       style={style}
+      // The canned turns reach no provider, so the derived title is the one
+      // this surface can show.
+      title={toTitle(chat.messages)}
     />
   );
 }

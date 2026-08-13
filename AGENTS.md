@@ -69,6 +69,12 @@ suggestion or a launcher the host owns; it shows only before the first message.
 all the composer's picker, so the chat is the only view there is — no gate in front of
 it, and no screen to swap to.
 
+The header names the conversation after the first message. `<agent-chat generate-title>`
+— `generateTitle` on `AgentChat` — asks the model for the name instead, once, after the
+first answer lands; it is one extra request, so it is off unless a host opts in, and a
+failure leaves the first-message title standing. `Chat` takes the finished string as
+`title`. See `src/agent/title.ts`.
+
 `dist/` is the published library and nothing else — the playground builds into
 `playground/dist` and the extension into `extension/dist`, so `files: ["dist"]` needs
 no filtering.

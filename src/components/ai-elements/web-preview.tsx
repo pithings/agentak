@@ -4,7 +4,7 @@ import { useCallback, useContext, useMemo, useState } from "preact/hooks";
 
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Chevron } from "@/lib/icons";
 import { useInteraction } from "@/lib/use-interaction";
 import { reset, u } from "@/styles/base";
@@ -81,6 +81,11 @@ const S = {
   // Was `.input.web-preview-url` — Input's own height is inline now
   // (see ui/input.tsx), so this has to reach it as `style` to still win.
   webPreviewUrl: { height: "2rem", flex: "1" },
+  // The group is the address bar: it carries the frame and the focus ring.
+  webPreviewUrlGroup: { height: "2rem", flex: "1" },
+  // An addon only pulls its padding back for an `InputGroupButton`, and the
+  // reload is a nav button — take it back here instead.
+  webPreviewUrlAddon: { paddingRight: "0.25rem" },
 } satisfies Record<string, Sx>;
 
 interface WebPreviewContextValue {
@@ -174,12 +179,24 @@ export const WebPreviewNavigationButton = ({
 type InputHandler = NonNullable<ComponentProps<"input">["onInput"]>;
 type KeyHandler = NonNullable<ComponentProps<"input">["onKeyDown"]>;
 
-export type WebPreviewUrlProps = ComponentProps<typeof Input>;
+/**
+ * `children` are the inline actions — reload and the like — at the right end.
+ *
+ * Read-only by default, where upstream is editable: this renders inside a
+ * transcript, and the surface carries no history, so a typed URL leaves the
+ * preview with no way back to what the agent showed. The address stays
+ * selectable, and a host that owns real browser chrome passes `readOnly={false}`.
+ */
+export type WebPreviewUrlProps = ComponentProps<typeof InputGroupInput> & {
+  children?: ComponentChildren;
+};
 
 export const WebPreviewUrl = ({
   className,
   style,
   value,
+  children,
+  readOnly = true,
   onInput,
   onKeyDown,
   ...props
@@ -199,20 +216,28 @@ export const WebPreviewUrl = ({
   };
 
   const handleKeyDown: KeyHandler = (event) => {
-    if (event.key === "Enter") setUrl(event.currentTarget.value);
+    if (!readOnly && event.key === "Enter") setUrl(event.currentTarget.value);
     onKeyDown?.(event);
   };
 
   return (
-    <Input
-      className={className}
-      onInput={onInput ?? handleInput}
-      onKeyDown={handleKeyDown}
-      placeholder="Enter URL..."
-      style={sx(S.webPreviewUrl, style)}
-      value={value ?? inputValue}
-      {...props}
-    />
+    <InputGroup style={S.webPreviewUrlGroup}>
+      <InputGroupInput
+        className={className}
+        onInput={onInput ?? handleInput}
+        onKeyDown={handleKeyDown}
+        placeholder={readOnly ? undefined : "Enter URL..."}
+        readOnly={readOnly}
+        style={sx(S.webPreviewUrl, style)}
+        value={value ?? inputValue}
+        {...props}
+      />
+      {children && (
+        <InputGroupAddon align="inline-end" style={S.webPreviewUrlAddon}>
+          {children}
+        </InputGroupAddon>
+      )}
+    </InputGroup>
   );
 };
 

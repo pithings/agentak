@@ -12,6 +12,7 @@ import {
   storeModelId,
   storeProviderId,
 } from "@/agent/storage";
+import { useTitle } from "@/agent/title";
 import { useAgent } from "@/agent/use-agent";
 import { useCatalog } from "@/agent/use-catalog";
 import { Chat } from "@/components/chat";
@@ -33,6 +34,12 @@ export interface AgentChatProps {
    * a fresh surface chooses nothing, and the picker asks with the first message.
    */
   provider?: string;
+  /**
+   * Name the conversation with the model, instead of with the first message.
+   * Off by default: it is one extra request, once, after the first answer.
+   * `<agent-chat>` takes it as the `generate-title` attribute.
+   */
+  generateTitle?: boolean;
   /**
    * Host buttons for the end of the header. `<agent-chat>` fills this with a
    * `<slot name="actions">`, so a page can put its own chrome — minimise, and
@@ -73,6 +80,7 @@ export function AgentChat({
   style,
   apiKey,
   provider: openOn,
+  generateTitle,
   actions,
   emptyActions,
 }: AgentChatProps) {
@@ -110,6 +118,18 @@ export function AgentChat({
   // The loop is built on a model of its own, so "chosen" is the provider's own
   // model in hand — not whatever the agent happens to hold.
   const ready = Boolean(providerId) && modelProvider === providerId;
+
+  // The header names the conversation from the first message; with
+  // `generateTitle` the model names it instead, once the first answer lands.
+  // The key follows the loop's rule — a free provider needs none, but the
+  // openai client wants a string.
+  const title = useTitle({
+    apiKey: providerId ? (keys[providerId] ?? (provider?.free ? "unused" : undefined)) : undefined,
+    generate: generateTitle,
+    isStreaming: chat.isStreaming,
+    messages: chat.messages,
+    model: ready ? chat.model : undefined,
+  });
 
   // Follow the provider, but only as far as this browser has been: the model
   // it last used with it. A provider chosen for the first time ends on its
@@ -221,6 +241,7 @@ export function AgentChat({
       providers={providers}
       queued={chat.queued}
       style={style}
+      title={title}
       usage={ready ? chat.usage : undefined}
     />
   );

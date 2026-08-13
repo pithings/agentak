@@ -1,4 +1,4 @@
-# agentak
+# Agentak
 
 An agent chat for any web page. It is one custom element, and it needs one line of
 setup.
