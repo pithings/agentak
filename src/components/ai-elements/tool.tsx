@@ -30,15 +30,15 @@ import { CodeBlock } from "./code-block";
  */
 export const toolBodySx = {
   overflowX: "auto",
-  borderRadius: "var(--wa-radius-md)",
-  background: "var(--wa-muted-surface)",
-  color: "var(--wa-foreground)",
+  borderRadius: "var(--radius-md)",
+  background: "var(--muted-surface)",
+  color: "var(--foreground)",
   fontSize: "0.75rem",
 } satisfies Sx;
 
 export const toolBodyErrorSx = {
-  background: "var(--wa-destructive-surface)",
-  color: "var(--wa-destructive)",
+  background: "var(--destructive-surface)",
+  color: "var(--destructive)",
 } satisfies Sx;
 
 const S = {
@@ -46,8 +46,8 @@ const S = {
     boxSizing: "border-box",
     width: "100%",
     marginBottom: "1rem",
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-md)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-md)",
   },
   toolHeader: {
     boxSizing: "border-box",
@@ -72,7 +72,7 @@ const S = {
     flexDirection: "column",
     gap: "1rem",
     padding: "1rem",
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
     outline: "none",
   },
   // The panel is a `CollapsibleContent`, which hides itself with the `hidden`
@@ -86,7 +86,7 @@ const S = {
     overflow: "hidden",
   },
   toolLabel: {
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.75rem",
     fontWeight: "500",
     letterSpacing: "0.05em",

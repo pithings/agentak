@@ -28,7 +28,7 @@ const emit = defineEmits<{ (event: "toggle-nav"): void }>();
         >
           wa
         </span>
-        <span class="text-sm font-semibold tracking-tight">web-agent</span>
+        <span class="text-sm font-semibold tracking-tight">agentak</span>
         <span
           class="hidden rounded-full border border-line px-2 py-0.5 text-[0.6875rem] text-soft sm:inline"
         >

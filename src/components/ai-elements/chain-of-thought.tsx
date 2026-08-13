@@ -23,12 +23,12 @@ const S = {
     width: "100%",
     alignItems: "center",
     gap: "0.5rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
-    transition: "color var(--wa-transition)",
+    transition: "color var(--transition)",
   },
   cotHeaderHover: {
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
   },
   cotLabel: {
     flex: "1",
@@ -40,13 +40,13 @@ const S = {
     fontSize: "0.875rem",
   },
   cotStepActive: {
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
   },
   cotStepComplete: {
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
   },
   cotStepPending: {
-    color: "color-mix(in oklab, var(--wa-muted-foreground) 50%, transparent)",
+    color: "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
   },
   cotMarker: {
     position: "relative",
@@ -60,7 +60,7 @@ const S = {
     left: "50%",
     width: "1px",
     marginInline: "-1px",
-    background: "var(--wa-border)",
+    background: "var(--border)",
   },
   cotStepBody: {
     display: "flex",
@@ -70,7 +70,7 @@ const S = {
     overflow: "hidden",
   },
   cotDescription: {
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.75rem",
   },
   cotResults: {
@@ -107,12 +107,12 @@ const S = {
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-muted)",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--muted)",
     padding: "0.75rem",
   },
   cotCaption: {
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.75rem",
   },
 } satisfies Record<string, Sx>;

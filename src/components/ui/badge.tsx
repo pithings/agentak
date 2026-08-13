@@ -28,10 +28,10 @@ const S = {
 // Was a map of class names. `data-variant` is still on the element, so anything
 // that needs to select a variant still can.
 const VARIANTS = {
-  default: { background: "var(--wa-primary)", color: "var(--wa-primary-foreground)" },
-  secondary: { background: "var(--wa-secondary)", color: "var(--wa-secondary-foreground)" },
-  destructive: { background: "var(--wa-destructive)", color: "var(--wa-destructive-foreground)" },
-  outline: { borderColor: "var(--wa-border)", color: "var(--wa-foreground)" },
+  default: { background: "var(--primary)", color: "var(--primary-foreground)" },
+  secondary: { background: "var(--secondary)", color: "var(--secondary-foreground)" },
+  destructive: { background: "var(--destructive)", color: "var(--destructive-foreground)" },
+  outline: { borderColor: "var(--border)", color: "var(--foreground)" },
 } satisfies Record<string, Sx>;
 
 export type BadgeVariant = keyof typeof VARIANTS;

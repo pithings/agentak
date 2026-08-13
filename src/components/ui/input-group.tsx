@@ -23,16 +23,16 @@ const S = {
     height: "2.25rem",
     minWidth: "0",
     alignItems: "center",
-    border: "1px solid var(--wa-input)",
-    borderRadius: "var(--wa-radius-md)",
-    background: "var(--wa-surface)",
-    boxShadow: "var(--wa-shadow-xs)",
+    border: "1px solid var(--input)",
+    borderRadius: "var(--radius-md)",
+    background: "var(--surface)",
+    boxShadow: "var(--shadow-xs)",
     outline: "none",
-    transition: "border-color var(--wa-transition), box-shadow var(--wa-transition)",
+    transition: "border-color var(--transition), box-shadow var(--transition)",
   },
   groupStack: { height: "auto", flexDirection: "column" },
-  groupFocus: { borderColor: "var(--wa-ring)", boxShadow: "var(--wa-focus-ring)" },
-  groupInvalid: { borderColor: "var(--wa-destructive)", boxShadow: "var(--wa-invalid-ring)" },
+  groupFocus: { borderColor: "var(--ring)", boxShadow: "var(--focus-ring)" },
+  groupInvalid: { borderColor: "var(--destructive)", boxShadow: "var(--invalid-ring)" },
   addon: {
     boxSizing: "border-box",
     display: "flex",
@@ -41,7 +41,7 @@ const S = {
     justifyContent: "center",
     gap: "0.5rem",
     cursor: "text",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
     fontWeight: "500",
     paddingBlock: "0.375rem",
@@ -58,7 +58,7 @@ const S = {
     display: "flex",
     alignItems: "center",
     gap: "0.5rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
   },
   textIcon: { width: "1rem", height: "1rem", pointerEvents: "none" },
@@ -119,7 +119,7 @@ type Report<K extends string> = (flag: K, on: boolean) => void;
 type GroupFlag = "stack" | "focus" | "invalid";
 
 const GroupContext = createContext<Report<GroupFlag> | null>(null);
-/** The same, for `.wa-ig-addon--inline-*:has(> button)`. */
+/** The same, for `.ig-addon--inline-*:has(> button)`. */
 const AddonContext = createContext<Report<"button"> | null>(null);
 
 /**
@@ -225,7 +225,7 @@ function InputGroupAddon({
  *
  * The shadow goes as `style`, so it lands after `buttonSx()` — a class was
  * (0,1,0) and lost to every inline value the button computes. It is dropped
- * again while a ring is up, because those rules outranked `.wa-ig-btn`.
+ * again while a ring is up, because those rules outranked `.ig-btn`.
  */
 function InputGroupButton({
   className,
@@ -267,7 +267,7 @@ function InputGroupText({ className, style, children, ...props }: WithSx<Compone
 /**
  * The frame the group takes off a control, and the ring it leaves on it.
  *
- * `[aria-invalid]` outranked `.wa-ig-control`, so an invalid control keeps its
+ * `[aria-invalid]` outranked `.ig-control`, so an invalid control keeps its
  * own ring; the focus rule outranked both, so a focused one is flat again.
  */
 function useGroupControl<T extends EventTarget>(

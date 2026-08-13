@@ -20,16 +20,16 @@ const S = {
   },
   segment: {
     display: "inline",
-    color: "color-mix(in oklab, var(--wa-muted-foreground) 60%, transparent)",
+    color: "color-mix(in oklab, var(--muted-foreground) 60%, transparent)",
     cursor: "default",
     textAlign: "left",
-    transition: "color var(--wa-transition)",
+    transition: "color var(--transition)",
   },
   segmentPast: {
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
   },
   segmentActive: {
-    color: "var(--wa-primary)",
+    color: "var(--primary)",
   },
   segmentSeekable: {
     cursor: "pointer",
@@ -38,7 +38,7 @@ const S = {
   // its pseudo-class specificity always outranked those single-class rules,
   // so it applies last here too, regardless of which of the two it follows.
   segmentSeekableHover: {
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
   },
 } satisfies Record<string, Sx>;
 

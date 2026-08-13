@@ -12,7 +12,7 @@ const S = {
     position: "relative",
     overflow: "auto",
     scrollbarWidth: "thin",
-    scrollbarColor: "var(--wa-border) transparent",
+    scrollbarColor: "var(--border) transparent",
   },
   // Were `--horizontal` / `--vertical` classes; `data-orientation` still carries
   // the choice for anything selecting on it.

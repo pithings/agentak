@@ -103,7 +103,7 @@ describe("Popover", () => {
     const panel = screen.getByRole("dialog");
     expect(panel.dataset.side).toBe("right"); // jsdom has no layout, so no flip.
     expect(panel.dataset.align).toBe("start");
-    expect(panel.style.getPropertyValue("--wa-popover-offset")).toBe("12px");
+    expect(panel.style.getPropertyValue("--popover-offset")).toBe("12px");
   });
 });
 

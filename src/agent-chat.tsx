@@ -1,7 +1,7 @@
 import type { ComponentChildren } from "preact";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import { createWebAgent, SYSTEM_PROMPT } from "@/agent/create-agent";
+import { createAgent, SYSTEM_PROMPT } from "@/agent/create-agent";
 import { findModel } from "@/agent/models";
 import { findProvider, PROVIDERS } from "@/agent/providers";
 import {
@@ -14,50 +14,10 @@ import {
 } from "@/agent/storage";
 import { useAgent } from "@/agent/use-agent";
 import { useCatalog } from "@/agent/use-catalog";
-import { AgentChat } from "@/components/chat";
-import { Spinner } from "@/components/ui/spinner";
-import { u } from "@/styles/base";
-import { sx, type Sx } from "@/styles/sx";
+import { Chat } from "@/components/chat";
+import type { Sx } from "@/styles/sx";
 
-const S = {
-  // Everything the chat is not — today only the wait for a catalog. It paints
-  // the same box, so the host chrome sits on the same bar throughout.
-  frame: {
-    boxSizing: "border-box",
-    display: "flex",
-    minWidth: "0",
-    minHeight: "0",
-    flexDirection: "column",
-    overflow: "hidden",
-    background: "var(--wa-background)",
-    color: "var(--wa-foreground)",
-    fontFamily: "var(--wa-font-sans)",
-    fontSize: "0.875rem",
-    lineHeight: "1.25rem",
-  },
-  frameBar: {
-    boxSizing: "border-box",
-    display: "flex",
-    flexShrink: "0",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: "0.125rem",
-    borderBottom: "1px solid var(--wa-border)",
-    padding: "0.375rem 0.5rem",
-  },
-  wait: {
-    boxSizing: "border-box",
-    display: "flex",
-    minHeight: "0",
-    flex: "1",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "0.5rem",
-    padding: "1.5rem",
-  },
-} satisfies Record<string, Sx>;
-
-export interface WebAgentProps {
+export interface AgentChatProps {
   className?: string;
   /** Merged over the chat's own box — how a host sizes the element. */
   style?: Sx;
@@ -74,21 +34,21 @@ export interface WebAgentProps {
    */
   provider?: string;
   /**
-   * Host buttons for the end of the header. `<web-agent>` fills this with a
+   * Host buttons for the end of the header. `<agent-chat>` fills this with a
    * `<slot name="actions">`, so a page can put its own chrome — minimise, and
    * whatever else it owns — on the agent's one title bar.
    */
   actions?: ComponentChildren;
   /**
    * Host content for the chat's empty state — a suggestion, a launcher.
-   * `<web-agent>` fills this with a `<slot name="empty">`. It shows only before
+   * `<agent-chat>` fills this with a `<slot name="empty">`. It shows only before
    * the first message.
    */
   emptyActions?: ComponentChildren;
 }
 
 /** Keys already in hand: what a host passed, over what the browser stored. */
-function seedKeys(apiKey: WebAgentProps["apiKey"], providerId?: string): Record<string, string> {
+function seedKeys(apiKey: AgentChatProps["apiKey"], providerId?: string): Record<string, string> {
   const keys: Record<string, string> = {};
   for (const provider of PROVIDERS) {
     const stored = storedApiKey(provider.id);
@@ -101,17 +61,17 @@ function seedKeys(apiKey: WebAgentProps["apiKey"], providerId?: string): Record<
 
 /**
  * Top-level container: the loop — pi's `Agent` over the page tools — driving
- * `AgentChat`. There is no key screen in front of it. Provider, model and key
+ * `Chat`. There is no key screen in front of it. Provider, model and key
  * are all the composer's picker, so the chat is the only view the surface has.
  */
-export function WebAgent({
+export function AgentChat({
   className,
   style,
   apiKey,
   provider: openOn,
   actions,
   emptyActions,
-}: WebAgentProps) {
+}: AgentChatProps) {
   const wanted = openOn ?? storedProviderId();
   const [keys, setKeys] = useState(() => seedKeys(apiKey, wanted));
   // Nothing is chosen on a fresh surface: no provider, and so no model. One
@@ -130,7 +90,7 @@ export function WebAgent({
   keysRef.current = keys;
 
   const [runtime] = useState(() =>
-    createWebAgent({ apiKey: (provider) => keysRef.current[provider] }),
+    createAgent({ apiKey: (provider) => keysRef.current[provider] }),
   );
 
   const chat = useAgent(runtime);
@@ -142,13 +102,12 @@ export function WebAgent({
   // model in hand — not whatever the agent happens to hold.
   const ready = Boolean(providerId) && modelProvider === providerId;
 
-  // Follow the provider: the model last used with it, else the one it suggests.
+  // Follow the provider, but only as far as this browser has been: the model
+  // it last used with it. A provider chosen for the first time ends on its
+  // model list, because nothing here picks a model for anyone.
   useEffect(() => {
     if (!provider || catalog.models.length === 0 || modelProvider === providerId) return;
-    const next =
-      findModel(catalog.models, storedModelId(provider.id)) ??
-      findModel(catalog.models, provider.defaultModelId) ??
-      catalog.models[0];
+    const next = findModel(catalog.models, storedModelId(provider.id));
     if (next) setModel(next);
   }, [catalog.models, modelProvider, provider, providerId, setModel]);
 
@@ -227,21 +186,8 @@ export function WebAgent({
     [chat.model, ready, runtime],
   );
 
-  // A catalog is a chunk: until it lands the agent still holds the last
-  // provider's model, and a message sent now would go to the wrong place.
-  if (provider && modelProvider !== providerId && catalog.loading) {
-    return (
-      <Frame actions={actions} className={className} style={style}>
-        <div style={S.wait}>
-          <Spinner />
-          <span style={u.muted}>Loading the {provider.label} models…</span>
-        </div>
-      </Frame>
-    );
-  }
-
   return (
-    <AgentChat
+    <Chat
       actions={actions}
       agent={agent}
       className={className}
@@ -251,6 +197,7 @@ export function WebAgent({
       messages={chat.messages}
       modelId={ready ? chat.model.id : undefined}
       models={catalog.models}
+      modelsLoading={catalog.loading}
       onDequeue={chat.dequeue}
       onModelChange={onModelChange}
       onPickerOpenChange={setAsking}
@@ -267,25 +214,5 @@ export function WebAgent({
       style={style}
       usage={ready ? chat.usage : undefined}
     />
-  );
-}
-
-/** The box a non-chat view paints, with the host's chrome on top of it. */
-function Frame({
-  actions,
-  className,
-  children,
-  style,
-}: {
-  actions?: ComponentChildren;
-  className?: string;
-  children: ComponentChildren;
-  style?: Sx;
-}) {
-  return (
-    <div className={className} style={sx(S.frame, style)}>
-      {actions ? <div style={S.frameBar}>{actions}</div> : null}
-      {children}
-    </div>
   );
 }

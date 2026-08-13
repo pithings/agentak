@@ -1,7 +1,7 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import type { WebAgentRuntime } from "@/agent/create-agent";
+import type { AgentRuntime } from "@/agent/create-agent";
 import type { AnyModel } from "@/agent/providers";
 import { type ContextUsageView, toContextUsage, toViewMessages } from "@/agent/transcript";
 import type { ViewMessage } from "@/types";
@@ -14,7 +14,7 @@ export interface QueuedMessage {
   at: number;
 }
 
-export interface AgentChatState {
+export interface ChatState {
   messages: ViewMessage[];
   isStreaming: boolean;
   error?: string;
@@ -51,7 +51,7 @@ const isUserText = (message: AgentMessage, text: string) =>
  * here that the agent already holds. A counter drives the rebuild because the
  * agent mutates its own arrays.
  */
-export function useAgent({ agent, approvals }: WebAgentRuntime): AgentChatState {
+export function useAgent({ agent, approvals }: AgentRuntime): ChatState {
   const [tick, setTick] = useState(0);
   const [failure, setFailure] = useState<string | undefined>(undefined);
   const [queued, setQueued] = useState<QueuedMessage[]>([]);

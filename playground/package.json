@@ -1,8 +1,8 @@
 {
-  "name": "@web-agent/playground",
+  "name": "@agentak/playground",
   "version": "0.0.0",
   "private": true,
-  "description": "Dev page for web-agent: the vue host app, the catalog, and the chat",
+  "description": "Dev page for agentak: the vue host app, the catalog, and the chat",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -12,10 +12,10 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "agentak": "workspace:*",
     "preact": "^10.29.8",
     "vue": "^3.5.41",
-    "vue-router": "^5.2.0",
-    "web-agent": "workspace:*"
+    "vue-router": "^5.2.0"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",

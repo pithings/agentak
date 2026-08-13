@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "web-agent",
+  "name": "agentak",
   "version": "0.0.0",
-  "description": "WIP — side panel host for the <web-agent> element.",
+  "description": "WIP — side panel host for the <agent-chat> element.",
   "permissions": ["sidePanel", "activeTab", "scripting", "storage"],
-  "action": { "default_title": "Open web-agent" },
+  "action": { "default_title": "Open agentak" },
   "side_panel": { "default_path": "sidepanel.html" },
   "background": { "service_worker": "background.js", "type": "module" }
 }

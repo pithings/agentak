@@ -12,9 +12,9 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 /** Same specificity as the base color; only the level actually shown matters. */
 const LOG_COLOR = {
-  log: { color: "var(--wa-foreground)" },
-  warn: { color: "var(--wa-warning)" },
-  error: { color: "var(--wa-destructive)" },
+  log: { color: "var(--foreground)" },
+  warn: { color: "var(--warning)" },
+  error: { color: "var(--destructive)" },
 } satisfies Record<WebPreviewLog["level"], Sx>;
 
 const S = {
@@ -24,28 +24,28 @@ const S = {
     width: "100%",
     height: "100%",
     flexDirection: "column",
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-background)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--background)",
   },
   webPreviewNav: {
     display: "flex",
     alignItems: "center",
     gap: "0.25rem",
-    borderBottom: "1px solid var(--wa-border)",
+    borderBottom: "1px solid var(--border)",
     padding: "0.5rem",
   },
   // Reaches Button as `style`, so it lands after the ghost variant's own
   // hover colour.
-  webPreviewNavButtonHover: { color: "var(--wa-foreground)" },
+  webPreviewNavButtonHover: { color: "var(--foreground)" },
   webPreviewBody: {
     flex: "1",
   },
   webPreviewFrame: { boxSizing: "border-box", width: "100%", height: "100%", border: "0" },
   webPreviewConsole: {
-    borderTop: "1px solid var(--wa-border)",
-    background: "var(--wa-muted-surface)",
-    fontFamily: "var(--wa-font-mono)",
+    borderTop: "1px solid var(--border)",
+    background: "var(--muted-surface)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.875rem",
   },
   webPreviewConsoleTrigger: {
@@ -59,7 +59,7 @@ const S = {
     textAlign: "left",
   },
   webPreviewConsoleTriggerHover: {
-    background: "var(--wa-hover)",
+    background: "var(--hover)",
   },
   webPreviewConsoleBody: {
     boxSizing: "border-box",
@@ -78,7 +78,7 @@ const S = {
   webPreviewLog: {
     fontSize: "0.75rem",
   },
-  // Was `.wa-input.wa-web-preview-url` — Input's own height is inline now
+  // Was `.input.web-preview-url` — Input's own height is inline now
   // (see ui/input.tsx), so this has to reach it as `style` to still win.
   webPreviewUrl: { height: "2rem", flex: "1" },
 } satisfies Record<string, Sx>;

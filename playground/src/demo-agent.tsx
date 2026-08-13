@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 
-import { AgentChat } from "@/components/chat";
+import { Chat } from "@/components/chat";
 import type { Sx } from "@/styles/sx";
 
 import { useDemoChat } from "./demo-chat";
@@ -8,8 +8,8 @@ import { useDemoChat } from "./demo-chat";
 import "./demo-elements";
 
 /**
- * `<WebAgent>` without the loop: the canned turns, replayed. It lived in
- * `web-agent.tsx` as the `demo` prop; the fixtures are demo-only, so the
+ * `<AgentChat>` without the loop: the canned turns, replayed. It lived in
+ * `agent-chat.tsx` as the `demo` prop; the fixtures are demo-only, so the
  * component is too.
  */
 export function DemoAgent({
@@ -28,7 +28,7 @@ export function DemoAgent({
   const chat = useDemoChat({ autoStart });
 
   return (
-    <AgentChat
+    <Chat
       actions={actions}
       className={className}
       isStreaming={chat.isStreaming}

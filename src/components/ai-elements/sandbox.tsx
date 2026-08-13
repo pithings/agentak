@@ -22,8 +22,8 @@ const S = {
     width: "100%",
     marginBottom: "1rem",
     overflow: "hidden",
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-md)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-md)",
   },
   sandboxHeader: {
     boxSizing: "border-box",
@@ -55,8 +55,8 @@ const S = {
     display: "flex",
     width: "100%",
     alignItems: "center",
-    borderTop: "1px solid var(--wa-border)",
-    borderBottom: "1px solid var(--wa-border)",
+    borderTop: "1px solid var(--border)",
+    borderBottom: "1px solid var(--border)",
   },
   sandboxPanel: {
     fontSize: "0.875rem",
@@ -74,10 +74,10 @@ const S = {
     padding: "0.5rem 1rem",
   },
   sandboxTabActive: {
-    borderBottomColor: "var(--wa-primary)",
+    borderBottomColor: "var(--primary)",
     background: "none",
     boxShadow: "none",
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
   },
 } satisfies Record<string, Sx>;
 

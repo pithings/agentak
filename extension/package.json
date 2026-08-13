@@ -1,8 +1,8 @@
 {
-  "name": "@web-agent/extension",
+  "name": "@agentak/extension",
   "version": "0.0.0",
   "private": true,
-  "description": "WIP MV3 side panel host for the <web-agent> element",
+  "description": "WIP MV3 side panel host for the <agent-chat> element",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "preact": "^10.29.8",
-    "web-agent": "workspace:*"
+    "agentak": "workspace:*",
+    "preact": "^10.29.8"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",

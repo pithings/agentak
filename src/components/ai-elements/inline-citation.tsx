@@ -25,7 +25,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 /**
  * True while the pointer is over the citation.
  *
- * The highlight was `.wa-inline-citation:hover .wa-inline-citation-text`, a
+ * The highlight was `.inline-citation:hover .inline-citation-text`, a
  * state of one element painting another. No prop on the text can see that,
  * so the citation owns the state and publishes it here — same pattern as
  * `QueueItemHoverContext` in `queue.tsx`.
@@ -39,10 +39,10 @@ const S = {
     gap: "0.25rem",
   },
   inlineCitationText: {
-    transition: "background var(--wa-transition)",
+    transition: "background var(--transition)",
   },
   inlineCitationTextHover: {
-    background: "var(--wa-accent)",
+    background: "var(--accent)",
   },
   // Badge's own box and its secondary-variant colours are inline now (see
   // ui/badge.tsx), so borrowing the badge classes no longer reproduces the
@@ -63,12 +63,12 @@ const S = {
     lineHeight: "1rem",
     fontSize: "0.75rem",
     whiteSpace: "nowrap",
-    background: "var(--wa-secondary)",
-    color: "var(--wa-secondary-foreground)",
+    background: "var(--secondary)",
+    color: "var(--secondary-foreground)",
     marginLeft: "0.25rem",
     cursor: "pointer",
   },
-  // Was the `.wa-popover-content.wa-inline-citation-card` compound: wider and
+  // Was the `.popover-content.inline-citation-card` compound: wider and
   // unpadded than both the popover base and the hover-card width, so this must
   // reach PopoverContent as `style` to keep outranking them.
   inlineCitationCard: { boxSizing: "border-box", width: "20rem", padding: "0", overflow: "hidden" },
@@ -88,8 +88,8 @@ const S = {
     alignItems: "center",
     justifyContent: "space-between",
     gap: "0.5rem",
-    borderRadius: "var(--wa-radius-md) var(--wa-radius-md) 0 0",
-    background: "var(--wa-secondary)",
+    borderRadius: "var(--radius-md) var(--radius-md) 0 0",
+    background: "var(--secondary)",
     padding: "0.5rem",
   },
   inlineCitationCarouselIndex: {
@@ -114,7 +114,7 @@ const S = {
   },
   inlineCitationSourceUrl: {
     overflow: "hidden",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.75rem",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -124,14 +124,14 @@ const S = {
     overflow: "hidden",
     WebkitBoxOrient: "vertical",
     WebkitLineClamp: "3",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
     lineHeight: "1.6",
   },
   inlineCitationQuote: {
-    borderLeft: "2px solid var(--wa-muted)",
+    borderLeft: "2px solid var(--muted)",
     paddingLeft: "0.75rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
     fontStyle: "italic",
   },
@@ -186,7 +186,7 @@ const hostname = (source: string) => {
 // The trigger carries the badge look rather than wrapping a `Badge`: this
 // project has no `asChild`, and a badge inside a button would be two boxes.
 // `S.inlineCitationTrigger` above reproduces the whole look, font size
-// included — Badge's own `wa-badge` class carries no style any more (see
+// included — Badge's own `badge` class carries no style any more (see
 // ui/badge.tsx), so there is nothing left to borrow from it.
 export const InlineCitationCardTrigger = ({
   sources,

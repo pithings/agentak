@@ -165,7 +165,7 @@ function packages() {
 const allMin = chunks.reduce((sum, chunk) => sum + size(chunk.code), 0);
 const allGz = chunks.reduce((sum, chunk) => sum + gzip(chunk.code), 0);
 
-console.log(`${c.bold("web-agent")} ${c.dim(`${entry} · rolldown, minified, deps inlined`)}`);
+console.log(`${c.bold("agentak")} ${c.dim(`${entry} · rolldown, minified, deps inlined`)}`);
 section("initial", [...initial]);
 section("lazy", lazy);
 packages();

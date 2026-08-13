@@ -8,7 +8,7 @@ const S = {
     height: "auto",
     maxWidth: "100%",
     overflow: "hidden",
-    borderRadius: "var(--wa-radius-md)",
+    borderRadius: "var(--radius-md)",
   },
 } satisfies Record<string, Sx>;
 

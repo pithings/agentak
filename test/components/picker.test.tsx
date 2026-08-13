@@ -35,22 +35,27 @@ describe("ChatPicker", () => {
     expect(screen.getByText("Needs key")).toBeTruthy();
     expect(screen.queryByText("400K")).toBeNull();
 
+    // A free provider is taken at once, and the panel goes on to its models.
+    fireEvent.click(screen.getByText("LLM7"));
+    expect(picked).toEqual(["llm7"]);
+    expect(screen.getByPlaceholderText("Search models…")).toBeTruthy();
+
     // A provider with no key asks for one before it is chosen at all.
+    fireEvent.click(screen.getByRole("button", { name: "Providers" }));
     fireEvent.click(screen.getByText("OpenAI"));
-    expect(picked).toEqual([]);
+    expect(picked).toEqual(["llm7"]);
     expect(screen.getByText("OpenAI API key")).toBeTruthy();
 
     const key = container.querySelector('input[type="password"]') as HTMLInputElement;
     fireEvent.input(key, { target: { value: "sk-live" } });
     fireEvent.click(screen.getByText("Save"));
     expect(saved).toEqual([["openai", "sk-live"]]);
-    expect(picked).toEqual(["openai"]);
+    expect(picked).toEqual(["llm7", "openai"]);
 
-    // Chosen: the trigger names both, then the models, then a row back.
+    // Saved, and again on the models — the panel never closes on a provider.
     rerender(picker("openai"));
-    expect(screen.getByText("(OpenAI)")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /GPT-5/ }));
     expect(screen.getByText("400K")).toBeTruthy();
+    expect(screen.getByText("(OpenAI)")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Providers" }));
     expect(screen.getByText("Providers")).toBeTruthy();

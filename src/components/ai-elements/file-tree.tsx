@@ -10,10 +10,10 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 const S = {
   tree: {
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-background)",
-    fontFamily: "var(--wa-font-mono)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--background)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.875rem",
   },
   treeBody: {
@@ -25,20 +25,20 @@ const S = {
     width: "100%",
     alignItems: "center",
     gap: "0.25rem",
-    borderRadius: "var(--wa-radius-sm)",
+    borderRadius: "var(--radius-sm)",
     padding: "0.25rem 0.5rem",
     textAlign: "left",
-    transition: "background-color var(--wa-transition)",
+    transition: "background-color var(--transition)",
   },
   // `:hover`'s pseudo-class raised its old CSS specificity above the
   // selected rule's single class, so hover always painted over selected
   // regardless of sheet order — verified with a specificity probe, since the
   // rule text alone reads the other way. Hover applies last to match.
   treeItemSelected: {
-    background: "var(--wa-muted)",
+    background: "var(--muted)",
   },
   treeItemHover: {
-    background: "var(--wa-muted-surface)",
+    background: "var(--muted-surface)",
   },
   treeFile: {
     cursor: "pointer",
@@ -47,7 +47,7 @@ const S = {
     display: "flex",
     flexShrink: "0",
     alignItems: "center",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
   },
   treeLabel: {
     display: "flex",
@@ -74,7 +74,7 @@ const S = {
   },
   treeChildren: {
     marginLeft: "1rem",
-    borderLeft: "1px solid var(--wa-border)",
+    borderLeft: "1px solid var(--border)",
     paddingLeft: "0.5rem",
   },
   treeActions: {

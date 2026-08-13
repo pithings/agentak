@@ -16,24 +16,24 @@ describe("parseAnsi", () => {
 
   it("colors the 8 basic foregrounds", () => {
     expect(parse("\x1b[31mred\x1b[32mgreen\x1b[36mcyan")).toEqual([
-      ["red", { fg: "var(--wa-ansi-red)" }],
-      ["green", { fg: "var(--wa-ansi-green)" }],
-      ["cyan", { fg: "var(--wa-ansi-cyan)" }],
+      ["red", { fg: "var(--ansi-red)" }],
+      ["green", { fg: "var(--ansi-green)" }],
+      ["cyan", { fg: "var(--ansi-cyan)" }],
     ]);
-    expect(parse("\x1b[30ma\x1b[37mb")[0][1]).toEqual({ fg: "var(--wa-ansi-black)" });
+    expect(parse("\x1b[30ma\x1b[37mb")[0][1]).toEqual({ fg: "var(--ansi-black)" });
   });
 
   it("colors the bright forms", () => {
     expect(parse("\x1b[90mdim gray\x1b[93myellow")).toEqual([
-      ["dim gray", { fg: "var(--wa-ansi-bright-black)" }],
-      ["yellow", { fg: "var(--wa-ansi-bright-yellow)" }],
+      ["dim gray", { fg: "var(--ansi-bright-black)" }],
+      ["yellow", { fg: "var(--ansi-bright-yellow)" }],
     ]);
   });
 
   it("colors backgrounds, basic and bright", () => {
     expect(parse("\x1b[41mfail\x1b[102mok")).toEqual([
-      ["fail", { bg: "var(--wa-ansi-red)" }],
-      ["ok", { bg: "var(--wa-ansi-bright-green)" }],
+      ["fail", { bg: "var(--ansi-red)" }],
+      ["ok", { bg: "var(--ansi-bright-green)" }],
     ]);
   });
 
@@ -53,21 +53,21 @@ describe("parseAnsi", () => {
 
   it("keeps the foreground when only an attribute is cleared", () => {
     expect(parse("\x1b[31;1mloud\x1b[22mquiet")).toEqual([
-      ["loud", { bold: true, fg: "var(--wa-ansi-red)" }],
-      ["quiet", { fg: "var(--wa-ansi-red)" }],
+      ["loud", { bold: true, fg: "var(--ansi-red)" }],
+      ["quiet", { fg: "var(--ansi-red)" }],
     ]);
   });
 
   it("resets on 39 and 49 without touching attributes", () => {
     expect(parse("\x1b[1;31;44ma\x1b[39;49mb")).toEqual([
-      ["a", { bold: true, bg: "var(--wa-ansi-blue)", fg: "var(--wa-ansi-red)" }],
+      ["a", { bold: true, bg: "var(--ansi-blue)", fg: "var(--ansi-red)" }],
       ["b", { bold: true }],
     ]);
   });
 
   it("reads 256-color foregrounds and backgrounds", () => {
     expect(parse("\x1b[38;5;9mbright\x1b[38;5;208morange\x1b[48;5;236mbar")).toEqual([
-      ["bright", { fg: "var(--wa-ansi-bright-red)" }],
+      ["bright", { fg: "var(--ansi-bright-red)" }],
       ["orange", { fg: "rgb(255 135 0)" }],
       ["bar", { bg: "rgb(48 48 48)", fg: "rgb(255 135 0)" }],
     ]);
@@ -86,7 +86,7 @@ describe("parseAnsi", () => {
 
   it("resets on 0 and on a bare ESC[m", () => {
     expect(parse("\x1b[1;31mloud\x1b[0mplain")).toEqual([
-      ["loud", { bold: true, fg: "var(--wa-ansi-red)" }],
+      ["loud", { bold: true, fg: "var(--ansi-red)" }],
       ["plain", {}],
     ]);
     expect(parse("\x1b[4munder\x1b[mplain")).toEqual([
@@ -96,7 +96,7 @@ describe("parseAnsi", () => {
   });
 
   it("drops a sequence the stream cut short", () => {
-    expect(parse("\x1b[32mdone\x1b[3")).toEqual([["done", { fg: "var(--wa-ansi-green)" }]]);
+    expect(parse("\x1b[32mdone\x1b[3")).toEqual([["done", { fg: "var(--ansi-green)" }]]);
     expect(parse("half a token\x1b[")).toEqual([["half a token", {}]]);
     expect(parse("\x1b")).toEqual([]);
   });
@@ -106,9 +106,7 @@ describe("parseAnsi", () => {
   });
 
   it("emits no span for the gap between two sequences", () => {
-    expect(parse("\x1b[1m\x1b[31mred")).toEqual([
-      ["red", { bold: true, fg: "var(--wa-ansi-red)" }],
-    ]);
+    expect(parse("\x1b[1m\x1b[31mred")).toEqual([["red", { bold: true, fg: "var(--ansi-red)" }]]);
   });
 });
 
@@ -127,9 +125,9 @@ describe("ansiCss", () => {
   });
 
   it("swaps the pair when inverse is set", () => {
-    expect(ansiCss({ fg: "var(--wa-ansi-red)", inverse: true })).toMatchObject({
-      background: "var(--wa-ansi-red)",
-      color: "var(--wa-terminal-bg)",
+    expect(ansiCss({ fg: "var(--ansi-red)", inverse: true })).toMatchObject({
+      background: "var(--ansi-red)",
+      color: "var(--terminal-bg)",
     });
   });
 });

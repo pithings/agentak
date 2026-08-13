@@ -32,14 +32,14 @@ const S = {
     flexDirection: "column",
     gap: "0.5rem",
     overflow: "hidden",
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
     fontSize: "0.875rem",
   },
   // The user turn is the only one in a bubble.
   messageContentUser: {
     marginLeft: "auto",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-secondary)",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--secondary)",
     padding: "0.75rem 1rem",
   },
   messageResponse: {

@@ -27,23 +27,23 @@ const S = {
     zIndex: "50",
     width: "18rem",
     maxWidth: "100%",
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-md)",
-    background: "var(--wa-background)",
-    color: "var(--wa-foreground)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-md)",
+    background: "var(--background)",
+    color: "var(--foreground)",
     fontSize: "0.875rem",
     outline: "none",
-    boxShadow: "var(--wa-shadow-xs)",
+    boxShadow: "var(--shadow-xs)",
     padding: "1rem",
   },
 } satisfies Record<string, Sx>;
 
 // Keyed by the resolved side, since that is what used to sit in `[data-side]`.
 const SIDE_OFFSET: Record<PopoverSide, Sx> = {
-  bottom: { top: "100%", marginTop: "var(--wa-popover-offset, 0.25rem)" },
-  left: { right: "100%", marginRight: "var(--wa-popover-offset, 0.25rem)" },
-  right: { left: "100%", marginLeft: "var(--wa-popover-offset, 0.25rem)" },
-  top: { bottom: "100%", marginBottom: "var(--wa-popover-offset, 0.25rem)" },
+  bottom: { top: "100%", marginTop: "var(--popover-offset, 0.25rem)" },
+  left: { right: "100%", marginRight: "var(--popover-offset, 0.25rem)" },
+  right: { left: "100%", marginLeft: "var(--popover-offset, 0.25rem)" },
+  top: { bottom: "100%", marginBottom: "var(--popover-offset, 0.25rem)" },
 };
 
 // Align runs across the side: horizontal for top/bottom, vertical for left/right.
@@ -334,12 +334,12 @@ function PopoverContent({
 
   // Merged, not overridden: a caller's own `style` must not drop the offset.
   // The offset is a custom property because SIDE_OFFSET's margin reads it, and
-  // callers may still set `--wa-popover-offset` on the panel directly.
+  // callers may still set `--popover-offset` on the panel directly.
   const styles = sx(
     S.content,
     SIDE_OFFSET[resolvedSide],
     ALIGN[`${resolvedSide}-${align}`],
-    { "--wa-popover-offset": `${sideOffset}px` } as Sx,
+    { "--popover-offset": `${sideOffset}px` } as Sx,
     style,
   );
 

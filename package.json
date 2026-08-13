@@ -1,5 +1,5 @@
 {
-  "name": "web-agent",
+  "name": "agentak",
   "version": "0.0.0",
   "description": "Standalone agent chat web component + Chrome extension",
   "license": "MIT",
@@ -27,12 +27,12 @@
     }
   },
   "scripts": {
-    "dev": "pnpm --filter @web-agent/playground dev",
-    "build": "obuild && pnpm --filter @web-agent/playground build",
+    "dev": "pnpm --filter @agentak/playground dev",
+    "build": "obuild && pnpm --filter @agentak/playground build",
     "build:lib": "obuild",
-    "build:extension": "pnpm --filter @web-agent/extension build",
-    "preview": "pnpm --filter @web-agent/playground preview",
-    "typecheck": "tsc --noEmit && pnpm --filter @web-agent/playground typecheck && tsc --noEmit -p extension",
+    "build:extension": "pnpm --filter @agentak/extension build",
+    "preview": "pnpm --filter @agentak/playground preview",
+    "typecheck": "tsc --noEmit && pnpm --filter @agentak/playground typecheck && tsc --noEmit -p extension",
     "size": "node scripts/bundle.ts",
     "lint": "oxlint",
     "fmt": "oxfmt .",

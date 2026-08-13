@@ -11,7 +11,7 @@ import { reset, u } from "@/styles/base";
 import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 /** A line between rows — a flex `gap` cannot draw one. */
-const DIVIDER: Sx = { borderTop: "1px solid var(--wa-border)" };
+const DIVIDER: Sx = { borderTop: "1px solid var(--border)" };
 
 /** Narrows `isValidElement` so the clone below can type the `style` it adds. */
 function hasStyle(child: ComponentChild): child is VNode<{ style?: Sx }> {
@@ -28,15 +28,15 @@ function withDividers(children: ComponentChildren): ComponentChildren {
 
 const S = {
   env: {
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-background)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--background)",
   },
   envHeader: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottom: "1px solid var(--wa-border)",
+    borderBottom: "1px solid var(--border)",
     padding: "0.75rem 1rem",
   },
   envTitle: {
@@ -66,7 +66,7 @@ const S = {
   },
   envValue: {
     overflow: "hidden",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     textOverflow: "ellipsis",
     fontSize: "0.875rem",
   },

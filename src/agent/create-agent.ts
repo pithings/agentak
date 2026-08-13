@@ -22,7 +22,7 @@ export const SYSTEM_PROMPT = [
   "Keep answers short. Markdown is rendered, so use it for lists and code.",
 ].join("\n");
 
-export interface WebAgentOptions {
+export interface AgentOptions {
   /**
    * The key for a provider. A function, so a key from storage can change, and a
    * second provider can be added, without a new agent. A free provider needs
@@ -44,7 +44,7 @@ export interface WebAgentOptions {
 }
 
 /** What `useAgent` drives: the loop, plus the gate that stands in front of it. */
-export interface WebAgentRuntime {
+export interface AgentRuntime {
   agent: Agent;
   approvals: ApprovalGate;
   page: PageBridge;
@@ -58,7 +58,7 @@ export interface WebAgentRuntime {
  * a provider costs nothing until it is picked. Every supported provider allows
  * the key to be used from a page, which is where this one lives.
  */
-export function createWebAgent({
+export function createAgent({
   apiKey,
   model = DEFAULT_MODEL,
   thinkingLevel = "off",
@@ -67,7 +67,7 @@ export function createWebAgent({
   tools,
   approvals = "once",
   streamFn = streamFor,
-}: WebAgentOptions): WebAgentRuntime {
+}: AgentOptions): AgentRuntime {
   const gate = createApprovalGate(approvals);
 
   const agent = new Agent({

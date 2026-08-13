@@ -24,28 +24,28 @@ const S = {
     borderRadius: "9999px",
     outline: "none",
     transition:
-      "background-color var(--wa-transition), border-color var(--wa-transition), box-shadow var(--wa-transition)",
+      "background-color var(--transition), border-color var(--transition), box-shadow var(--transition)",
     border: "1px solid transparent",
-    boxShadow: "var(--wa-shadow-xs)",
+    boxShadow: "var(--shadow-xs)",
   },
-  switchFocus: { borderColor: "var(--wa-ring)", boxShadow: "var(--wa-focus-ring)" },
+  switchFocus: { borderColor: "var(--ring)", boxShadow: "var(--focus-ring)" },
   switchDisabled: { cursor: "not-allowed", opacity: "0.5" },
-  switchChecked: { background: "var(--wa-primary)" },
-  switchUnchecked: { background: "var(--wa-input)" },
+  switchChecked: { background: "var(--primary)" },
+  switchUnchecked: { background: "var(--input)" },
   thumb: {
     display: "block",
     width: "1rem",
     height: "1rem",
     borderRadius: "9999px",
     pointerEvents: "none",
-    transition: "transform var(--wa-transition)",
+    transition: "transform var(--transition)",
   },
   // Contrasts its track in either theme, so no dark rule needed.
   thumbChecked: {
-    background: "var(--wa-primary-foreground)",
+    background: "var(--primary-foreground)",
     transform: "translateX(calc(100% - 2px))",
   },
-  thumbUnchecked: { background: "var(--wa-muted-foreground)" },
+  thumbUnchecked: { background: "var(--muted-foreground)" },
 } satisfies Record<string, Sx>;
 
 export type SwitchProps = Omit<

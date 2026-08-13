@@ -28,11 +28,11 @@ const S = {
     display: "flex",
     flexDirection: "column",
     gap: "1.5rem",
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-background)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--background)",
     paddingBlock: "1.5rem",
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
     boxShadow: "none",
   },
   // Same reasoning: CardContent's own padding is inline only within
@@ -44,7 +44,7 @@ const S = {
   planDescription: {
     textWrap: "balance",
   },
-  // Was the `.wa-card-header.wa-plan-header` compound: a flex row instead of
+  // Was the `.card-header.plan-header` compound: a flex row instead of
   // the card's own grid. CardHeader's display and alignment are inline now
   // (see ui/card.tsx), so this has to reach it as `style` to still win.
   planHeader: {

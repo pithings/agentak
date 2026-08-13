@@ -1,17 +1,17 @@
 import { render } from "preact";
-import { WebAgent } from "@/web-agent";
+import { AgentChat } from "@/agent-chat";
 import { u } from "@/styles/base";
 
-const TAG = "web-agent";
+const TAG = "agent-chat";
 
 /**
- * `<web-agent>` — the library's public surface.
+ * `<agent-chat>` — the library's public surface.
  *
  * Renders into a shadow root so host page styles cannot leak in, and adopts no
  * stylesheet of its own, so nothing leaks out either — every style is inline on
  * the element that carries it.
  *
- * The exception is the `--wa-*` tokens, which the host page declares: a custom
+ * The exception is the `--*` tokens, which the host page declares: a custom
  * property inherits, and inheritance crosses the shadow boundary. Export
  * `tokens` from the package root is the text to declare. Without it every
  * `var()` resolves to nothing and the tree renders unpainted.
@@ -28,7 +28,7 @@ const TAG = "web-agent";
  *
  * Both slots are `display: contents`, so an unfilled one takes no room.
  */
-export class WebAgentElement extends HTMLElement {
+export class AgentChatElement extends HTMLElement {
   #root: ShadowRoot;
 
   constructor() {
@@ -39,7 +39,7 @@ export class WebAgentElement extends HTMLElement {
   connectedCallback() {
     if (!this.style.display) this.style.display = "block";
     render(
-      <WebAgent
+      <AgentChat
         actions={<slot name="actions" style={u.contents} />}
         emptyActions={<slot name="empty" style={u.contents} />}
         style={u.fill}
@@ -53,8 +53,8 @@ export class WebAgentElement extends HTMLElement {
   }
 }
 
-export function defineWebAgent(tag = TAG) {
-  if (!customElements.get(tag)) customElements.define(tag, WebAgentElement);
+export function defineAgentChat(tag = TAG) {
+  if (!customElements.get(tag)) customElements.define(tag, AgentChatElement);
 }
 
-defineWebAgent();
+defineAgentChat();

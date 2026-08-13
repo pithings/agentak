@@ -12,7 +12,7 @@ pointer and focus after a delay.
   `align` are plain CSS against the `Popover` root, which is the anchor.
 - Dismissal on outside pointerdown and `Escape`, on the owner document, only while
   open. Outside is decided by `composedPath()`, so the panel works inside the
-  `<web-agent>` shadow root. Closing on `Escape` calls `preventDefault()`: the key is
+  `<agent-chat>` shadow root. Closing on `Escape` calls `preventDefault()`: the key is
   used, so a host that closes its own surface on `Escape` keeps it open behind a panel.
 - Focus into the panel on open, `Tab` kept inside, focus back to the trigger on close.
   `HoverCardContent` sets `trapFocus={false}`, so a hover card never moves the caret.

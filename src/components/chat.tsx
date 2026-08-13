@@ -32,23 +32,23 @@ const S = {
     minHeight: "0",
     overflow: "hidden",
     flexDirection: "column",
-    background: "var(--wa-background)",
-    color: "var(--wa-foreground)",
-    fontFamily: "var(--wa-font-sans)",
+    background: "var(--background)",
+    color: "var(--foreground)",
+    fontFamily: "var(--font-sans)",
     fontSize: "0.875rem",
     lineHeight: "1.25rem",
     WebkitFontSmoothing: "antialiased",
   },
   error: {
-    borderTop: "1px solid var(--wa-border)",
-    background: "var(--wa-destructive-surface)",
+    borderTop: "1px solid var(--border)",
+    background: "var(--destructive-surface)",
     padding: "0.5rem 0.75rem",
-    color: "var(--wa-destructive)",
+    color: "var(--destructive)",
     fontSize: "0.75rem",
   },
 } satisfies Record<string, Sx>;
 
-export interface AgentChatProps extends ChatComposerProps {
+export interface ChatProps extends ChatComposerProps {
   messages: ViewMessage[];
   error?: string;
   onReset: () => void;
@@ -82,7 +82,7 @@ export interface AgentChatProps extends ChatComposerProps {
  * transcript is optional, so a store that has no models, usage or queue still
  * renders the same surface.
  */
-export function AgentChat({
+export function Chat({
   messages,
   isStreaming,
   error,
@@ -97,7 +97,7 @@ export function AgentChat({
   actions,
   emptyActions,
   ...composer
-}: AgentChatProps) {
+}: ChatProps) {
   const last = messages.at(-1);
   // Nothing has come back yet: the turn is still the user's, or it is empty.
   const waiting = isStreaming && (last?.role !== "assistant" || last.parts.length === 0);

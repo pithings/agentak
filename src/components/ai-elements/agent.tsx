@@ -20,8 +20,8 @@ const S = {
   agent: {
     boxSizing: "border-box",
     width: "100%",
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-md)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-md)",
   },
   agentHeader: {
     boxSizing: "border-box",
@@ -54,20 +54,20 @@ const S = {
   },
   agentLabel: {
     display: "block",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
     fontWeight: "500",
   },
   agentInstructions: {
-    borderRadius: "var(--wa-radius-md)",
-    background: "var(--wa-muted-surface)",
+    borderRadius: "var(--radius-md)",
+    background: "var(--muted-surface)",
     padding: "0.75rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
   },
   agentTools: {
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-md)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-md)",
   },
   // Overrides AccordionTrigger's own padding, so this has to be a `style` prop
   // on AccordionTrigger — it is inline there too, and inline cannot lose to a

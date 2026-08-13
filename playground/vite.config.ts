@@ -16,8 +16,8 @@ import { defineConfig } from "vite";
  */
 export default defineConfig({
   plugins: [
-    // `<web-agent>` is the library's custom element, not a vue component.
-    vue({ template: { compilerOptions: { isCustomElement: (tag) => tag === "web-agent" } } }),
+    // `<agent-chat>` is the library's custom element, not a vue component.
+    vue({ template: { compilerOptions: { isCustomElement: (tag) => tag === "agent-chat" } } }),
     preact({ reactAliasesEnabled: false }),
     tailwindcss(),
   ],

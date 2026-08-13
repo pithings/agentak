@@ -13,7 +13,7 @@ const S = {
   // Tight, because the surface is a side panel or a corner box: every row the
   // chrome takes is a row the transcript does not get.
   composer: {
-    borderTop: "1px solid var(--wa-border)",
+    borderTop: "1px solid var(--border)",
     padding: "0.5rem",
   },
   textarea: {

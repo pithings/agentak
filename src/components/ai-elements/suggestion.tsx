@@ -21,8 +21,8 @@ const S = {
 export type SuggestionsProps = Omit<ScrollAreaProps, "orientation">;
 
 // `className`/`style` land on the row, not the scroll area — unchanged from
-// before, when the row carried `.wa-suggestions-row` and the area carried
-// `.wa-suggestions`.
+// before, when the row carried `.suggestions-row` and the area carried
+// `.suggestions`.
 export const Suggestions = ({ className, style, children, ...props }: SuggestionsProps) => (
   <ScrollArea hideScrollbar orientation="horizontal" style={S.suggestions} {...props}>
     <div className={className} style={sx(S.suggestionsRow, style)}>

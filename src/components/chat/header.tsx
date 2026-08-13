@@ -15,7 +15,7 @@ const S = {
     alignItems: "center",
     justifyContent: "flex-end",
     gap: "0.125rem",
-    borderBottom: "1px solid var(--wa-border)",
+    borderBottom: "1px solid var(--border)",
     padding: "0.375rem 0.5rem",
   },
 } satisfies Record<string, Sx>;

@@ -9,9 +9,9 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 const S = {
   pkg: {
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-background)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--background)",
     padding: "1rem",
   },
   pkgHeader: {
@@ -26,7 +26,7 @@ const S = {
     gap: "0.5rem",
   },
   pkgNameText: {
-    fontFamily: "var(--wa-font-mono)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.875rem",
     fontWeight: "500",
   },
@@ -35,36 +35,36 @@ const S = {
     textTransform: "capitalize",
   },
   pkgChangeAdded: {
-    background: "color-mix(in oklab, var(--wa-info) 15%, transparent)",
-    color: "var(--wa-info)",
+    background: "color-mix(in oklab, var(--info) 15%, transparent)",
+    color: "var(--info)",
   },
   pkgChangeMajor: {
-    background: "color-mix(in oklab, var(--wa-danger) 15%, transparent)",
-    color: "var(--wa-danger)",
+    background: "color-mix(in oklab, var(--danger) 15%, transparent)",
+    color: "var(--danger)",
   },
   pkgChangeMinor: {
-    background: "color-mix(in oklab, var(--wa-warning) 15%, transparent)",
-    color: "var(--wa-warning)",
+    background: "color-mix(in oklab, var(--warning) 15%, transparent)",
+    color: "var(--warning)",
   },
   pkgChangePatch: {
-    background: "color-mix(in oklab, var(--wa-success) 15%, transparent)",
-    color: "var(--wa-success)",
+    background: "color-mix(in oklab, var(--success) 15%, transparent)",
+    color: "var(--success)",
   },
   pkgChangeRemoved: {
-    background: "var(--wa-muted-surface)",
-    color: "var(--wa-muted-foreground)",
+    background: "var(--muted-surface)",
+    color: "var(--muted-foreground)",
   },
   pkgVersion: {
     display: "flex",
     alignItems: "center",
     gap: "0.5rem",
     marginTop: "0.5rem",
-    color: "var(--wa-muted-foreground)",
-    fontFamily: "var(--wa-font-mono)",
+    color: "var(--muted-foreground)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.875rem",
   },
   pkgVersionNew: {
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
     fontWeight: "500",
   },
   pkgIconSm: {
@@ -73,12 +73,12 @@ const S = {
   },
   pkgDescription: {
     marginTop: "0.5rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
   },
   pkgContent: {
     marginTop: "0.75rem",
-    borderTop: "1px solid var(--wa-border)",
+    borderTop: "1px solid var(--border)",
     paddingTop: "0.75rem",
   },
   pkgDeps: {
@@ -92,7 +92,7 @@ const S = {
     gap: "0.25rem",
   },
   pkgDepsLabel: {
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.75rem",
     fontWeight: "500",
     letterSpacing: "0.05em",
@@ -105,7 +105,7 @@ const S = {
     fontSize: "0.875rem",
   },
   pkgDepVersion: {
-    fontFamily: "var(--wa-font-mono)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.75rem",
   },
 } satisfies Record<string, Sx>;

@@ -4,7 +4,7 @@ import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 
-import { createWebAgent } from "@/agent/create-agent";
+import { createAgent } from "@/agent/create-agent";
 import { documentBridge, type PageBridge } from "@/agent/page-bridge";
 import type { AnyModel } from "@/agent/providers";
 import { useAgent } from "@/agent/use-agent";
@@ -67,7 +67,7 @@ const answerTurn = turn([{ type: "text", text: "Two plans." }], "stop");
 /** The runtime is built once, outside the render — a new one per render would
  *  hand the hook a fresh, empty agent every time. */
 const setup = (script: AssistantMessage[], approvals: "once" | "never" = "once") => {
-  const runtime = createWebAgent({
+  const runtime = createAgent({
     apiKey: "test-key",
     approvals,
     page,
@@ -161,7 +161,7 @@ describe("the wired agent", () => {
       maxTokens: 64_000,
     } as AnyModel;
 
-    const runtime = createWebAgent({
+    const runtime = createAgent({
       apiKey: (provider) => (provider === "openrouter" ? "sk-or-test" : undefined),
       model: gateway,
       page,

@@ -1,4 +1,4 @@
-// Every built-in component, under the `web-agent/components` subpath. A host
+// Every built-in component, under the `agentak/components` subpath. A host
 // that builds its own surface imports the pieces from here; the root export
 // stays the assembled chat.
 

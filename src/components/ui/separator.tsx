@@ -6,7 +6,7 @@ const S = {
   // `flexShrink` is a resting value a caller may replace. It is written before
   // the caller's `style`, so `<Separator style={{ flex: "1" }}/>` (checkpoint.tsx)
   // still wins — `flex` is a shorthand, and it is written second.
-  separator: { flexShrink: "0", background: "var(--wa-border)" },
+  separator: { flexShrink: "0", background: "var(--border)" },
   // Were `[data-orientation]` rules. The component knows the orientation, so it
   // picks the box itself; the attribute stays for anything selecting on it.
   horizontal: { width: "100%", height: "1px" },

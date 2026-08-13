@@ -30,7 +30,7 @@ export interface AnsiSpan {
 const NAMES = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"];
 
 /** The 16 base colors are tokens, so a theme switch needs no second parse. */
-const named = (index: number) => `var(--wa-ansi-${index > 7 ? "bright-" : ""}${NAMES[index % 8]})`;
+const named = (index: number) => `var(--ansi-${index > 7 ? "bright-" : ""}${NAMES[index % 8]})`;
 
 const channel = (value: number) => Math.min(255, Math.max(0, Math.trunc(value)));
 
@@ -153,8 +153,8 @@ export function ansiCss(style: AnsiStyle): JSX.CSSProperties {
   );
 
   return {
-    background: style.inverse ? (style.fg ?? "var(--wa-terminal-fg)") : style.bg,
-    color: style.inverse ? (style.bg ?? "var(--wa-terminal-bg)") : style.fg,
+    background: style.inverse ? (style.fg ?? "var(--terminal-fg)") : style.bg,
+    color: style.inverse ? (style.bg ?? "var(--terminal-bg)") : style.fg,
     fontStyle: style.italic ? "italic" : undefined,
     fontWeight: style.bold ? 600 : undefined,
     opacity: style.dim ? 0.7 : undefined,

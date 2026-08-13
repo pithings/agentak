@@ -14,7 +14,7 @@ import { sx, type Sx } from "@/styles/sx";
 
 const S = {
   snippet: {
-    fontFamily: "var(--wa-font-mono)",
+    fontFamily: "var(--font-mono)",
   },
   snippetText: {
     paddingLeft: "0.5rem",
@@ -23,7 +23,7 @@ const S = {
   // Input sets its own color inline, so this override wins by landing after it
   // in the style attribute — `sx()` merges caller-last.
   snippetInput: {
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
   },
 } satisfies Record<string, Sx>;
 

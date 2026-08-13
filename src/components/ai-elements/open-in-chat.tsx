@@ -30,7 +30,7 @@ const S = {
   openInContent: { width: "15rem" },
   openInIcon: { width: "1rem", height: "1rem", flexShrink: "0" },
   openInTitle: { flex: "1" },
-  openInExternal: { flexShrink: "0", color: "var(--wa-muted-foreground)" },
+  openInExternal: { flexShrink: "0", color: "var(--muted-foreground)" },
 } satisfies Record<string, Sx>;
 
 /*

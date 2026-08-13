@@ -3,7 +3,7 @@ import { h } from "preact";
 import { onBeforeUnmount, onMounted } from "vue";
 
 import { u } from "@/styles/base";
-// Defines `<web-agent>`. Side effect: import it, then write the tag.
+// Defines `<agent-chat>`. Side effect: import it, then write the tag.
 import "@/element";
 import { ChatActions, StartDemo } from "../chat-actions";
 import { chat, closeChat, openChat, setChatMode } from "../chat-store";
@@ -15,7 +15,7 @@ import PreactHost from "./preact-host.vue";
  *
  * It opens on the live agent — the custom element, so the agent runs behind a
  * shadow root: nothing of this page's tailwind reaches in and nothing of the
- * agent reaches out, and the only thing that crosses is the `--wa-*` tokens,
+ * agent reaches out, and the only thing that crosses is the `--*` tokens,
  * which inherit. The agent starts on no provider: the first message
  * opens its picker, where the free ones need no key.
  *
@@ -94,14 +94,14 @@ onBeforeUnmount(() => globalThis.removeEventListener("keydown", onKey));
         aria-label="Assistant"
       >
         <!-- Light DOM: the element places these — the header, and the empty state. -->
-        <web-agent v-if="chat.mode === 'live'" class="block min-h-0 flex-1">
+        <agent-chat v-if="chat.mode === 'live'" class="block min-h-0 flex-1">
           <div slot="actions" class="contents">
             <PreactHost class="contents" :preview="liveActions" />
           </div>
           <div slot="empty" class="contents">
             <PreactHost class="contents" :preview="liveEmpty" />
           </div>
-        </web-agent>
+        </agent-chat>
 
         <PreactHost v-else class="min-h-0 flex-1" :preview="demo" />
       </section>

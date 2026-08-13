@@ -12,7 +12,7 @@ import { paint } from "./theme";
 /**
  * Playground entry: a vue SPA that hosts the library.
  *
- * The page declares the `--wa-*` tokens itself, the way a host page must —
+ * The page declares the `--*` tokens itself, the way a host page must —
  * nothing in the library injects them, and the widget's shadow root inherits
  * them from here. The page's own tailwind theme reads the same names.
  */

@@ -1,6 +1,6 @@
-# web-agent
+# agentak
 
-Standalone agent chat web component (`<web-agent>`) + Chrome MV3 side panel, over
+Standalone agent chat web component (`<agent-chat>`) + Chrome MV3 side panel, over
 [`@earendil-works/pi-agent-core`](https://www.npmjs.com/package/@earendil-works/pi-agent-core).
 
 A pnpm workspace: the library at the root, the dev page in `playground/`, the panel
@@ -54,20 +54,20 @@ pnpm fmt               # oxfmt
 Four entries, one bundle each; `build.config.ts` lists them. `.d.mts` is emitted
 beside every bundle.
 
-| Subpath                | Entry                     | What                                                      |
-| ---------------------- | ------------------------- | --------------------------------------------------------- |
-| `web-agent`            | `src/index.ts`            | `AgentChat`, `WebAgent`, `defineWebAgent`, `tokens`, loop |
-| `web-agent/element`    | `src/element.tsx`         | side effect — defines `<web-agent>`                       |
-| `web-agent/components` | `src/components/index.ts` | every built-in component, named                           |
-| `web-agent/pi`         | `src/agent/index.ts`      | the loop alone; the root re-exports the same set          |
+| Subpath              | Entry                     | What                                                   |
+| -------------------- | ------------------------- | ------------------------------------------------------ |
+| `agentak`            | `src/index.ts`            | `Chat`, `AgentChat`, `defineAgentChat`, `tokens`, loop |
+| `agentak/element`    | `src/element.tsx`         | side effect — defines `<agent-chat>`                   |
+| `agentak/components` | `src/components/index.ts` | every built-in component, named                        |
+| `agentak/pi`         | `src/agent/index.ts`      | the loop alone; the root re-exports the same set       |
 
-`<web-agent>` takes two slots, both light DOM. `slot="actions"` lands at the end of
+`<agent-chat>` takes two slots, both light DOM. `slot="actions"` lands at the end of
 the chat header, so a host page puts its own chrome — minimise, and the like — on the
 one title bar the surface already has. `slot="empty"` lands under the greeting, for a
 suggestion or a launcher the host owns; it shows only before the first message.
-`WebAgent` takes the same as `actions` and `emptyActions`, and carries the actions
-through the catalog wait too — the one view that is not the chat. Provider, model and
-key are all the composer's picker, so there is no gate in front of the surface.
+`AgentChat` takes the same as `actions` and `emptyActions`. Provider, model and key are
+all the composer's picker, so the chat is the only view there is — no gate in front of
+it, and no screen to swap to.
 
 `dist/` is the published library and nothing else — the playground builds into
 `playground/dist` and the extension into `extension/dist`, so `files: ["dist"]` needs
@@ -83,7 +83,7 @@ consumer's bundler. `platform: "browser"` is the one hand-set option.
 
 ```
 src/
-  index.ts / element.tsx / web-agent.tsx   package entry, custom element, container
+  index.ts / element.tsx / agent-chat.tsx  package entry, custom element, container
   components/ui/                shadcn primitives, in preact
   components/ai-elements/       AI SDK Elements, in preact
   components/chat.tsx           the chat surface — transcript in, callbacks out
@@ -96,8 +96,8 @@ src/
   agent/                        the pi loop — see .agents/pi.md
   types.ts                      UI types, inlined from the `ai` package
 test/                           library tests, importing source through `@/`
-playground/                     vue host app, `@web-agent/playground`
-extension/                      MV3 side panel, `@web-agent/extension`
+playground/                     vue host app, `@agentak/playground`
+extension/                      MV3 side panel, `@agentak/extension`
 ```
 
 ## Status
@@ -113,7 +113,7 @@ Next:
 1. Extension `PageBridge` over `chrome.scripting.executeScript` against the active tab.
    `documentBridge()` reads the side panel's own document today, which is empty.
 2. Extension key storage: `chrome.storage` instead of `localStorage`, passed as `apiKey`.
-3. Verify `<web-agent>` in a host page, and the loop against a real key. The
+3. Verify `<agent-chat>` in a host page, and the loop against a real key. The
    playground chatbox mounts the element itself, so the page is the host to check.
 4. Compaction. pi exports `compact()`, but it needs a `Models` store, so a long
    conversation still runs into the window.

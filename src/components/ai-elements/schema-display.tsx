@@ -15,7 +15,7 @@ import { reset, u } from "@/styles/base";
 import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 /** A line between rows — a flex `gap` cannot draw one. */
-const DIVIDER: Sx = { borderTop: "1px solid var(--wa-border)" };
+const DIVIDER: Sx = { borderTop: "1px solid var(--border)" };
 
 /** Narrows `isValidElement` so the clone below can type the `style` it adds. */
 function hasStyle(child: ComponentChild): child is VNode<{ style?: Sx }> {
@@ -33,32 +33,32 @@ function withDividers(children: ComponentChildren): ComponentChildren {
 const S = {
   schema: {
     overflow: "hidden",
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-background)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--background)",
   },
   schemaHeader: {
     display: "flex",
     alignItems: "center",
     gap: "0.75rem",
-    borderBottom: "1px solid var(--wa-border)",
+    borderBottom: "1px solid var(--border)",
     padding: "0.75rem 1rem",
   },
   schemaDescription: {
-    borderBottom: "1px solid var(--wa-border)",
+    borderBottom: "1px solid var(--border)",
     padding: "0.75rem 1rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
   },
   schemaList: {
-    borderTop: "1px solid var(--wa-border)",
+    borderTop: "1px solid var(--border)",
   },
   schemaPath: {
-    fontFamily: "var(--wa-font-mono)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.875rem",
   },
   schemaPathParam: {
-    color: "var(--wa-info)",
+    color: "var(--info)",
   },
   schemaSectionTrigger: {
     boxSizing: "border-box",
@@ -68,10 +68,10 @@ const S = {
     gap: "0.5rem",
     padding: "0.75rem 1rem",
     textAlign: "left",
-    transition: "background-color var(--wa-transition)",
+    transition: "background-color var(--transition)",
   },
   schemaSectionTriggerHover: {
-    background: "var(--wa-muted-surface)",
+    background: "var(--muted-surface)",
   },
   schemaSectionTitle: {
     fontSize: "0.875rem",
@@ -92,7 +92,7 @@ const S = {
     gap: "0.5rem",
   },
   schemaName: {
-    fontFamily: "var(--wa-font-mono)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.875rem",
   },
   // Keeps a leaf row aligned with the rows that carry a chevron.
@@ -102,26 +102,26 @@ const S = {
   },
   schemaNote: {
     marginTop: "0.25rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
   },
-  // Was `.wa-schema-property > .wa-schema-note` — only the branch-free leaf
+  // Was `.schema-property > .schema-note` — only the branch-free leaf
   // row shifts its note this far, to sit under the name past the spacer.
   schemaPropertyNote: {
     paddingLeft: "1.5rem",
   },
   schemaBranchNote: {
     paddingBottom: "0.5rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
   },
   schemaExample: {
     margin: "0 1rem 1rem",
     overflow: "auto",
-    borderRadius: "var(--wa-radius-md)",
-    background: "var(--wa-muted)",
+    borderRadius: "var(--radius-md)",
+    background: "var(--muted)",
     padding: "1rem",
-    fontFamily: "var(--wa-font-mono)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.875rem",
   },
 } satisfies Record<string, Sx>;
@@ -166,30 +166,30 @@ const SchemaDisplayContext = createContext<SchemaDisplayContextValue>({
  */
 const METHOD_SX: Record<HttpMethod, Sx> = {
   GET: {
-    background: "color-mix(in oklab, var(--wa-success) 15%, transparent)",
-    color: "var(--wa-success)",
+    background: "color-mix(in oklab, var(--success) 15%, transparent)",
+    color: "var(--success)",
   },
   POST: {
-    background: "color-mix(in oklab, var(--wa-info) 15%, transparent)",
-    color: "var(--wa-info)",
+    background: "color-mix(in oklab, var(--info) 15%, transparent)",
+    color: "var(--info)",
   },
   PUT: {
-    background: "color-mix(in oklab, var(--wa-notice) 15%, transparent)",
-    color: "var(--wa-notice)",
+    background: "color-mix(in oklab, var(--notice) 15%, transparent)",
+    color: "var(--notice)",
   },
   PATCH: {
-    background: "color-mix(in oklab, var(--wa-warning) 15%, transparent)",
-    color: "var(--wa-warning)",
+    background: "color-mix(in oklab, var(--warning) 15%, transparent)",
+    color: "var(--warning)",
   },
-  DELETE: { background: "var(--wa-destructive-surface)", color: "var(--wa-destructive)" },
+  DELETE: { background: "var(--destructive-surface)", color: "var(--destructive)" },
 };
 
 /**
- * Was `.wa-badge.wa-schema-method` — Badge's own font-size is inline now (see
+ * Was `.badge.schema-method` — Badge's own font-size is inline now (see
  * ui/badge.tsx), so this has to reach the badge as `style` too; font-family
  * has nowhere else to live.
  */
-const METHOD_FONT: Sx = { fontFamily: "var(--wa-font-mono)", fontSize: "0.75rem" };
+const METHOD_FONT: Sx = { fontFamily: "var(--font-mono)", fontSize: "0.75rem" };
 
 /** Path parameters, kept by `split` because the group is captured. */
 const PATH_PARAM = /(\{[^}]+\})/;
@@ -207,7 +207,7 @@ const SectionChevron = () => {
 
 type SchemaSectionTriggerProps = WithSx<ComponentProps<typeof CollapsibleTrigger>>;
 
-/** Was `.wa-schema-section-trigger:hover`. */
+/** Was `.schema-section-trigger:hover`. */
 const SchemaSectionTrigger = ({ className, style, ...props }: SchemaSectionTriggerProps) => {
   const { handlers, hovered } = useInteraction<HTMLButtonElement>(props);
 
@@ -221,7 +221,7 @@ const SchemaSectionTrigger = ({ className, style, ...props }: SchemaSectionTrigg
   );
 };
 
-/** Was `.wa-schema-list`, plus the `> * + *` divider between its rows. */
+/** Was `.schema-list`, plus the `> * + *` divider between its rows. */
 const SchemaList = ({ children }: { children: ComponentChildren }) => (
   <div style={S.schemaList}>{withDividers(children)}</div>
 );

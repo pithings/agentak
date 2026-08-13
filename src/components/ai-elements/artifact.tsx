@@ -12,26 +12,26 @@ const S = {
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-background)",
-    boxShadow: "var(--wa-shadow-xs)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--background)",
+    boxShadow: "var(--shadow-xs)",
   },
   artifactHeader: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottom: "1px solid var(--wa-border)",
-    background: "var(--wa-muted-surface)",
+    borderBottom: "1px solid var(--border)",
+    background: "var(--muted-surface)",
     padding: "0.75rem 1rem",
   },
   artifactTitle: {
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
     fontSize: "0.875rem",
     fontWeight: "500",
   },
   artifactDescription: {
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
   },
   artifactActions: {
@@ -40,9 +40,9 @@ const S = {
     gap: "0.25rem",
   },
   // Passed as `style`, so it still outranks the ghost variant's own colours —
-  // that is what the `.wa-btn.wa-artifact-action` compound used to do.
-  artifactAction: { color: "var(--wa-muted-foreground)" },
-  artifactActionHover: { color: "var(--wa-foreground)" },
+  // that is what the `.btn.artifact-action` compound used to do.
+  artifactAction: { color: "var(--muted-foreground)" },
+  artifactActionHover: { color: "var(--foreground)" },
   artifactContent: {
     flex: "1",
     overflow: "auto",

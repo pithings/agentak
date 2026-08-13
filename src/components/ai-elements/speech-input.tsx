@@ -8,7 +8,7 @@ import { useAnimation } from "@/lib/use-animation";
 import { useInteraction } from "@/lib/use-interaction";
 import { sx, type Sx } from "@/styles/sx";
 
-// The pulse ring used to need its own keyframes — `wa-ping`, not the shared
+// The pulse ring used to need its own keyframes — `ping`, not the shared
 // `u.pulse` — because the three rings stagger with their own `animation-delay`.
 // `useAnimation()` takes a `delay` in its options instead, so no keyframes are
 // left. `75%, 100% { … }` set both stops to the same values, so the ring reaches
@@ -31,18 +31,18 @@ const S = {
   speechRing: {
     position: "absolute",
     inset: "0",
-    border: "2px solid color-mix(in oklab, var(--wa-destructive) 30%, transparent)",
+    border: "2px solid color-mix(in oklab, var(--destructive) 30%, transparent)",
     borderRadius: "9999px",
   },
   // Reaches Button as `style`, so it lands after the variant — the button has
   // to sit over the rings, and the listening state repaints the variant.
   speechButton: { position: "relative", zIndex: "1", borderRadius: "9999px" },
   speechListening: {
-    background: "var(--wa-destructive)",
-    color: "var(--wa-destructive-foreground)",
+    background: "var(--destructive)",
+    color: "var(--destructive-foreground)",
   },
   speechListeningHover: {
-    background: "color-mix(in oklab, var(--wa-destructive) 80%, transparent)",
+    background: "color-mix(in oklab, var(--destructive) 80%, transparent)",
   },
 } satisfies Record<string, Sx>;
 

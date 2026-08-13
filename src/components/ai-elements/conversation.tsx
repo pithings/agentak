@@ -45,7 +45,7 @@ const S = {
   },
   emptyText: {
     marginTop: "0.25rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
   },
   // Passed as `style`, so the background and radius land after the outline
@@ -56,9 +56,9 @@ const S = {
     left: "50%",
     transform: "translateX(-50%)",
     borderRadius: "9999px",
-    background: "var(--wa-background)",
+    background: "var(--background)",
   },
-  scrollButtonHover: { background: "var(--wa-muted)" },
+  scrollButtonHover: { background: "var(--muted)" },
 } satisfies Record<string, Sx>;
 
 type StickContext = Pick<

@@ -2,10 +2,10 @@ import { ref } from "vue";
 
 export type Theme = "light" | "dark";
 
-const KEY = "wa-playground-theme";
+const KEY = "agentak-playground-theme";
 
 /**
- * Light and dark are one class on the root — every `--wa-*` pair hangs off it,
+ * Light and dark are one class on the root — every `--*` pair hangs off it,
  * and the page's own tailwind `dark:` variant reads the same class — so this is
  * the whole theme switch. It opens on the stored choice, else on the system.
  */

@@ -13,7 +13,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 const S = {
   sources: {
     marginBottom: "1rem",
-    color: "var(--wa-primary)",
+    color: "var(--primary)",
     fontSize: "0.75rem",
   },
   sourcesTrigger: {
@@ -44,7 +44,7 @@ const S = {
 export type SourcesProps = WithSx<ComponentProps<typeof Collapsible>>;
 
 export const Sources = ({ className, style, ...props }: SourcesProps) => (
-  // No "wa-sources" class: nothing selects it now that the chevron rule
+  // No "sources" class: nothing selects it now that the chevron rule
   // is gone — it was only ever the anchor for that one rule.
   <Collapsible className={className} style={sx(S.sources, style)} {...props} />
 );

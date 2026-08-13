@@ -10,7 +10,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 import type { LanguageModelUsage } from "@/types";
 
 /** A line between children — a flex `gap` cannot draw one. */
-const DIVIDER: Sx = { borderTop: "1px solid var(--wa-border)" };
+const DIVIDER: Sx = { borderTop: "1px solid var(--border)" };
 
 /** Narrows `isValidElement` so the clone below can type the `style` it adds. */
 function hasStyle(child: ComponentChild): child is VNode<{ style?: Sx }> {
@@ -32,7 +32,7 @@ const S = {
   },
   // Only while the pointer is away: the ghost variant repaints the colour on
   // hover, and it is `buttonSx` that paints it now.
-  contextTrigger: { color: "var(--wa-muted-foreground)" },
+  contextTrigger: { color: "var(--muted-foreground)" },
   // The ring is bigger than a button icon.
   contextRing: { width: "1.25rem", height: "1.25rem" },
   // The ring is drawn from 12 o'clock, so the arc turns a quarter back.
@@ -49,10 +49,10 @@ const S = {
     minWidth: "15rem",
     marginTop: "0.5rem",
     overflow: "hidden",
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-md)",
-    background: "var(--wa-background)",
-    boxShadow: "var(--wa-shadow-xs)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-md)",
+    background: "var(--background)",
+    boxShadow: "var(--shadow-xs)",
   },
   contextHeader: { boxSizing: "border-box", width: "100%", padding: "0.75rem" },
   contextSummary: {
@@ -70,11 +70,11 @@ const S = {
     marginTop: "0.5rem",
     overflow: "hidden",
     borderRadius: "9999px",
-    background: "var(--wa-muted)",
+    background: "var(--muted)",
   },
   contextMeterFill: {
-    background: "var(--wa-primary)",
-    transition: "width var(--wa-transition)",
+    background: "var(--primary)",
+    transition: "width var(--transition)",
   },
   contextBody: {
     boxSizing: "border-box",
@@ -92,7 +92,7 @@ const S = {
   },
   contextCost: {
     marginLeft: "0.5rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
   },
   contextFooter: {
     boxSizing: "border-box",
@@ -102,7 +102,7 @@ const S = {
     justifyContent: "space-between",
     gap: "0.75rem",
     padding: "0.75rem",
-    background: "var(--wa-secondary)",
+    background: "var(--secondary)",
   },
 } satisfies Record<string, Sx>;
 
@@ -173,7 +173,7 @@ export const Context = ({
   return (
     <ContextContext.Provider value={value}>
       {/* Kept as a stable hook for the whole widget, same as the other
-          `wa-context-*` parts below it — nothing sizes off it directly. */}
+          `context-*` parts below it — nothing sizes off it directly. */}
       <Collapsible className={className} style={sx(S.context, style)} {...props}>
         {children ?? (
           <>

@@ -26,8 +26,8 @@ const S = {
     alignItems: "center",
     justifyContent: "center",
     borderRadius: "9999px",
-    background: "var(--wa-muted)",
-    color: "var(--wa-muted-foreground)",
+    background: "var(--muted)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
   },
 } satisfies Record<string, Sx>;

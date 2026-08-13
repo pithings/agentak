@@ -8,7 +8,7 @@ element can carry it. What cannot go inline:
 - **tokens** — the only CSS, and **the host declares it**. `styles/base.ts` exports the
   text as `tokens`, re-exported from the package root. A custom property inherits, and
   inheritance crosses a shadow boundary, so a host page's `:root` reaches every
-  component inside `<web-agent>`, and `.dark` re-points the same names with no
+  component inside `<agent-chat>`, and `.dark` re-points the same names with no
   per-component branch. **A `var()` with no token behind it resolves to nothing, not to
   a default** — a host that skips the snippet gets an unpainted tree.
 - **`box-sizing`** — inline, but only in the style objects where a size meets a padding
@@ -32,8 +32,8 @@ import { useInteraction } from "@/lib/use-interaction";
 import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 const S = {
-  body: { overflowX: "auto", borderRadius: "var(--wa-radius-md)" },
-  bodyHover: { background: "var(--wa-hover)" },
+  body: { overflowX: "auto", borderRadius: "var(--radius-md)" },
+  bodyHover: { background: "var(--hover)" },
 } satisfies Record<string, Sx>;
 
 function ToolBody({ className, style, ...props }: WithSx<ComponentProps<"button">>) {
@@ -123,14 +123,14 @@ subcomponent each.
   `*Styles` export and fails if one comes back.
 - **Nothing catches an inverted `sx()` argument.** A state object merged before the
   resting value it overrides produces a wrong pixel and no failure. Read the order.
-- **There are no `wa-` classes.** `data-slot`, `data-variant`, `data-size` and
+- **There are no `` classes.** `data-slot`, `data-variant`, `data-size` and
   `data-state` are the stable hooks. A class carries nothing — do not add one to style
   something, and do not expect a host to target it.
 
 ## The trade
 
 Components render identically wherever they are embedded and a host page cannot break
-them. In exchange a host cannot restyle them either (only the `--wa-*` tokens are
+them. In exchange a host cannot restyle them either (only the `--*` tokens are
 open), styles re-emit per element per render, hover and focus cost a render, and **a
 caller's own children get no reset** — a raw `<p>` under `AlertDescription` loses its
 line-height. Children that come through `<Markdown>` are covered, which is every real
@@ -145,7 +145,7 @@ The one thing a host must do:
 ```
 
 The playground and the extension panel both do this in documents that are ours, not a
-host's. `<web-agent>` itself declares only `display: block`, set in
+host's. `<agent-chat>` itself declares only `display: block`, set in
 `connectedCallback` because there is no `:host` rule to carry it.
 
 The style objects need modern CSS: `color-mix()` and `field-sizing`. `:has()` ships

@@ -219,7 +219,7 @@ export interface CatalogSection {
 }
 
 const SAMPLE_TS = [
-  "const agent = createWebAgent({ apiKey });",
+  "const agent = createAgent({ apiKey });",
   'const reply = await agent.send("Summarise this page");',
 ].join("\n");
 
@@ -241,7 +241,7 @@ const primitives: CatalogEntry[] = [
     render: () => (
       <Accordion defaultValue={["what"]} type="multiple">
         <AccordionItem value="what">
-          <AccordionTrigger>What is web-agent?</AccordionTrigger>
+          <AccordionTrigger>What is agentak?</AccordionTrigger>
           <AccordionContent>A custom element that hosts the agent loop.</AccordionContent>
         </AccordionItem>
         <AccordionItem value="how">
@@ -531,7 +531,7 @@ const surface: CatalogEntry[] = [
           <ConversationEmptyState
             description="Ask about the current page, or anything else."
             icon={<BotIcon style={u.iconLg} />}
-            title="web-agent"
+            title="agentak"
           />
         </ConversationContent>
       </Conversation>
@@ -602,7 +602,7 @@ const surface: CatalogEntry[] = [
           <ToolInput input={{ maxChars: 8000 }} />
           <ToolOutput
             errorText={undefined}
-            output={JSON.stringify({ title: "web-agent", chars: 4821 }, null, 2)}
+            output={JSON.stringify({ title: "agentak", chars: 4821 }, null, 2)}
           />
         </ToolContent>
       </Tool>

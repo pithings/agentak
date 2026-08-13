@@ -38,7 +38,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
  * `.agents/components/porting.md`.
  */
 const S = {
-  // Was the `.wa-popover-content.wa-model-selector-content` compound: the
+  // Was the `.popover-content.model-selector-content` compound: the
   // popover's own padding and width are wrong for a list, so this must reach
   // PopoverContent as `style` to keep outranking it.
   modelSelectorContent: { boxSizing: "border-box", width: "20rem", padding: "0" },

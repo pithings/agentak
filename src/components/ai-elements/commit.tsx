@@ -19,9 +19,9 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 const S = {
   commit: {
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-background)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--background)",
   },
   commitHeader: {
     display: "flex",
@@ -38,7 +38,7 @@ const S = {
     alignItems: "center",
     gap: "0.75rem",
     textAlign: "left",
-    transition: "opacity var(--wa-transition)",
+    transition: "opacity var(--transition)",
   },
   commitHeaderTriggerHover: {
     opacity: "0.8",
@@ -57,11 +57,11 @@ const S = {
     display: "flex",
     alignItems: "center",
     gap: "0.5rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.75rem",
   },
   commitHash: {
-    fontFamily: "var(--wa-font-mono)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.75rem",
   },
   commitHashIcon: {
@@ -91,7 +91,7 @@ const S = {
     flexShrink: "0",
   },
   commitContent: {
-    borderTop: "1px solid var(--wa-border)",
+    borderTop: "1px solid var(--border)",
     padding: "0.75rem",
   },
   commitFiles: {
@@ -104,12 +104,12 @@ const S = {
     alignItems: "center",
     justifyContent: "space-between",
     gap: "0.5rem",
-    borderRadius: "var(--wa-radius-sm)",
+    borderRadius: "var(--radius-sm)",
     padding: "0.25rem 0.5rem",
     fontSize: "0.875rem",
   },
   commitFileHover: {
-    background: "var(--wa-muted-surface)",
+    background: "var(--muted-surface)",
   },
   commitFileInfo: {
     display: "flex",
@@ -121,17 +121,17 @@ const S = {
     width: "0.875rem",
     height: "0.875rem",
     flexShrink: "0",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
   },
   commitFilePath: {
     overflow: "hidden",
-    fontFamily: "var(--wa-font-mono)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.75rem",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
   commitFileStatus: {
-    fontFamily: "var(--wa-font-mono)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.75rem",
     fontWeight: "500",
   },
@@ -140,7 +140,7 @@ const S = {
     flexShrink: "0",
     alignItems: "center",
     gap: "0.25rem",
-    fontFamily: "var(--wa-font-mono)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.75rem",
   },
   commitChangeIcon: {
@@ -151,16 +151,16 @@ const S = {
   },
   // Status hues, not theme colours — the same tokens the tool badges use.
   commitAdded: {
-    color: "var(--wa-success)",
+    color: "var(--success)",
   },
   commitDeleted: {
-    color: "var(--wa-danger)",
+    color: "var(--danger)",
   },
   commitModified: {
-    color: "var(--wa-warning)",
+    color: "var(--warning)",
   },
   commitRenamed: {
-    color: "var(--wa-info)",
+    color: "var(--info)",
   },
 } satisfies Record<string, Sx>;
 

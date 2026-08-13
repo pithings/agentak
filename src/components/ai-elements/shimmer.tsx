@@ -6,7 +6,7 @@ import { reset } from "@/styles/base";
 import { sx, type Sx } from "@/styles/sx";
 
 // A gradient swept across clipped text — what `motion` animated before, then
-// `@keyframes wa-shimmer`. Both `background-position` stops were already
+// `@keyframes shimmer`. Both `background-position` stops were already
 // explicit, so the WAAPI frames below are a direct translation — see
 // `useAnimation()`.
 const SHIMMER_FRAMES: Keyframe[] = [
@@ -19,7 +19,7 @@ const S = {
     position: "relative",
     display: "inline-block",
     backgroundImage:
-      "linear-gradient( 90deg, transparent calc(50% - var(--wa-spread)), var(--wa-background), transparent calc(50% + var(--wa-spread)) ), linear-gradient(var(--wa-muted-foreground), var(--wa-muted-foreground))",
+      "linear-gradient( 90deg, transparent calc(50% - var(--shimmer-spread)), var(--background), transparent calc(50% + var(--shimmer-spread)) ), linear-gradient(var(--muted-foreground), var(--muted-foreground))",
     backgroundSize: "250% 100%, auto",
     backgroundRepeat: "no-repeat, padding-box",
     backgroundClip: "text",
@@ -63,7 +63,7 @@ export const Shimmer = ({
         // the reset never reaches a tag this component didn't actually render.
         Tag === "p" && reset.text,
         S.shimmer,
-        { "--wa-spread": `${(children?.length ?? 0) * spread}px` } as JSX.CSSProperties,
+        { "--shimmer-spread": `${(children?.length ?? 0) * spread}px` } as JSX.CSSProperties,
         style,
       )}
     >

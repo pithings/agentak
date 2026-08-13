@@ -4,22 +4,23 @@
    same class instead of the media query tailwind defaults to. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* The page paints from the `--wa-*` tokens the widget reads — `main.ts`
-   declares them, the way a host page must. `inline` keeps the var() reference
-   in the utility, so one class repoints when `.dark` repoints the token. */
-@theme inline {
-  --color-page: var(--wa-background);
-  --color-ink: var(--wa-foreground);
-  --color-line: var(--wa-border);
-  --color-surface: var(--wa-muted-surface);
-  --color-fill: var(--wa-muted);
-  --color-soft: var(--wa-muted-foreground);
-  --color-brand: var(--wa-primary);
-  --color-brand-ink: var(--wa-primary-foreground);
-  --color-ring: var(--wa-ring);
+/* The page paints from the tokens the widget reads — `main.ts` declares them,
+   the way a host page must. `inline` keeps the var() reference in the utility,
+   so one class repoints when `.dark` repoints the token.
 
-  --font-sans: var(--wa-font-sans);
-  --font-mono: var(--wa-font-mono);
+   The library names its tokens the way shadcn does, so `--font-sans`,
+   `--font-mono` and `--radius-*` are already tailwind theme names: the
+   utilities read them straight, and no mapping belongs here. */
+@theme inline {
+  --color-page: var(--background);
+  --color-ink: var(--foreground);
+  --color-line: var(--border);
+  --color-surface: var(--muted-surface);
+  --color-fill: var(--muted);
+  --color-soft: var(--muted-foreground);
+  --color-brand: var(--primary);
+  --color-brand-ink: var(--primary-foreground);
+  --color-ring: var(--ring);
 }
 
 @layer base {
@@ -28,9 +29,9 @@
     height: 100%;
   }
   body {
-    background: var(--wa-background);
-    color: var(--wa-foreground);
-    font-family: var(--wa-font-sans);
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
 }
@@ -41,7 +42,7 @@
    `main.ts` appends the library `tokens` to `<head>` at runtime, so that sheet
    comes after this one. Doubling the selector (`:root:root`) outranks it on
    specificity instead of on order; the dark block doubles again, so it still
-   beats the light one. Every `--wa-*` token is restated here — nothing falls
+   beats the light one. Every `--*` token is restated here — nothing falls
    back to the library values.
    --------------------------------------------------------------------------- */
 
@@ -49,48 +50,48 @@
   color-scheme: light;
 
   /* Flat corners — vscode rounds by 2-4px, never more. */
-  --wa-radius: 4px;
-  --wa-radius-sm: 2px;
-  --wa-radius-md: 3px;
-  --wa-radius-lg: 4px;
+  --radius: 4px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
 
-  --wa-font-sans: system-ui, "Segoe UI", -apple-system, Ubuntu, "Droid Sans", sans-serif;
-  --wa-font-mono:
+  --font-sans: system-ui, "Segoe UI", -apple-system, Ubuntu, "Droid Sans", sans-serif;
+  --font-mono:
     "Cascadia Mono", Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace;
 
-  --wa-background: #ffffff;
-  --wa-foreground: #3b3b3b;
-  --wa-primary: #005fb8;
-  --wa-primary-foreground: #ffffff;
-  --wa-secondary: #f8f8f8;
-  --wa-secondary-foreground: #3b3b3b;
-  --wa-muted: #f8f8f8;
-  --wa-muted-foreground: #616161;
-  --wa-accent: #f2f2f2;
-  --wa-accent-foreground: #3b3b3b;
-  --wa-destructive: #e51400;
-  --wa-destructive-foreground: #ffffff;
-  --wa-border: #e5e5e5;
-  --wa-input: #cecece;
-  --wa-ring: #005fb8;
+  --background: #ffffff;
+  --foreground: #3b3b3b;
+  --primary: #005fb8;
+  --primary-foreground: #ffffff;
+  --secondary: #f8f8f8;
+  --secondary-foreground: #3b3b3b;
+  --muted: #f8f8f8;
+  --muted-foreground: #616161;
+  --accent: #f2f2f2;
+  --accent-foreground: #3b3b3b;
+  --destructive: #e51400;
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e5;
+  --input: #cecece;
+  --ring: #005fb8;
 
-  --wa-surface: #ffffff;
-  --wa-surface-hover: #f2f2f2;
-  --wa-hover: #f2f2f2;
-  --wa-hover-foreground: #3b3b3b;
-  --wa-muted-surface: #f8f8f8;
-  --wa-destructive-surface: color-mix(in oklab, var(--wa-destructive) 8%, transparent);
+  --surface: #ffffff;
+  --surface-hover: #f2f2f2;
+  --hover: #f2f2f2;
+  --hover-foreground: #3b3b3b;
+  --muted-surface: #f8f8f8;
+  --destructive-surface: color-mix(in oklab, var(--destructive) 8%, transparent);
   /* One hairline, the way vscode paints focus. */
-  --wa-focus-ring: 0 0 0 1px var(--wa-ring);
-  --wa-invalid-ring: 0 0 0 1px var(--wa-destructive);
-  --wa-shadow-xs: none;
-  --wa-transition: 0.1s ease;
+  --focus-ring: 0 0 0 1px var(--ring);
+  --invalid-ring: 0 0 0 1px var(--destructive);
+  --shadow-xs: none;
+  --transition: 0.1s ease;
 
-  --wa-info: #0078d4;
-  --wa-success: #16825d;
-  --wa-warning: #bf8803;
-  --wa-notice: #cd6f00;
-  --wa-danger: #e51400;
+  --info: #0078d4;
+  --success: #16825d;
+  --warning: #bf8803;
+  --notice: #cd6f00;
+  --danger: #e51400;
 
   /* Light+ syntax colors. */
   --shj-fg: #3b3b3b;
@@ -111,58 +112,58 @@
   --shj-esc: #ee0000;
   --shj-insert: #098658;
 
-  --wa-terminal-bg: #ffffff;
-  --wa-terminal-fg: #3b3b3b;
-  --wa-terminal-muted: color-mix(in oklab, var(--wa-terminal-fg) 60%, transparent);
-  --wa-ansi-black: #000000;
-  --wa-ansi-red: #cd3131;
-  --wa-ansi-green: #00bc00;
-  --wa-ansi-yellow: #949800;
-  --wa-ansi-blue: #0451a5;
-  --wa-ansi-magenta: #bc05bc;
-  --wa-ansi-cyan: #0598bc;
-  --wa-ansi-white: #555555;
-  --wa-ansi-bright-black: #666666;
-  --wa-ansi-bright-red: #cd3131;
-  --wa-ansi-bright-green: #14ce14;
-  --wa-ansi-bright-yellow: #b5ba00;
-  --wa-ansi-bright-blue: #0451a5;
-  --wa-ansi-bright-magenta: #bc05bc;
-  --wa-ansi-bright-cyan: #0598bc;
-  --wa-ansi-bright-white: #a5a5a5;
+  --terminal-bg: #ffffff;
+  --terminal-fg: #3b3b3b;
+  --terminal-muted: color-mix(in oklab, var(--terminal-fg) 60%, transparent);
+  --ansi-black: #000000;
+  --ansi-red: #cd3131;
+  --ansi-green: #00bc00;
+  --ansi-yellow: #949800;
+  --ansi-blue: #0451a5;
+  --ansi-magenta: #bc05bc;
+  --ansi-cyan: #0598bc;
+  --ansi-white: #555555;
+  --ansi-bright-black: #666666;
+  --ansi-bright-red: #cd3131;
+  --ansi-bright-green: #14ce14;
+  --ansi-bright-yellow: #b5ba00;
+  --ansi-bright-blue: #0451a5;
+  --ansi-bright-magenta: #bc05bc;
+  --ansi-bright-cyan: #0598bc;
+  --ansi-bright-white: #a5a5a5;
 }
 
 :root:root.dark {
   color-scheme: dark;
 
-  --wa-background: #1f1f1f;
-  --wa-foreground: #cccccc;
-  --wa-primary: #0078d4;
-  --wa-primary-foreground: #ffffff;
-  --wa-secondary: #181818;
-  --wa-secondary-foreground: #cccccc;
-  --wa-muted: #202020;
-  --wa-muted-foreground: #9d9d9d;
-  --wa-accent: #2a2d2e;
-  --wa-accent-foreground: #ffffff;
-  --wa-destructive: #f14c4c;
-  --wa-destructive-foreground: #ffffff;
-  --wa-border: #2b2b2b;
-  --wa-input: #3c3c3c;
-  --wa-ring: #0078d4;
+  --background: #1f1f1f;
+  --foreground: #cccccc;
+  --primary: #0078d4;
+  --primary-foreground: #ffffff;
+  --secondary: #181818;
+  --secondary-foreground: #cccccc;
+  --muted: #202020;
+  --muted-foreground: #9d9d9d;
+  --accent: #2a2d2e;
+  --accent-foreground: #ffffff;
+  --destructive: #f14c4c;
+  --destructive-foreground: #ffffff;
+  --border: #2b2b2b;
+  --input: #3c3c3c;
+  --ring: #0078d4;
 
-  --wa-surface: #313131;
-  --wa-surface-hover: #3a3a3a;
-  --wa-hover: #2a2d2e;
-  --wa-hover-foreground: #ffffff;
-  --wa-muted-surface: #181818;
-  --wa-destructive-surface: color-mix(in oklab, var(--wa-destructive) 12%, transparent);
+  --surface: #313131;
+  --surface-hover: #3a3a3a;
+  --hover: #2a2d2e;
+  --hover-foreground: #ffffff;
+  --muted-surface: #181818;
+  --destructive-surface: color-mix(in oklab, var(--destructive) 12%, transparent);
 
-  --wa-info: #3794ff;
-  --wa-success: #89d185;
-  --wa-warning: #cca700;
-  --wa-notice: #d18616;
-  --wa-danger: #f14c4c;
+  --info: #3794ff;
+  --success: #89d185;
+  --warning: #cca700;
+  --notice: #d18616;
+  --danger: #f14c4c;
 
   /* Dark+ syntax colors. */
   --shj-fg: #d4d4d4;
@@ -183,22 +184,22 @@
   --shj-esc: #d7ba7d;
   --shj-insert: #b5cea8;
 
-  --wa-terminal-bg: #1f1f1f;
-  --wa-terminal-fg: #cccccc;
-  --wa-ansi-black: #000000;
-  --wa-ansi-red: #cd3131;
-  --wa-ansi-green: #0dbc79;
-  --wa-ansi-yellow: #e5e510;
-  --wa-ansi-blue: #2472c8;
-  --wa-ansi-magenta: #bc3fbc;
-  --wa-ansi-cyan: #11a8cd;
-  --wa-ansi-white: #e5e5e5;
-  --wa-ansi-bright-black: #666666;
-  --wa-ansi-bright-red: #f14c4c;
-  --wa-ansi-bright-green: #23d18b;
-  --wa-ansi-bright-yellow: #f5f543;
-  --wa-ansi-bright-blue: #3b8eea;
-  --wa-ansi-bright-magenta: #d670d6;
-  --wa-ansi-bright-cyan: #29b8db;
-  --wa-ansi-bright-white: #ffffff;
+  --terminal-bg: #1f1f1f;
+  --terminal-fg: #cccccc;
+  --ansi-black: #000000;
+  --ansi-red: #cd3131;
+  --ansi-green: #0dbc79;
+  --ansi-yellow: #e5e510;
+  --ansi-blue: #2472c8;
+  --ansi-magenta: #bc3fbc;
+  --ansi-cyan: #11a8cd;
+  --ansi-white: #e5e5e5;
+  --ansi-bright-black: #666666;
+  --ansi-bright-red: #f14c4c;
+  --ansi-bright-green: #23d18b;
+  --ansi-bright-yellow: #f5f543;
+  --ansi-bright-blue: #3b8eea;
+  --ansi-bright-magenta: #d670d6;
+  --ansi-bright-cyan: #29b8db;
+  --ansi-bright-white: #ffffff;
 }

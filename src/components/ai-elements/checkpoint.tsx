@@ -15,7 +15,7 @@ const S = {
     alignItems: "center",
     gap: "0.125rem",
     overflow: "hidden",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
   },
 } satisfies Record<string, Sx>;
 

@@ -1,12 +1,12 @@
-// The pi-agent-core loop, under the `web-agent/pi` subpath. A host that
+// The pi-agent-core loop, under the `agentak/pi` subpath. A host that
 // wants its own surface drives these directly; the root export re-exports the
 // same set.
 export {
   AGENT_NAME,
-  createWebAgent,
+  createAgent,
   SYSTEM_PROMPT,
-  type WebAgentOptions,
-  type WebAgentRuntime,
+  type AgentOptions,
+  type AgentRuntime,
 } from "@/agent/create-agent";
 export {
   type ApprovalGate,
@@ -39,4 +39,4 @@ export {
 } from "@/agent/page-bridge";
 export { createPageTools } from "@/agent/tools";
 export { type ContextUsageView, toContextUsage, toViewMessages } from "@/agent/transcript";
-export { type AgentChatState, type QueuedMessage, useAgent } from "@/agent/use-agent";
+export { type ChatState, type QueuedMessage, useAgent } from "@/agent/use-agent";

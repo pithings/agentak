@@ -1,13 +1,13 @@
 # The agent loop
 
-`src/agent/` — pi-agent-core, and everything that feeds the chat. `createWebAgent()`
-builds a pi `Agent`; `useAgent()` turns its events into the props `AgentChat` takes.
+`src/agent/` — pi-agent-core, and everything that feeds the chat. `createAgent()`
+builds a pi `Agent`; `useAgent()` turns its events into the props `Chat` takes.
 Neither the chat nor any element knows pi exists.
 
 ```
 prompt -> Agent -> streamFor(model.api) -> streamSimple -> AgentEvent
                 -> beforeToolCall -> ApprovalGate -> AgentTool -> PageBridge
-useAgent: every event -> toViewMessages(agent.state) -> AgentChat
+useAgent: every event -> toViewMessages(agent.state) -> Chat
 ```
 
 | File              | What                                                      |
@@ -69,8 +69,9 @@ A key is stored per provider, so switching back to one already set up asks nothi
 
 **One picker, three levels.** Provider, model and key are all `chat/picker.tsx`, the
 `model-selector` in the composer. Nothing else chooses any of them: there is no key
-screen and no provider screen, and the chat is the only view `WebAgent` has apart from
-the catalog wait.
+screen and no provider screen, and the chat is the only view `AgentChat` has. A catalog
+lands in the panel's own list, under a spinner, rather than in a view that would close
+the panel it landed for.
 
 **Nothing is chosen on a fresh surface** — no provider, and so no model. The first
 message opens the panel instead of going to a provider nobody picked; the text is held
@@ -79,11 +80,17 @@ on, so the question is asked once.
 
 The panel opens on the models of the chosen provider, with a strip under the search
 input that goes back to the providers — outside the list, so the filter cannot hide the
-way back. Picking a model assigns `agent.state.model`. Picking a provider that has no
-key opens the key level for it, and the provider changes only once the key is saved, so
-`providerId` always names a provider that can answer. That is why `WebAgent` falls back
-to the free default when a stored provider has lost its key. The **Key** button on the
-strip reopens that level for a provider already set up.
+way back; backspace on an empty field does the same. Picking a model assigns
+`agent.state.model` and closes.
+
+**Picking a provider is half a choice**, so it goes on to that provider's models
+instead of closing. Nothing picks a model for anyone: the effect in `AgentChat` restores
+only `storedModelId(provider)`, so a provider used before comes back as it was, and one
+chosen for the first time waits on the list. Picking a provider that has no key opens
+the key level first, and the provider changes only once the key is saved — so
+`providerId` never names a provider that cannot answer, and a stored provider whose key
+is gone counts as no provider at all. The **Key** button on the strip reopens that level
+for a provider already set up.
 
 ### The free four
 
@@ -101,7 +108,7 @@ that stream and take tools, priced at zero. Two shapes of "no key":
 | OVHcloud     | `https://oai.endpoints.kepler.ai.cloud.ovh.net/v1` | no header — a token is 403 |
 | OpenCode Zen | `https://opencode.ai/zen/v1`                       | no header — a token is 401 |
 
-`createWebAgent()` hands pi the string `unused` when a free provider has no key of its
+`createAgent()` hands pi the string `unused` when a free provider has no key of its
 own. The other two get `Authorization: null` on every model, which is how the openai
 client is told to drop a header it always sets.
 
@@ -152,5 +159,5 @@ tool first; the element is waiting.
 - **Usage names differ.** pi counts `input`/`output`/`cacheRead`/`cacheWrite`; the panel
   wants `inputTokens`/`cachedInputTokens`. Cache writes fold into the cache row, and
   reasoning tokens carry no cost of their own because pi prices them as output.
-- **Build the runtime once.** `createWebAgent()` inside a render makes a new, empty
-  agent every time. `web-agent.tsx` holds it in `useState(() => …)`.
+- **Build the runtime once.** `createAgent()` inside a render makes a new, empty
+  agent every time. `agent-chat.tsx` holds it in `useState(() => …)`.

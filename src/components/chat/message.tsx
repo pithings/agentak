@@ -22,7 +22,7 @@ import type { Sx } from "@/styles/sx";
 
 const S = {
   error: {
-    color: "var(--wa-destructive)",
+    color: "var(--destructive)",
     fontSize: "0.875rem",
   },
 } satisfies Record<string, Sx>;

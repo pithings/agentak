@@ -24,7 +24,7 @@ import {
  * activate. No submenus, no checkbox or radio items — nothing has asked for one.
  */
 const S = {
-  // Was the `.wa-popover-content.wa-menu` compound: the panel is a popover
+  // Was the `.popover-content.menu` compound: the panel is a popover
   // first, so this must reach PopoverContent as `style` to keep outranking it.
   content: {
     boxSizing: "border-box",
@@ -40,7 +40,7 @@ const S = {
     alignItems: "center",
     gap: "0.5rem",
     border: "0",
-    borderRadius: "var(--wa-radius-sm)",
+    borderRadius: "var(--radius-sm)",
     padding: "0.375rem 0.5rem",
     font: "inherit",
     fontSize: "0.875rem",
@@ -52,15 +52,15 @@ const S = {
     background: "transparent",
     color: "inherit",
   },
-  itemActive: { background: "var(--wa-hover)", color: "var(--wa-hover-foreground)" },
+  itemActive: { background: "var(--hover)", color: "var(--hover-foreground)" },
   itemDisabled: { pointerEvents: "none", opacity: "0.5" },
   label: {
     padding: "0.375rem 0.5rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.75rem",
     fontWeight: "500",
   },
-  separator: { margin: "0.25rem -0.25rem", borderTop: "1px solid var(--wa-border)" },
+  separator: { margin: "0.25rem -0.25rem", borderTop: "1px solid var(--border)" },
 } satisfies Record<string, Sx>;
 
 /** Where focus lands when the keyboard opens the menu. */

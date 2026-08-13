@@ -52,7 +52,7 @@ Worth knowing before reading a ported file against its registry source.
 - **No `dangerouslySetInnerHTML`.** `schema-display` splits on a captured
   `/(\{[^}]+\})/` and renders spans.
 - **Own ANSI parser.** `src/lib/ansi.ts` splits `terminal` output on SGR sequences,
-  tracks the running state, and returns spans: the 16 base colors as `--wa-ansi-*`
+  tracks the running state, and returns spans: the 16 base colors as `--ansi-*`
   tokens, plus `38;5;<n>` / `48;5;<n>` and truecolor as `rgb()`. Every other CSI
   sequence is stripped rather than printed, and a sequence a stream cut short is
   dropped, so a half-arrived escape never flickers into the text. Command output is

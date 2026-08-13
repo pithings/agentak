@@ -46,7 +46,7 @@ export function ChatEmpty({ agent, children }: ChatEmptyProps) {
         description="Ask about the current page, or anything else."
         icon={<BotIcon style={u.iconLg} />}
         style={alone ? undefined : S.greeting}
-        title="web-agent"
+        title="agentak"
       />
       {children}
       {agent && (

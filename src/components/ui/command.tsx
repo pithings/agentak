@@ -29,20 +29,20 @@ const S = {
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
-    borderRadius: "var(--wa-radius-md)",
-    background: "var(--wa-background)",
-    color: "var(--wa-foreground)",
+    borderRadius: "var(--radius-md)",
+    background: "var(--background)",
+    color: "var(--foreground)",
   },
   commandInputWrap: {
     display: "flex",
     alignItems: "center",
     gap: "0.5rem",
-    borderBottom: "1px solid var(--wa-border)",
+    borderBottom: "1px solid var(--border)",
     paddingInline: "0.75rem",
   },
   commandInputIcon: {
     flexShrink: "0",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
   },
   commandInput: {
     boxSizing: "border-box",
@@ -66,13 +66,13 @@ const S = {
     padding: "1.5rem 0.75rem",
     textAlign: "center",
     fontSize: "0.875rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
   },
   commandGroupLabel: {
     padding: "0.375rem 0.5rem",
     fontSize: "0.75rem",
     fontWeight: "500",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
   },
   // `display` is paired with `commandItemHidden` below: an inline `display`
   // outranks the UA `[hidden]` rule, so both states are driven from here.
@@ -80,7 +80,7 @@ const S = {
     display: "flex",
     alignItems: "center",
     gap: "0.5rem",
-    borderRadius: "var(--wa-radius-sm)",
+    borderRadius: "var(--radius-sm)",
     padding: "0.375rem 0.5rem",
     fontSize: "0.875rem",
     cursor: "default",
@@ -89,19 +89,19 @@ const S = {
   commandItemHidden: {
     display: "none",
   },
-  commandItemSelected: { background: "var(--wa-accent)", color: "var(--wa-accent-foreground)" },
+  commandItemSelected: { background: "var(--accent)", color: "var(--accent-foreground)" },
   commandItemDisabled: { pointerEvents: "none", opacity: "0.5" },
   commandItemIcon: { flexShrink: "0", width: "1rem", height: "1rem" },
   commandSeparator: {
     height: "1px",
     margin: "0.25rem -0.25rem",
-    background: "var(--wa-border)",
+    background: "var(--border)",
   },
   commandShortcut: {
     marginLeft: "auto",
     fontSize: "0.75rem",
     letterSpacing: "0.05em",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
   },
 } satisfies Record<string, Sx>;
 

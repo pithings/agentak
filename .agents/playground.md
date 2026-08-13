@@ -2,34 +2,34 @@
 
 Two sub-packages that host the library. Both alias `@` to `../src` in their vite
 configs, so they run against the **source**: the page is where the library is
-worked on, and the panel is where the element is hosted. The `web-agent` dependency in
+worked on, and the panel is where the element is hosted. The `agentak` dependency in
 each `package.json` is the honest declaration of that; nothing resolves through it.
 
 Both set `reactAliasesEnabled: false`, as the root does.
 
-## playground/ — `@web-agent/playground`
+## playground/ — `@agentak/playground`
 
 `pnpm dev` serves it on `:4050`. A vue SPA in tailwind — a host app, not a shell
 around the library: a topbar, a sidebar that browses every component, a catalog
 grid, and the chatbox in the corner. It is the closest thing the repo has to the
 page a consumer would drop the element into.
 
-| File                | What                                                                    |
-| ------------------- | ----------------------------------------------------------------------- |
-| `main.ts`           | declares the `tokens` in a `<style>`, then mounts the app on `#app`     |
-| `app.vue`           | the shell: topbar, sidebar, `<RouterView>`, chatbox                     |
-| `router.ts`         | `/` the catalog, `/c/:name` one component                               |
-| `styles.css`        | `@import "tailwindcss"`, and the `@theme` that reads the `--wa-*` names |
-| `theme.ts`          | `.dark` on the root — the whole theme switch, page and widget           |
-| `chat-store.ts`     | the widget state the topbar and the catalog both reach for              |
-| `components/*.vue`  | topbar, sidebar, chatbox, preview card, and the preact bridge           |
-| `views/*.vue`       | the catalog grid, and the single-component page                         |
-| `catalog.tsx`       | every component with fixture data, plus the lookups the routes use      |
-| `demo-chat.ts`      | the canned turns and the catalog fixtures; `autoStart` streams them     |
-| `demo-agent.tsx`    | `AgentChat` over the canned turns — no loop, no key                     |
-| `chat-actions.tsx`  | the page's own buttons — minimise, back to live, play the demo          |
-| `demo-elements.tsx` | the demo renderers, registered into the element registry                |
-| `demo-*.tsx`        | data-driven wrappers, so the demo drives compound elements from props   |
+| File                | What                                                                  |
+| ------------------- | --------------------------------------------------------------------- |
+| `main.ts`           | declares the `tokens` in a `<style>`, then mounts the app on `#app`   |
+| `app.vue`           | the shell: topbar, sidebar, `<RouterView>`, chatbox                   |
+| `router.ts`         | `/` the catalog, `/c/:name` one component                             |
+| `styles.css`        | `@import "tailwindcss"`, and the `@theme` that reads the `--*` names  |
+| `theme.ts`          | `.dark` on the root — the whole theme switch, page and widget         |
+| `chat-store.ts`     | the widget state the topbar and the catalog both reach for            |
+| `components/*.vue`  | topbar, sidebar, chatbox, preview card, and the preact bridge         |
+| `views/*.vue`       | the catalog grid, and the single-component page                       |
+| `catalog.tsx`       | every component with fixture data, plus the lookups the routes use    |
+| `demo-chat.ts`      | the canned turns and the catalog fixtures; `autoStart` streams them   |
+| `demo-agent.tsx`    | `Chat` over the canned turns — no loop, no key                        |
+| `chat-actions.tsx`  | the page's own buttons — minimise, back to live, play the demo        |
+| `demo-elements.tsx` | the demo renderers, registered into the element registry              |
+| `demo-*.tsx`        | data-driven wrappers, so the demo drives compound elements from props |
 
 ### Two frameworks, one page
 
@@ -39,9 +39,9 @@ neither patches the other's nodes. A catalog preview is one such island; the dem
 chat is another.
 
 The chatbox is not an island. It opens with the page on the **live** agent —
-`<web-agent>`, the custom element, so the agent runs behind a shadow root: none
+`<agent-chat>`, the custom element, so the agent runs behind a shadow root: none
 of the page's tailwind reaches in, and nothing of the agent reaches out. Only
-the `--wa-*` tokens cross, because a custom property inherits. That makes the
+the `--*` tokens cross, because a custom property inherits. That makes the
 widget the real host-page integration, and the one place to check the element
 before the extension ships it. A visitor chooses nothing up front: the first
 message opens the picker, and the free providers need no key.
@@ -57,8 +57,9 @@ the header, model and provider in the composer, next to send — so the page put
 bar of its own over it. Minimise, back-to-live and the demo launcher are all
 `chat-actions.tsx`, preact components the page renders _into_ the surface: as light
 DOM under `slot="actions"` and `slot="empty"` for the element, and as the `actions`
-prop for the demo island — which needs no launcher of its own. `WebAgent` carries the actions
-through the catalog wait, so the box never loses its minimise button; the empty slot shows on the chat alone, and only before the first message.
+prop for the demo island — which needs no launcher of its own. The chat is the only view `AgentChat` has, so the
+box never loses its minimise button; the empty slot shows only before the first
+message.
 
 The panel hides with `v-show` rather than unmounting, so minimising keeps the
 transcript; changing mode does not. Escape minimises it as well, from inside the
@@ -78,14 +79,14 @@ a sheet on the bottom edge that scales from the bottom — a phone gets the whol
 width, with no gutter to eat the transcript. The library constrains no width of its
 own, so this is the host page's call and lives in the widget alone.
 
-`vite.config.ts` tells the vue compiler that `web-agent` is a custom element, else
+`vite.config.ts` tells the vue compiler that `agent-chat` is a custom element, else
 the template resolves it as a component and warns.
 
 ### Tokens and the tailwind theme
 
 `main.ts` puts `tokens` in a `<style>` on the document, the way a host page must —
 nothing in the library injects them. `styles.css` then maps its palette onto the
-same names with `@theme inline`, so `bg-page` is `var(--wa-background)` and one
+same names with `@theme inline`, so `bg-page` is `var(--background)` and one
 class repoints when `.dark` repoints the token. The page and the widget cannot
 drift apart.
 
@@ -118,15 +119,15 @@ for. Nothing automated watches the demo, so a broken fixture shows up on screen.
 vue-tsc cannot load typescript 7, so the package pins typescript 5.9 for itself; the
 library and the extension stay on the root's 7.
 
-## extension/ — `@web-agent/extension`
+## extension/ — `@agentak/extension`
 
 WIP MV3 side panel. `pnpm build:extension` writes `extension/dist`; load it unpacked.
 
 | File             | What                                                         |
 | ---------------- | ------------------------------------------------------------ |
 | `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported |
-| `sidepanel.html` | the panel document, which hosts `<web-agent>`                |
-| `panel.ts`       | declares the `tokens`, then `defineWebAgent()`               |
+| `sidepanel.html` | the panel document, which hosts `<agent-chat>`               |
+| `panel.ts`       | declares the `tokens`, then `defineAgentChat()`              |
 | `background.ts`  | the service worker — opens the panel on the action click     |
 | `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`        |
 

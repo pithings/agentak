@@ -16,6 +16,7 @@ import {
 import type { ChatModel, ChatProvider } from "@/components/chat/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { useControllableState } from "@/lib/use-controllable-state";
 import { ArrowLeftIcon, ExternalLinkIcon, PlugIcon } from "@/lib/icons";
 import { u } from "@/styles/base";
@@ -35,13 +36,13 @@ const S = {
   strip: {
     display: "flex",
     alignItems: "center",
-    borderBottom: "1px solid var(--wa-border)",
+    borderBottom: "1px solid var(--border)",
   },
   back: {
     flex: "1",
     justifyContent: "flex-start",
     borderRadius: "0",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
   },
   key: {
     display: "flex",
@@ -62,12 +63,20 @@ const S = {
     display: "inline-flex",
     alignItems: "center",
     gap: "0.25rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.75rem",
   },
   keyNote: {
     margin: "0",
     fontSize: "0.75rem",
+  },
+  loading: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.5rem",
+    padding: "1.5rem 0.75rem",
+    fontSize: "0.875rem",
   },
 } satisfies Record<string, Sx>;
 
@@ -79,6 +88,8 @@ type Level = "providers" | "models" | "key";
 export interface ChatPickerProps {
   /** The models of the chosen provider. */
   models?: ChatModel[];
+  /** The catalog is still on its way — the list says so instead of looking empty. */
+  modelsLoading?: boolean;
   modelId?: string;
   onModelChange?: (id: string) => void;
   /**
@@ -93,7 +104,7 @@ export interface ChatPickerProps {
   /** Heads the model list. Only needed when the picker carries no providers. */
   providerLabel?: string;
   /**
-   * The panel, controlled — how a caller asks the question itself. `WebAgent`
+   * The panel, controlled — how a caller asks the question itself. `AgentChat`
    * opens it when a message is sent before any provider is chosen.
    */
   pickerOpen?: boolean;
@@ -107,6 +118,7 @@ export interface ChatPickerProps {
  */
 export function ChatPicker({
   models,
+  modelsLoading,
   modelId,
   onModelChange,
   providers,
@@ -139,21 +151,18 @@ export function ChatPicker({
     setDraft("");
   };
 
-  const close = () => {
-    setOpen(false);
-    go(null);
-  };
-
+  // A provider is half the choice. Picking one goes on to its models rather
+  // than closing, so nothing runs on a model nobody looked at.
   const pick = (entry: ChatProvider) => {
-    // A key it does not have yet is the next level, not the chat: the provider
-    // only changes once it can answer.
+    // A key it does not have yet comes first: the provider only changes once it
+    // can answer.
     if (entry.keyed && !entry.hasKey) {
       setKeying(entry);
       go("key");
       return;
     }
     if (entry.id !== providerId) onProviderChange?.(entry.id);
-    close();
+    go("models");
   };
 
   const save = () => {
@@ -161,7 +170,7 @@ export function ChatPicker({
     if (!keying || !key) return;
     onSaveKey?.(keying.id, key);
     if (keying.id !== providerId) onProviderChange?.(keying.id);
-    close();
+    go("models");
   };
 
   // Backspace on an empty field is the way back, in both fields: nothing is
@@ -275,6 +284,13 @@ export function ChatPicker({
           </div>
         ) : (
           <ModelSelectorList>
+            {shown === "models" && modelsLoading && (
+              <div style={S.loading}>
+                <Spinner />
+                <span style={u.muted}>Loading the models…</span>
+              </div>
+            )}
+
             <ModelSelectorEmpty>
               {shown === "providers" ? "No providers found." : "No models found."}
             </ModelSelectorEmpty>

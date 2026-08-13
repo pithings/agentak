@@ -13,14 +13,14 @@ afterEach(cleanup);
 const output = [
   "\x1b[1m$\x1b[0m pnpm vitest run",
   "",
-  "\x1b[7m RUN \x1b[27m \x1b[2mv4.1.10  /workspace/web-agent\x1b[0m",
+  "\x1b[7m RUN \x1b[27m \x1b[2mv4.1.10  /workspace/agentak\x1b[0m",
   "",
   "\x1b[32m ✓ \x1b[0msrc/lib/ansi.test.ts \x1b[2m(18 tests)\x1b[0m \x1b[2m 9ms\x1b[0m",
   "\x1b[32m ✓ \x1b[0msrc/markdown.test.tsx \x1b[2m(6 tests)\x1b[0m \x1b[2m 31ms\x1b[0m",
   "\x1b[31m ✗ \x1b[0msrc/render.test.tsx \x1b[2m(24 tests | \x1b[31m1 failed\x1b[2m)\x1b[0m \x1b[2m412ms\x1b[0m",
   "",
   "\x1b[41;97;1m FAIL \x1b[0m src/render.test.tsx > styles > declares every class",
-  "  \x1b[31mAssertionError\x1b[0m: expected \x1b[32m[ 'wa-terminal-pre' ]\x1b[0m to deeply equal \x1b[31m[]\x1b[0m",
+  "  \x1b[31mAssertionError\x1b[0m: expected \x1b[32m[ 'terminal-pre' ]\x1b[0m to deeply equal \x1b[31m[]\x1b[0m",
   "    \x1b[2mat src/render.test.tsx:629:5\x1b[0m",
   "",
   "\x1b[38;5;208m⚠\x1b[0m one style block is missing from the manifest",
@@ -45,14 +45,14 @@ describe("Terminal", () => {
   it("colors the output from its escapes, without raw HTML", () => {
     const { container } = render(<Terminal output={output} />);
 
-    expect(styleOf("1 failed")).toContain("color: var(--wa-ansi-red)");
-    expect(styleOf("6 passed")).toContain("color: var(--wa-ansi-green)");
+    expect(styleOf("1 failed")).toContain("color: var(--ansi-red)");
+    expect(styleOf("6 passed")).toContain("color: var(--ansi-green)");
     expect(styleOf("1.42s")).toContain("opacity: 0.7");
     expect(styleOf("Duration")).toContain("text-decoration: underline");
     // 256-colour 208, written by the parser as `rgb(255 135 0)` and
     // re-serialised by the CSS engine into the legacy form.
     expect(styleOf("⚠")).toContain("color: rgb(255, 135, 0)");
-    expect(styleOf("FAIL")).toContain("background: var(--wa-ansi-red)");
+    expect(styleOf("FAIL")).toContain("background: var(--ansi-red)");
 
     // Escapes reach the DOM as styles, never as text.
     expect(container.textContent).not.toContain("\x1b");

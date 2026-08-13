@@ -20,7 +20,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
  * nothing fails, the rule is just never applied.
  */
 const S = {
-  itemBorder: { borderBottom: "1px solid var(--wa-border)" },
+  itemBorder: { borderBottom: "1px solid var(--border)" },
   heading: { display: "flex", margin: "0" },
   trigger: {
     display: "flex",
@@ -28,16 +28,16 @@ const S = {
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: "1rem",
-    borderRadius: "var(--wa-radius-md)",
+    borderRadius: "var(--radius-md)",
     paddingBlock: "1rem",
     fontSize: "0.875rem",
     fontWeight: "500",
     textAlign: "left",
     outline: "none",
-    transition: "color var(--wa-transition)",
+    transition: "color var(--transition)",
   },
   triggerHover: { textDecoration: "underline" },
-  triggerFocus: { boxShadow: "var(--wa-focus-ring)" },
+  triggerFocus: { boxShadow: "var(--focus-ring)" },
   triggerDisabled: { pointerEvents: "none", opacity: "0.5" },
   content: { overflow: "hidden", fontSize: "0.875rem" },
   body: { paddingBottom: "1rem" },

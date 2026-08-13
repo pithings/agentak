@@ -20,18 +20,18 @@ const S = {
     justifyContent: "center",
     gap: "0.5rem",
     border: "1px solid transparent",
-    borderRadius: "var(--wa-radius-md)",
+    borderRadius: "var(--radius-md)",
     fontSize: "0.875rem",
     fontWeight: "500",
     lineHeight: "1.25rem",
     whiteSpace: "nowrap",
     outline: "none",
     transition:
-      "background-color var(--wa-transition), border-color var(--wa-transition), color var(--wa-transition), box-shadow var(--wa-transition)",
+      "background-color var(--transition), border-color var(--transition), color var(--transition), box-shadow var(--transition)",
   },
-  focus: { borderColor: "var(--wa-ring)", boxShadow: "var(--wa-focus-ring)" },
+  focus: { borderColor: "var(--ring)", boxShadow: "var(--focus-ring)" },
   disabled: { pointerEvents: "none", opacity: "0.5" },
-  invalid: { borderColor: "var(--wa-destructive)", boxShadow: "var(--wa-invalid-ring)" },
+  invalid: { borderColor: "var(--destructive)", boxShadow: "var(--invalid-ring)" },
   icon: { width: "1rem", height: "1rem", pointerEvents: "none" },
   iconXs: { width: "0.75rem", height: "0.75rem", pointerEvents: "none" },
 } satisfies Record<string, Sx>;
@@ -44,7 +44,7 @@ interface Variant {
 }
 
 /**
- * `iconPad` was `:has(> svg)` and `glyph` was `.wa-btn--size-xs > svg`. Both
+ * `iconPad` was `:has(> svg)` and `glyph` was `.btn--size-xs > svg`. Both
  * read the children, which `Button` now walks itself.
  */
 interface Size {
@@ -57,29 +57,29 @@ interface Size {
 // variant from outside still can.
 const VARIANTS = {
   default: {
-    sx: { background: "var(--wa-primary)", color: "var(--wa-primary-foreground)" },
-    hover: { background: "color-mix(in oklab, var(--wa-primary) 90%, transparent)" },
+    sx: { background: "var(--primary)", color: "var(--primary-foreground)" },
+    hover: { background: "color-mix(in oklab, var(--primary) 90%, transparent)" },
   },
   destructive: {
-    sx: { background: "var(--wa-destructive)", color: "var(--wa-destructive-foreground)" },
-    hover: { background: "color-mix(in oklab, var(--wa-destructive) 90%, transparent)" },
-    focus: { boxShadow: "0 0 0 3px color-mix(in oklab, var(--wa-destructive) 20%, transparent)" },
+    sx: { background: "var(--destructive)", color: "var(--destructive-foreground)" },
+    hover: { background: "color-mix(in oklab, var(--destructive) 90%, transparent)" },
+    focus: { boxShadow: "0 0 0 3px color-mix(in oklab, var(--destructive) 20%, transparent)" },
   },
   outline: {
     sx: {
-      borderColor: "var(--wa-input)",
-      background: "var(--wa-surface)",
-      boxShadow: "var(--wa-shadow-xs)",
+      borderColor: "var(--input)",
+      background: "var(--surface)",
+      boxShadow: "var(--shadow-xs)",
     },
-    hover: { background: "var(--wa-surface-hover)", color: "var(--wa-hover-foreground)" },
+    hover: { background: "var(--surface-hover)", color: "var(--hover-foreground)" },
   },
   secondary: {
-    sx: { background: "var(--wa-secondary)", color: "var(--wa-secondary-foreground)" },
-    hover: { background: "color-mix(in oklab, var(--wa-secondary) 80%, transparent)" },
+    sx: { background: "var(--secondary)", color: "var(--secondary-foreground)" },
+    hover: { background: "color-mix(in oklab, var(--secondary) 80%, transparent)" },
   },
-  ghost: { hover: { background: "var(--wa-hover)", color: "var(--wa-hover-foreground)" } },
+  ghost: { hover: { background: "var(--hover)", color: "var(--hover-foreground)" } },
   link: {
-    sx: { color: "var(--wa-primary)", textUnderlineOffset: "4px" },
+    sx: { color: "var(--primary)", textUnderlineOffset: "4px" },
     hover: { textDecoration: "underline" },
   },
 } satisfies Record<string, Variant>;
@@ -125,7 +125,7 @@ export type ButtonProps = WithSx<ComponentProps<"button">> & {
 export interface ButtonLook {
   variant?: ButtonVariant;
   size?: ButtonSize;
-  /** An icon child tightens the padding — was `.wa-btn--size-*:has(> svg)`. */
+  /** An icon child tightens the padding — was `.btn--size-*:has(> svg)`. */
   hasIcon?: boolean;
   hovered?: boolean;
   focusVisible?: boolean;
@@ -139,7 +139,7 @@ export interface ButtonLook {
  * The argument order is the old sheet order, so a state still repaints what
  * rests under it: the base, then the variant and the size, then
  * `:focus-visible`, `[aria-invalid]`, the variant's `:hover` and last the
- * destructive focus ring, which used to win its tie with `.wa-btn:focus-visible`
+ * destructive focus ring, which used to win its tie with `.btn:focus-visible`
  * on source order alone.
  *
  * Exported because a hand-rolled trigger (a popover or dropdown trigger, which

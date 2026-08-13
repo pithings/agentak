@@ -18,7 +18,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
 import { toolBodyErrorSx, toolBodySx } from "./tool";
 
 /** A line between tests — a flex `gap` cannot draw one. */
-const DIVIDER: Sx = { borderTop: "1px solid var(--wa-border)" };
+const DIVIDER: Sx = { borderTop: "1px solid var(--border)" };
 
 /** Narrows `isValidElement` so the clone below can type the `style` it adds. */
 function hasStyle(child: ComponentChild): child is VNode<{ style?: Sx }> {
@@ -40,35 +40,35 @@ export type TestStatus = "passed" | "failed" | "skipped" | "running";
  * overrides it, so it is plain inline color — no compound selector needed.
  */
 const STATUS_COLOR = {
-  passed: { color: "var(--wa-success)" },
-  failed: { color: "var(--wa-danger)" },
-  skipped: { color: "var(--wa-warning)" },
-  running: { color: "var(--wa-info)" },
+  passed: { color: "var(--success)" },
+  failed: { color: "var(--danger)" },
+  skipped: { color: "var(--warning)" },
+  running: { color: "var(--info)" },
 } satisfies Record<TestStatus, Sx>;
 
 /**
  * The badge tint. Badge's own background is inline now, so this used to be
- * `.wa-badge.wa-test--passed` — that compound selector could never win over
+ * `.badge.test--passed` — that compound selector could never win over
  * an inline value, so the override goes on the `style` prop instead.
  * "running" has no summary badge, so it is not in this map.
  */
 const STATUS_BADGE_TINT = {
-  passed: { background: "color-mix(in oklab, var(--wa-success) 15%, transparent)" },
-  failed: { background: "color-mix(in oklab, var(--wa-danger) 15%, transparent)" },
-  skipped: { background: "color-mix(in oklab, var(--wa-warning) 15%, transparent)" },
+  passed: { background: "color-mix(in oklab, var(--success) 15%, transparent)" },
+  failed: { background: "color-mix(in oklab, var(--danger) 15%, transparent)" },
+  skipped: { background: "color-mix(in oklab, var(--warning) 15%, transparent)" },
 } satisfies Record<"passed" | "failed" | "skipped", Sx>;
 
 const S = {
   tests: {
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-background)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--background)",
   },
   testsHeader: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottom: "1px solid var(--wa-border)",
+    borderBottom: "1px solid var(--border)",
     padding: "0.75rem 1rem",
   },
   testsSummary: {
@@ -77,7 +77,7 @@ const S = {
     gap: "0.75rem",
   },
   testsDuration: {
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.875rem",
   },
   testsBar: {
@@ -85,21 +85,21 @@ const S = {
     height: "0.5rem",
     overflow: "hidden",
     borderRadius: "9999px",
-    background: "var(--wa-muted)",
+    background: "var(--muted)",
   },
   testsBarFill: {
-    transition: "width var(--wa-transition)",
+    transition: "width var(--transition)",
   },
   testsBarFillPassed: {
-    background: "var(--wa-success)",
+    background: "var(--success)",
   },
   testsBarFillFailed: {
-    background: "var(--wa-danger)",
+    background: "var(--danger)",
   },
   testsLegend: {
     display: "flex",
     justifyContent: "space-between",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.75rem",
   },
   testsProgress: {
@@ -114,8 +114,8 @@ const S = {
     padding: "1rem",
   },
   suite: {
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-lg)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
   },
   suiteName: {
     boxSizing: "border-box",
@@ -125,10 +125,10 @@ const S = {
     gap: "0.5rem",
     padding: "0.75rem 1rem",
     textAlign: "left",
-    transition: "background-color var(--wa-transition)",
+    transition: "background-color var(--transition)",
   },
   suiteNameHover: {
-    background: "var(--wa-muted-surface)",
+    background: "var(--muted-surface)",
   },
   suiteTitle: {
     display: "flex",
@@ -146,7 +146,7 @@ const S = {
     fontSize: "0.75rem",
   },
   suiteContent: {
-    borderTop: "1px solid var(--wa-border)",
+    borderTop: "1px solid var(--border)",
   },
   test: {
     display: "flex",
@@ -163,7 +163,7 @@ const S = {
   },
   testDuration: {
     marginLeft: "auto",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.75rem",
   },
   // The error pane borrows the tool error surface. Inset to the test row.

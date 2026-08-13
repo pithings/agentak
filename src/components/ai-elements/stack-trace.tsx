@@ -16,9 +16,9 @@ const S = {
     boxSizing: "border-box",
     width: "100%",
     overflow: "hidden",
-    border: "1px solid var(--wa-border)",
-    borderRadius: "var(--wa-radius-lg)",
-    background: "var(--wa-background)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--background)",
     fontSize: "0.875rem",
   },
   stackHeader: {
@@ -30,14 +30,14 @@ const S = {
     padding: "0.75rem",
     textAlign: "left",
     cursor: "pointer",
-    transition: "background-color var(--wa-transition)",
+    transition: "background-color var(--transition)",
   },
   stackHeaderHover: {
-    background: "var(--wa-muted-surface)",
+    background: "var(--muted-surface)",
   },
   stackHeaderFocus: {
     outline: "none",
-    boxShadow: "var(--wa-focus-ring)",
+    boxShadow: "var(--focus-ring)",
   },
   stackError: {
     display: "flex",
@@ -48,12 +48,12 @@ const S = {
   },
   stackErrorType: {
     flexShrink: "0",
-    color: "var(--wa-destructive)",
+    color: "var(--destructive)",
     fontWeight: "600",
   },
   stackErrorMessage: {
     overflow: "hidden",
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
@@ -74,8 +74,8 @@ const S = {
   stackContent: {
     boxSizing: "border-box",
     overflow: "auto",
-    borderTop: "1px solid var(--wa-border)",
-    background: "var(--wa-muted-surface)",
+    borderTop: "1px solid var(--border)",
+    background: "var(--muted-surface)",
   },
   stackFrames: {
     display: "flex",
@@ -84,15 +84,15 @@ const S = {
     padding: "0.75rem",
   },
   stackFrame: {
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
     fontSize: "0.75rem",
   },
   // An internal frame is still readable, but it steps back.
   stackFrameInternal: {
-    color: "color-mix(in oklab, var(--wa-muted-foreground) 50%, transparent)",
+    color: "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
   },
   stackFn: {
-    color: "var(--wa-foreground)",
+    color: "var(--foreground)",
   },
   stackPath: {
     textDecoration: "underline",
@@ -102,10 +102,10 @@ const S = {
     cursor: "pointer",
   },
   stackPathHover: {
-    color: "var(--wa-primary)",
+    color: "var(--primary)",
   },
   stackEmpty: {
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontSize: "0.75rem",
   },
 } satisfies Record<string, Sx>;

@@ -20,7 +20,7 @@ export interface ApprovalRequest {
 }
 
 export interface ApprovalGate {
-  /** Hand to `createWebAgent`. The loop calls it after the arguments validate. */
+  /** Hand to `createAgent`. The loop calls it after the arguments validate. */
   beforeToolCall(
     context: BeforeToolCallContext,
     signal?: AbortSignal,

@@ -6,7 +6,7 @@
  * host page may deny it outright, so every access is guarded and a failure
  * means "nothing stored".
  */
-const PREFIX = "web-agent:";
+const PREFIX = "agentak:";
 
 const read = (name: string): string | undefined => {
   try {

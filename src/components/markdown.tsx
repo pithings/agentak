@@ -39,22 +39,22 @@ const S = {
   },
   // Raw HTML is text, and reads as text.
   mdHtml: {
-    color: "var(--wa-muted-foreground)",
-    fontFamily: "var(--wa-font-mono)",
+    color: "var(--muted-foreground)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.75rem",
     whiteSpace: "pre-wrap",
   },
   mdBlockquote: {
-    borderLeft: "2px solid var(--wa-border)",
+    borderLeft: "2px solid var(--border)",
     paddingLeft: "0.75rem",
-    color: "var(--wa-muted-foreground)",
+    color: "var(--muted-foreground)",
     fontStyle: "italic",
   },
   mdCode: {
     borderRadius: "0.25rem",
-    background: "var(--wa-muted)",
+    background: "var(--muted)",
     padding: "0.125rem 0.25rem",
-    fontFamily: "var(--wa-font-mono)",
+    fontFamily: "var(--font-mono)",
     fontSize: "0.9em",
   },
   mdDel: {
@@ -119,7 +119,7 @@ const S = {
     fontWeight: "500",
   },
   mdCell: {
-    border: "1px solid var(--wa-border)",
+    border: "1px solid var(--border)",
     padding: "0.25rem 0.5rem",
   },
   alignLeft: {
@@ -138,7 +138,7 @@ const S = {
  * children, so a new md4x tag degrades to its text instead of reaching the DOM
  * unstyled.
  *
- * Every look is `sx` alone — no `wa-md-*` class is left, because no rule selects
+ * Every look is `sx` alone — no `md-*` class is left, because no rule selects
  * one any more. A tag with no styling of its own still needs an entry, to say it
  * may reach the DOM.
  *
