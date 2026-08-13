@@ -21,12 +21,26 @@ const emit = defineEmits<{ (event: "toggle-nav"): void }>();
         </svg>
       </button>
 
-      <RouterLink to="/" class="flex items-center gap-2.5">
-        <span
-          class="grid size-7 place-items-center rounded-md bg-brand font-mono text-[0.6875rem] font-semibold text-brand-ink"
+      <RouterLink to="/" class="flex items-center gap-2">
+        <!-- `assets/agentak.svg`, inline: the file colours itself from
+             `prefers-color-scheme`, and the page has its own theme switch. -->
+        <svg
+          viewBox="6 6.5 52 52"
+          class="size-7 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="3.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
         >
-          wa
-        </span>
+          <rect x="17" y="15" width="30" height="35" rx="12" />
+          <path d="M11.5 30q-4 6 0 13" />
+          <path d="M52.5 30q4 6 0 13" />
+          <path d="M29 38q3 3.5 6 0" />
+          <circle class="eye" cx="26" cy="31" r="2.4" fill="currentColor" stroke="none" />
+          <circle class="eye" cx="38" cy="31" r="2.4" fill="currentColor" stroke="none" />
+        </svg>
         <span class="text-sm font-semibold tracking-tight">Agentak</span>
       </RouterLink>
 
@@ -92,3 +106,29 @@ const emit = defineEmits<{ (event: "toggle-nav"): void }>();
     </div>
   </header>
 </template>
+
+<style scoped>
+.eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: blink 5s ease-in-out infinite;
+}
+.eye + .eye {
+  animation-delay: 0.06s;
+}
+@keyframes blink {
+  0%,
+  88%,
+  100% {
+    transform: scaleY(1);
+  }
+  93% {
+    transform: scaleY(0.1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eye {
+    animation: none;
+  }
+}
+</style>

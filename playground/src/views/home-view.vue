@@ -65,6 +65,16 @@ import readme from "../../../README.md";
   margin: 0.25rem 0;
 }
 
+/* The masthead. `align` is the one centring attribute GitHub keeps, so the page
+   honours it as well. */
+.readme :deep([align="center"]) {
+  text-align: center;
+}
+.readme :deep(img) {
+  display: inline-block;
+  max-width: 100%;
+}
+
 .readme :deep(a) {
   color: var(--primary);
   text-decoration: underline;

@@ -1,7 +1,13 @@
-# Agentak
+<p align="center">
+  <img src="assets/agentak.svg" alt="" width="104" height="104">
+</p>
 
-An agent chat for any web page. It is one custom element, and it needs one line of
-setup.
+<h1 align="center">Agentak</h1>
+
+<p align="center">
+  An agent chat for any web page. It is one custom element, and it needs one line of
+  setup.
+</p>
 
 - 🧩 **`<agent-chat>` web component** — it uses shadow DOM. Page styles do not change
   the chat, and chat styles do not change the page.

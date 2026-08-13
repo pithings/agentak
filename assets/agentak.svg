@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="agentak" viewBox="6 6.5 52 52" width="64" height="64" role="img" aria-label="agentak">
+  <title>agentak</title>
+  <!-- Ink follows the viewer's colour scheme. A host overrides it by setting the
+       agentak-ink custom property. XML comments take no double hyphen, so the
+       property is named here without its leading dashes. -->
+  <style>
+    #agentak { --ink: #14161a; }
+    @media (prefers-color-scheme: dark) { #agentak { --ink: #eef0f3; } }
+    #agentak .s {
+      fill: none;
+      stroke: var(--agentak-ink, var(--ink));
+      stroke-width: 3.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    #agentak .eye {
+      fill: var(--agentak-ink, var(--ink));
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: agentak-blink 5s ease-in-out infinite;
+    }
+    #agentak .eye + .eye { animation-delay: 0.06s; }
+    @keyframes agentak-blink {
+      0%, 88%, 100% { transform: scaleY(1); }
+      93% { transform: scaleY(0.1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #agentak .eye { animation: none; }
+    }
+  </style>
+  <rect class="s" x="17" y="15" width="30" height="35" rx="12"/>
+  <path class="s" d="M11.5 30q-4 6 0 13"/>
+  <path class="s" d="M52.5 30q4 6 0 13"/>
+  <path class="s" d="M29 38q3 3.5 6 0"/>
+  <circle class="eye" cx="26" cy="31" r="2.4"/>
+  <circle class="eye" cx="38" cy="31" r="2.4"/>
+</svg>

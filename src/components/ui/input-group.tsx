@@ -206,8 +206,12 @@ function InputGroupAddon({
           const target = event.target as HTMLElement;
           // A popover opened from the addon is a DOM child of it, but it is its
           // own surface: a click on a row there is not a click on the addon, and
-          // taking the focus from it kills the panel's own keyboard handling.
-          if (target.closest('button,[data-slot="popover-content"]')) return;
+          // taking the focus from it kills the panel's own keyboard handling —
+          // on a phone it moves the keyboard off the field just tapped, back to
+          // the composer. Matched on `data-popover-content`, not `data-slot`:
+          // the panel renames that slot after itself, so the model picker's own
+          // never matched here.
+          if (target.closest("button,[data-popover-content]")) return;
           // The group's own control, which is a textarea as often as an input —
           // the composer holds one, with the panel's search field beside it.
           event.currentTarget.parentElement

@@ -107,7 +107,7 @@ const compact = new Intl.NumberFormat("en-US", { notation: "compact" });
 
 const touch = isTouch();
 
-/** Both fields the panel focuses — search and key — carry it on a phone. */
+/** Both fields the panel holds — search and key — carry it on a phone. */
 const noZoom = touch ? u.noZoom : undefined;
 
 /**
@@ -230,17 +230,20 @@ export function ChatPicker({
   // must hand the focus back itself: a row or a strip button keeps the focus it
   // was clicked with, which leaves both typing and the arrow keys dead.
   //
-  // On a phone too. The field was left alone there once, so the keyboard would
-  // not take half the room the list opens into — but that is a panel you cannot
-  // type in until you find the field and tap it, and the field is how a level is
-  // filtered. The room is handled where it belongs: the panel caps itself to
-  // what the keyboard leaves, and the field sits under the list, against the
-  // keyboard, so nothing it needs moves.
+  // Not the search field on a phone, though — see `autoFocus` below. The keyboard
+  // it raises is subtracted from the room the panel measured, and that room is
+  // the whole of the list: a panel focused on open is a list two rows tall before
+  // it is read once. The field is a tap away under it, and the panel gives the
+  // height up only for someone who asked to filter.
+  //
+  // The key level is the other way round: typing the key is the only thing that
+  // level is for, so it takes the focus on a phone as well.
   //
   // The panel comes from a bubbled `focusin` rather than a ref, because a ref on
   // a component is the component — preact forwards none to the element.
   const panelRef = useRef<HTMLElement | null>(null);
   useLayoutEffect(() => {
+    if (touch && shown !== "key") return;
     // One field to a level: the search, or the key.
     panelRef.current?.querySelector("input")?.focus();
   }, [shown]);
@@ -265,8 +268,14 @@ export function ChatPicker({
         </ModelSelectorValue>
       </ModelSelectorTrigger>
 
-      {/* Upwards: the composer is the last row of the surface. */}
+      {/* Upwards: the composer is the last row of the surface. On a phone the
+          panel itself takes the focus rather than the field inside it — the
+          keyboard is what the list would be paying for — and it opens over the
+          composer rather than on top of it: with a keyboard up, the rows it
+          would leave under itself are a third of the list. */}
       <ModelSelectorContent
+        autoFocus={!touch}
+        fill={touch}
         onFocusIn={(event) => {
           panelRef.current = event.currentTarget;
         }}

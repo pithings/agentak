@@ -105,6 +105,33 @@ describe("Popover", () => {
     expect(panel.dataset.align).toBe("start");
     expect(panel.style.getPropertyValue("--popover-offset")).toBe("12px");
   });
+
+  // An anchor near the foot of the window, as the composer's picker is: `fill`
+  // pulls the panel down over it to `EDGE` off the bottom, and counts the rows
+  // it took as room — the panel then spans the band, less an edge at each end.
+  // jsdom reports an empty rect for everything, so the anchor states its own.
+  it("opens over the anchor under fill", async () => {
+    render(
+      <Popover defaultOpen>
+        <PopoverTrigger>Open</PopoverTrigger>
+        <PopoverContent fill side="top">
+          body
+        </PopoverContent>
+      </Popover>,
+    );
+
+    const root = document.querySelector('[data-slot="popover"]') as HTMLElement;
+    root.getBoundingClientRect = () =>
+      ({ bottom: 318, height: 28, left: 0, right: 100, top: 290, width: 100 }) as DOMRect;
+
+    const panel = screen.getByRole("dialog");
+    const band = globalThis.innerHeight;
+    await waitFor(() => {
+      expect(panel.style.getPropertyValue("--popover-offset")).toBe(`${8 - (band - 290)}px`);
+    });
+    expect(panel.style.getPropertyValue("--popover-available")).toBe(`${band - 16}px`);
+    expect(panel.dataset.side).toBe("top");
+  });
 });
 
 describe("HoverCard", () => {

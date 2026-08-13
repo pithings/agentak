@@ -119,6 +119,8 @@ interface Fit {
   side: PopoverSide;
   /** Room left on that side, or `null` where nothing constrains the panel. */
   available: number | null;
+  /** The gap to the anchor. Negative where `fill` pulls the panel over it. */
+  offset: number;
 }
 
 /** Up out of a shadow tree as well as up the tree: a panel may be in one. */
@@ -187,8 +189,9 @@ function fit(
   anchor: HTMLElement | null,
   clip: Element | null,
   view: Window,
+  fill: boolean,
 ): Fit {
-  if (!anchor) return { available: null, side };
+  if (!anchor) return { available: null, offset, side };
 
   const box = anchor.getBoundingClientRect();
   const rect = panel.getBoundingClientRect();
@@ -203,8 +206,22 @@ function fit(
   const opposite = OPPOSITE[side];
   const resolved = room[side] < needed && room[opposite] >= needed ? opposite : side;
 
+  // What the panel would leave behind it: from its own edge, across the anchor,
+  // to the far edge of the band. `fill` hands it that as room to open into
+  // instead — see the prop. A negative gap is what pulls it there, so the
+  // smaller of the two always wins, and an anchor already at the far edge —
+  // nothing to reclaim, or past it — keeps the gap it asked for.
+  const behind = {
+    bottom: box.bottom - edge.top,
+    left: edge.right - box.left,
+    right: box.right - edge.left,
+    top: edge.bottom - box.top,
+  };
+  const gap = fill ? Math.min(offset, EDGE - behind[resolved]) : offset;
+
   return {
-    available: Math.round(Math.max(room[resolved] - offset - EDGE, FLOOR)),
+    available: Math.round(Math.max(room[resolved] - gap - EDGE, FLOOR)),
+    offset: gap,
     side: resolved,
   };
 }
@@ -303,6 +320,18 @@ export type PopoverContentProps = WithSx<ComponentProps<"div">> & {
   sideOffset?: number;
   /** Flip to the opposite side when the panel does not fit. Nothing else. */
   avoidCollisions?: boolean;
+  /**
+   * Open over the anchor, down to the far edge of the room measured.
+   *
+   * A panel is normally a box beside the control that opened it. On a phone
+   * that control is usually at the bottom of the surface with a keyboard under
+   * it, and the rows between the two — the composer's own — are room the panel
+   * is not allowed to use while it is anchored above them. This gives it the
+   * whole band instead, `EDGE` off both ends, and the anchor goes under it.
+   *
+   * Needs `avoidCollisions`, which is what measures the band.
+   */
+  fill?: boolean;
   /** Focus the panel on open, keep Tab inside it, and give focus back on close. */
   trapFocus?: boolean;
   /** Focus the first control inside on open. Off leaves it on the panel itself. */
@@ -316,6 +345,7 @@ function PopoverContent({
   align = "center",
   sideOffset = 4,
   avoidCollisions = true,
+  fill = false,
   trapFocus = true,
   autoFocus = true,
   onKeyDown,
@@ -324,7 +354,7 @@ function PopoverContent({
 }: PopoverContentProps) {
   const { open, setOpen, contentId, triggerId, triggerRef, rootRef } = usePopover("PopoverContent");
   const contentRef = useRef<HTMLDivElement>(null);
-  const [fitted, setFitted] = useState<Fit>({ available: null, side });
+  const [fitted, setFitted] = useState<Fit>({ available: null, offset: sideOffset, side });
 
   // Merged, not overridden: the panel needs its own ref for dismissal and focus,
   // so a caller's ref is forwarded alongside it rather than replacing it.
@@ -388,7 +418,7 @@ function PopoverContent({
   useEffect(() => {
     const node = contentRef.current;
     if (!open || !node || !avoidCollisions) {
-      setFitted({ available: null, side });
+      setFitted({ available: null, offset: sideOffset, side });
       return;
     }
 
@@ -400,8 +430,8 @@ function PopoverContent({
     let last = "";
 
     const tick = () => {
-      const next = fit(side, sideOffset, node, rootRef.current, clip, view);
-      const key = `${next.side}:${next.available}`;
+      const next = fit(side, sideOffset, node, rootRef.current, clip, view, fill);
+      const key = `${next.side}:${next.available}:${next.offset}`;
       if (key !== last) {
         last = key;
         setFitted(next);
@@ -412,7 +442,7 @@ function PopoverContent({
     tick();
 
     return () => view.cancelAnimationFrame(frame);
-  }, [avoidCollisions, open, rootRef, side, sideOffset]);
+  }, [avoidCollisions, fill, open, rootRef, side, sideOffset]);
 
   useEffect(() => {
     const node = contentRef.current;
@@ -439,7 +469,8 @@ function PopoverContent({
 
   // Merged, not overridden: a caller's own `style` must not drop the offset.
   // The offset is a custom property because SIDE_OFFSET's margin reads it, and
-  // callers may still set `--popover-offset` on the panel directly.
+  // callers may still set `--popover-offset` on the panel directly. It is the
+  // measured one rather than `sideOffset`, since `fill` pulls it negative.
   //
   // `--popover-available` is the room measured on the resolved side, for a panel
   // that can give height back — `model-selector.tsx` caps its list with it.
@@ -452,11 +483,16 @@ function PopoverContent({
     {
       "--popover-available":
         fitted.available == null ? "none" : `${Math.round(fitted.available)}px`,
-      "--popover-offset": `${sideOffset}px`,
+      "--popover-offset": `${fitted.offset}px`,
     } as Sx,
     style,
   );
 
+  // `data-popover-content` is last, after the spread, because it is the one mark
+  // on the panel a caller cannot take off: `data-slot` and `role` are both
+  // overridden downstream — ModelSelectorContent and DropdownMenuContent name
+  // themselves — and `input-group.tsx` has to recognise a panel opened from
+  // inside an addon to leave its focus alone.
   return (
     <div
       aria-labelledby={triggerId}
@@ -494,6 +530,7 @@ function PopoverContent({
       style={styles}
       tabIndex={-1}
       {...props}
+      data-popover-content=""
     />
   );
 }

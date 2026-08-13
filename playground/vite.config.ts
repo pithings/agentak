@@ -54,6 +54,9 @@ function markdown(): Plugin {
  *
  * `@` points at the library source, not at `dist` — the page is where the
  * library is worked on, so every change reloads.
+ *
+ * `public/assets` links to the repo's `assets/`, so the readme's relative
+ * `assets/…` images resolve here the way they do on GitHub.
  */
 export default defineConfig({
   plugins: [
