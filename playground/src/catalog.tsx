@@ -319,7 +319,7 @@ const primitives: CatalogEntry[] = [
     render: () => (
       <Card>
         <CardHeader>
-          <CardTitle>Page reader</CardTitle>
+          <CardTitle>Assistant</CardTitle>
           <CardDescription>Answers only from the current page.</CardDescription>
           <CardAction>
             <Badge variant="outline">idle</Badge>

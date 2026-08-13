@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { catalogModels, DEFAULT_MODEL, DEFAULT_PROVIDER_ID, findModel } from "@/agent/models";
 import {
   type AnyModel,
+  availableProviders,
   findProvider,
   PROVIDERS,
   streamFor,
@@ -63,6 +64,19 @@ describe("PROVIDERS", () => {
     expect(findProvider(DEFAULT_PROVIDER_ID)?.free).toBe(true);
     expect(findProvider("openrouter")?.gateway).toBe(true);
     expect(findProvider("nope")).toBeUndefined();
+  });
+
+  it("offers a page only what it can reach, and opens on one of those", () => {
+    // jsdom is a page, so the two that answer no preflight are dropped. The
+    // extension is the runtime that gets the whole list.
+    const blocked = PROVIDERS.filter((entry) => entry.cors === false).map((entry) => entry.id);
+    expect(blocked).toEqual(["kilo", "opencode-zen"]);
+
+    const ids = availableProviders().map((entry) => entry.id);
+    expect(ids).not.toContain("kilo");
+    expect(ids).not.toContain("opencode-zen");
+    expect(ids).toContain(DEFAULT_PROVIDER_ID);
+    expect(ids.length).toBe(PROVIDERS.length - blocked.length);
   });
 
   it("prices a free provider at nothing, and asks it for no key", async () => {

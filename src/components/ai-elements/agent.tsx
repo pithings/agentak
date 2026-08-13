@@ -8,7 +8,14 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { BotIcon } from "@/lib/icons";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  useCollapsible,
+} from "@/components/ui/collapsible";
+import { BotIcon, Chevron } from "@/lib/icons";
+import { useInteraction } from "@/lib/use-interaction";
 import { reset, u } from "@/styles/base";
 import { sx, type Sx, type WithSx } from "@/styles/sx";
 import type { ToolDefinition } from "@/types";
@@ -31,13 +38,22 @@ const S = {
     justifyContent: "space-between",
     gap: "1rem",
     padding: "0.75rem",
+    color: "var(--muted-foreground)",
+    textAlign: "left",
+    transition: "color var(--transition)",
+  },
+  agentHeaderHover: {
+    color: "var(--foreground)",
   },
   agentTitle: {
     display: "flex",
     alignItems: "center",
     gap: "0.5rem",
   },
+  // The header dims as a whole on the way to its hover state; the name is the
+  // title, so it stays at full contrast throughout.
   agentName: {
+    color: "var(--foreground)",
     fontSize: "0.875rem",
     fontWeight: "500",
   },
@@ -47,6 +63,10 @@ const S = {
     gap: "1rem",
     padding: "0 1rem 1rem",
   },
+  // The body is a `CollapsibleContent`, which hides itself with the `hidden`
+  // attribute. The inline `display` above would outrank the UA `[hidden]` rule,
+  // so closing has to be driven from here too, in the same expression.
+  agentContentHidden: { display: "none" },
   agentSection: {
     display: "flex",
     flexDirection: "column",
@@ -81,36 +101,59 @@ const S = {
   },
 } satisfies Record<string, Sx>;
 
-export type AgentProps = WithSx<ComponentProps<"div">>;
+export type AgentProps = WithSx<ComponentProps<typeof Collapsible>>;
 
+// The card is the `Collapsible` itself, so the header is its trigger and the
+// body its content. It starts closed: the instructions and the tool schemas are
+// reference, not the first thing to read.
 export const Agent = memo(({ className, style, ...props }: AgentProps) => (
-  <div className={className} style={sx(S.agent, style)} {...props} />
+  <Collapsible className={className} style={sx(S.agent, style)} {...props} />
 ));
 
-export type AgentHeaderProps = WithSx<ComponentProps<"div">> & {
+export type AgentHeaderProps = WithSx<ComponentProps<typeof CollapsibleTrigger>> & {
   name: string;
   model?: string;
 };
 
-export const AgentHeader = memo(({ className, name, model, style, ...props }: AgentHeaderProps) => (
-  <div className={className} style={sx(S.agentHeader, style)} {...props}>
-    <div style={S.agentTitle}>
-      <BotIcon style={sx(u.icon, u.muted)} />
-      <span style={S.agentName}>{name}</span>
-      {model && (
-        <Badge style={u.mono} variant="secondary">
-          {model}
-        </Badge>
-      )}
-    </div>
-  </div>
-));
+// The whole row is the button — upstream reached the same shape with `asChild`.
+export const AgentHeader = memo(({ className, name, model, style, ...props }: AgentHeaderProps) => {
+  const { open } = useCollapsible("AgentHeader");
+  const { handlers, hovered } = useInteraction<HTMLButtonElement>(props);
 
-export type AgentContentProps = WithSx<ComponentProps<"div">>;
+  return (
+    <CollapsibleTrigger
+      className={className}
+      style={sx(S.agentHeader, hovered && S.agentHeaderHover, style)}
+      {...props}
+      {...handlers}
+    >
+      <div style={S.agentTitle}>
+        <BotIcon style={u.icon} />
+        <span style={S.agentName}>{name}</span>
+        {model && (
+          <Badge style={u.mono} variant="secondary">
+            {model}
+          </Badge>
+        )}
+      </div>
+      <Chevron open={open} />
+    </CollapsibleTrigger>
+  );
+});
 
-export const AgentContent = memo(({ className, style, ...props }: AgentContentProps) => (
-  <div className={className} style={sx(S.agentContent, style)} {...props} />
-));
+export type AgentContentProps = WithSx<ComponentProps<typeof CollapsibleContent>>;
+
+export const AgentContent = memo(({ className, style, ...props }: AgentContentProps) => {
+  const { open } = useCollapsible("AgentContent");
+
+  return (
+    <CollapsibleContent
+      className={className}
+      style={sx(S.agentContent, !open && S.agentContentHidden, style)}
+      {...props}
+    />
+  );
+});
 
 export type AgentInstructionsProps = WithSx<ComponentProps<"div">> & {
   children: string;

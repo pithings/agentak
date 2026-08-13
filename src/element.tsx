@@ -53,8 +53,11 @@ export class AgentChatElement extends HTMLElement {
   }
 }
 
+/**
+ * Registers the tag. This module does not call it — `agentak/element` is the
+ * entry that does, so nothing registers a tag as a side effect of importing the
+ * class.
+ */
 export function defineAgentChat(tag = TAG) {
   if (!customElements.get(tag)) customElements.define(tag, AgentChatElement);
 }
-
-defineAgentChat();

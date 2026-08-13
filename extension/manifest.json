@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "description": "WIP — side panel host for the <agent-chat> element.",
   "permissions": ["sidePanel", "activeTab", "scripting", "storage"],
+  "host_permissions": ["https://api.kilo.ai/*", "https://opencode.ai/*"],
   "action": { "default_title": "Open agentak" },
   "side_panel": { "default_path": "sidepanel.html" },
   "background": { "service_worker": "background.js", "type": "module" }

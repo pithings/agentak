@@ -57,7 +57,7 @@ beside every bundle.
 | Subpath              | Entry                     | What                                                   |
 | -------------------- | ------------------------- | ------------------------------------------------------ |
 | `agentak`            | `src/index.ts`            | `Chat`, `AgentChat`, `defineAgentChat`, `tokens`, loop |
-| `agentak/element`    | `src/element.tsx`         | side effect — defines `<agent-chat>`                   |
+| `agentak/element`    | `src/register.ts`         | side effect — defines `<agent-chat>`                   |
 | `agentak/components` | `src/components/index.ts` | every built-in component, named                        |
 | `agentak/pi`         | `src/agent/index.ts`      | the loop alone; the root re-exports the same set       |
 
@@ -84,6 +84,7 @@ consumer's bundler. `platform: "browser"` is the one hand-set option.
 ```
 src/
   index.ts / element.tsx / agent-chat.tsx  package entry, custom element, container
+  register.ts                   `agentak/element` — the one module with a side effect
   components/ui/                shadcn primitives, in preact
   components/ai-elements/       AI SDK Elements, in preact
   components/chat.tsx           the chat surface — transcript in, callbacks out
@@ -104,7 +105,9 @@ extension/                      MV3 side panel, `@agentak/extension`
 
 The loop runs end to end against 9 providers with the page tools, 4 of them free and
 keyless. A fresh surface chooses nothing: the first message opens the picker, and a
-free provider is then one click and no key. Nothing is verified
+free provider is then one click and no key. Two of the nine — Kilo and OpenCode Zen —
+answer no CORS preflight, so a page is offered 7 and the extension all 9; see
+[`.agents/pi.md`](.agents/pi.md). Nothing is verified
 in a real browser yet — the element, markdown and the panel are written but untested
 there.
 

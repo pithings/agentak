@@ -2,9 +2,8 @@
 import { h } from "preact";
 import { onBeforeUnmount, onMounted } from "vue";
 
+import { defineAgentChat } from "@/element";
 import { u } from "@/styles/base";
-// Defines `<agent-chat>`. Side effect: import it, then write the tag.
-import "@/element";
 import { ChatActions, StartDemo } from "../chat-actions";
 import { chat, closeChat, openChat, setChatMode } from "../chat-store";
 import { DemoAgent } from "../demo-agent";
@@ -42,6 +41,10 @@ import PreactHost from "./preact-host.vue";
  * a sheet on the bottom edge, and scales from the bottom instead. The launcher
  * keeps its corner — it is never on screen at the same time.
  */
+// Call it, rather than importing the entry for its side effect: a bare import
+// is what a bundler drops.
+defineAgentChat();
+
 const playDemo = () => setChatMode("demo");
 const goLive = () => setChatMode("live");
 

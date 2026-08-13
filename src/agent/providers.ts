@@ -32,6 +32,11 @@ export interface Provider {
   free?: boolean;
   /** What free costs — the published limit. */
   note?: string;
+  /**
+   * The endpoint answers a cross-origin preflight. Omitted means it does;
+   * `false` names the ones that do not, and a page drops them.
+   */
+  cors?: boolean;
   /** Where the key comes from. A free provider has none. */
   keyUrl?: string;
   keyPlaceholder?: string;
@@ -55,6 +60,7 @@ export const PROVIDERS: Provider[] = [
     label: "Kilo Gateway",
     gateway: true,
     free: true,
+    cors: false,
     note: "200 requests an hour.",
     defaultModelId: "kilo-auto/free",
     load: async () => KILO_MODELS,
@@ -71,6 +77,7 @@ export const PROVIDERS: Provider[] = [
     id: "opencode-zen",
     label: "OpenCode Zen",
     free: true,
+    cors: false,
     note: "A fair-use limit the provider does not publish.",
     defaultModelId: "deepseek-v4-flash-free",
     load: async () => OPENCODE_ZEN_MODELS,
@@ -127,6 +134,22 @@ export const PROVIDERS: Provider[] = [
 
 export const findProvider = (id?: string): Provider | undefined =>
   PROVIDERS.find((provider) => provider.id === id);
+
+/**
+ * Whether this runtime is outside CORS. An extension page fetches through its
+ * `host_permissions`, which the preflight never gates; a page — the playground,
+ * a host site, the panel served by vite in dev — is gated by it.
+ */
+export const corsFree = (): boolean => globalThis.location?.protocol === "chrome-extension:";
+
+/**
+ * The providers this runtime can reach. `Access-Control-Allow-Origin` is the
+ * server's to send, so a provider that sends none is unreachable from a page
+ * and no request header changes that — the picker offers it nowhere it would
+ * fail. The extension gets the whole list.
+ */
+export const availableProviders = (): Provider[] =>
+  corsFree() ? PROVIDERS : PROVIDERS.filter((provider) => provider.cors !== false);
 
 /**
  * The api modules, one import each.

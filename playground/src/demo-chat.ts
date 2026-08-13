@@ -180,7 +180,7 @@ export const replies: ((stamp: number) => ViewPart[])[] = [
       kind: "element",
       name: "agent",
       props: {
-        name: "Page reader",
+        name: "Assistant",
         model: "claude-sonnet-4-5",
         instructions: "Answer only from the page. Say so when the page does not carry the answer.",
         tools: [

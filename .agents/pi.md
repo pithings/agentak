@@ -64,6 +64,37 @@ Left out on purpose: providers that need an account id in the url (Cloudflare), 
 OAuth flow (Copilot, Codex), signed requests (Bedrock, Vertex), or another sdk for one
 provider each (Google, Mistral).
 
+### CORS decides who is listed
+
+The loop calls the provider straight from the browser, so a provider must answer the
+preflight the `Authorization` header forces. `Access-Control-Allow-Origin` is the
+server's to send: a provider that sends none cannot be reached from a page, and no
+request header changes that.
+
+Seven of the nine send it. `cors: false` names the two that do not — **Kilo Gateway**
+and **OpenCode Zen** — and `availableProviders()` drops them from what a page offers,
+rather than letting the picker take a click that ends in a console error. `AgentChat`
+reads that list for its rows _and_ for the provider it opens on, so one stored in the
+panel is not restored on a page.
+
+`corsFree()` is the exception, and the whole of the runtime check: a
+`chrome-extension:` document fetches through `host_permissions`, which the preflight
+never gates, so the panel lists all nine. Both blocked origins are in
+`extension/manifest.json`. The panel served by vite in dev is an ordinary page, so it
+sees the seven — load it unpacked to get the other two.
+
+A provider that starts to send the header is a `cors: false` line to delete. Check it
+with a preflight of your own:
+
+```sh
+curl -sI -X OPTIONS https://opencode.ai/zen/v1/chat/completions \
+  -H 'Origin: http://localhost:4050' -H 'Access-Control-Request-Method: POST' \
+  -H 'Access-Control-Request-Headers: authorization,content-type'
+```
+
+A consumer embedding `<agent-chat>` in their own page is in the same position as the
+playground: the seven, unless they proxy the rest themselves.
+
 A key is stored per provider, so switching back to one already set up asks nothing.
 `getApiKey(provider)` is how pi asks for the right one.
 

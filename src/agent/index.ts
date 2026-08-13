@@ -24,6 +24,8 @@ export {
 } from "@/agent/models";
 export {
   type AnyModel,
+  availableProviders,
+  corsFree,
   findProvider,
   type Provider,
   PROVIDERS,

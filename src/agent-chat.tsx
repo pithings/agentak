@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks"
 
 import { createAgent, SYSTEM_PROMPT } from "@/agent/create-agent";
 import { findModel } from "@/agent/models";
-import { findProvider, PROVIDERS } from "@/agent/providers";
+import { availableProviders, findProvider, type Provider } from "@/agent/providers";
 import {
   storeApiKey,
   storedApiKey,
@@ -48,9 +48,13 @@ export interface AgentChatProps {
 }
 
 /** Keys already in hand: what a host passed, over what the browser stored. */
-function seedKeys(apiKey: AgentChatProps["apiKey"], providerId?: string): Record<string, string> {
+function seedKeys(
+  providers: Provider[],
+  apiKey: AgentChatProps["apiKey"],
+  providerId?: string,
+): Record<string, string> {
   const keys: Record<string, string> = {};
-  for (const provider of PROVIDERS) {
+  for (const provider of providers) {
     const stored = storedApiKey(provider.id);
     if (stored) keys[provider.id] = stored;
   }
@@ -73,13 +77,18 @@ export function AgentChat({
   emptyActions,
 }: AgentChatProps) {
   const wanted = openOn ?? storedProviderId();
-  const [keys, setKeys] = useState(() => seedKeys(apiKey, wanted));
+  // Where the surface runs decides the list: a page drops the providers that
+  // answer no preflight. Fixed for the life of the surface.
+  const [available] = useState(availableProviders);
+  const [keys, setKeys] = useState(() => seedKeys(available, apiKey, wanted));
   // Nothing is chosen on a fresh surface: no provider, and so no model. One
-  // that cannot answer counts as none — a stored key may have been dropped, or
-  // a host may name a provider it passed no key for.
-  const [providerId, setProviderId] = useState(() =>
-    wanted && (findProvider(wanted)?.free || keys[wanted]) ? wanted : undefined,
-  );
+  // that cannot answer counts as none — a stored key may have been dropped, a
+  // host may name a provider it passed no key for, and one stored in the panel
+  // is out of reach on a page.
+  const [providerId, setProviderId] = useState(() => {
+    const entry = available.find((provider) => provider.id === wanted);
+    return entry && (entry.free || keys[entry.id]) ? entry.id : undefined;
+  });
   // Typed before a provider was chosen. It goes as soon as one can answer.
   const [pending, setPending] = useState("");
   const [asking, setAsking] = useState(false);
@@ -156,7 +165,7 @@ export function AgentChat({
   // before it hands a keyed provider back, so `providerId` can always answer.
   const providers = useMemo(
     () =>
-      PROVIDERS.map((entry) => ({
+      available.map((entry) => ({
         hasKey: Boolean(keys[entry.id]),
         id: entry.id,
         keyed: !entry.free,
@@ -169,7 +178,7 @@ export function AgentChat({
             ? "Gateway — one key, many vendors"
             : undefined,
       })),
-    [keys],
+    [available, keys],
   );
 
   const agent = useMemo(

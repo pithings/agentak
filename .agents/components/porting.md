@@ -63,6 +63,8 @@ Worth knowing before reading a ported file against its registry source.
 - **No command dialog.** `model-selector` is a `Popover`, not a ⌘K dialog, so
   `ModelSelectorDialog` does not exist and `ModelSelectorValue` does — a popover trigger
   has to say what is chosen.
+- **`agent`** is a `Collapsible`: the card body is dense reference, so `AgentHeader` is
+  the trigger and the card starts closed. Upstream has no toggle.
 - **`accordion`** keeps `string[]` for both `type="single"` and `"multiple"`, where
   radix carries a bare string for `single`.
 - **`environment-variables`** honours its controlled prop through

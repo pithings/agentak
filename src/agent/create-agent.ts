@@ -11,7 +11,7 @@ import { documentBridge, type PageBridge } from "@/agent/page-bridge";
 import { type AnyModel, findProvider, streamFor } from "@/agent/providers";
 import { createPageTools } from "@/agent/tools";
 
-export const AGENT_NAME = "Page reader";
+export const AGENT_NAME = "Assistant";
 
 export const SYSTEM_PROMPT = [
   "You are a browsing assistant embedded in a web page.",

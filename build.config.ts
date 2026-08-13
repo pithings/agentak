@@ -14,7 +14,7 @@ export default defineBuildConfig({
       type: "bundle",
       input: [
         "./src/index.ts",
-        "./src/element.tsx",
+        "./src/register.ts",
         "./src/components/index.ts",
         "./src/agent/index.ts",
       ],
