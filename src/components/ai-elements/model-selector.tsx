@@ -35,7 +35,7 @@ import { sx, type Sx, type WithSx } from "@/styles/sx";
  *
  * Upstream is a `cmdk` palette in a radix dialog. Here the panel is a popover
  * and the list is `ui/command.tsx`. The provider logos are gone — see
- * COMPONENTS.md.
+ * `.agents/components/porting.md`.
  */
 const S = {
   // Was the `.wa-popover-content.wa-model-selector-content` compound: the

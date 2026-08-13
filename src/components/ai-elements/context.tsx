@@ -152,7 +152,7 @@ export type ContextProps = WithSx<ComponentProps<typeof Collapsible>> & ContextS
  * Model context usage. A ring in the trigger, the breakdown in the panel.
  *
  * The panel is a collapsible rather than a hover card, and every cost arrives
- * as a prop — see COMPONENTS.md.
+ * as a prop — see `.agents/components/porting.md`.
  */
 export const Context = ({
   usedTokens,
