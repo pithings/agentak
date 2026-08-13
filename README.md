@@ -23,6 +23,8 @@
 - 🧰 **Add your own tools.** The agent ships with none. Pass `tools` to give it the
   actions your app needs.
 - 💬 **Includes streaming, tool approvals, Markdown, code blocks, and queued messages.**
+- 💾 **Save a conversation and open it again.** `session.save()` returns the transcript
+  with the provider, model, and thinking level that it used. Store it where you want.
 - 🔒 **Your API keys are stored locally.** They are saved in `localStorage` and sent
   directly to the provider. You do not need your own server.
 - 🌗 **Supports light and dark themes.** You can change the theme with CSS custom
@@ -200,7 +202,9 @@ rather than events: write `:on-send="send"`.
   they do not create the session.
 - **One session represents one conversation.** The user can change the provider, model,
   key, and thinking level without losing that conversation. To support several
-  conversations, create several sessions and switch the `session` prop.
+  conversations, create several sessions and switch the `session` prop. To keep a
+  conversation between visits, see
+  [Save and restore a conversation](#save-and-restore-a-conversation).
 - **The chat UI uses Preact in every framework.** The React and Vue wrappers each provide
   a `<div>` for Preact to render into. This means `actions` and `emptyActions` must be
   Preact children. Create them with Preact's `h()`, or leave them out.
@@ -242,6 +246,7 @@ const session = createPiSession({
 | Option          | Type                                                      | Description                                                             |
 | --------------- | --------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `provider`      | `string`                                                  | Provider to open. Uses the saved provider by default                    |
+| `snapshot`      | `PiSnapshot`                                              | A saved conversation to open. See below                                 |
 | `apiKey`        | `string \| Record<string, string>`                        | One key, or a key for each provider. Free providers need no key         |
 | `generateTitle` | `boolean`                                                 | Lets the model name the conversation instead of using the first message |
 | `thinkingLevel` | `off \| minimal \| low \| medium \| high \| xhigh \| max` | Starting thinking level. Defaults to `off`                              |
@@ -250,9 +255,57 @@ const session = createPiSession({
 | `approvals`     | `"always" \| "once" \| "never"`                           | When to confirm tool calls. Defaults to once for each tool              |
 | `streamFn`      | `StreamFn`                                                | Custom streaming function, mainly useful in tests                       |
 
-`createPiSession()` returns a `PiSession`, which is a `ChatSession` with a `dispose()`
-method. Create it once, outside your render function, and dispose of it when the
-conversation is no longer needed.
+`createPiSession()` returns a `PiSession`, which is a `ChatSession` with two more methods:
+`dispose()` and `save()`. Create it once, outside your render function, and dispose of it
+when the conversation is no longer needed.
+
+### Save and restore a conversation
+
+A session holds one conversation and does not store it. To keep a conversation, save it
+yourself and open the next session on it:
+
+```ts
+import { createPiSession, readPiSnapshot } from "agentak/pi";
+
+const stored = localStorage.getItem("chat");
+
+const session = createPiSession({
+  snapshot: stored ? readPiSnapshot(JSON.parse(stored)) : undefined,
+});
+
+// Save after every change. Add a delay of your own: a streamed answer sends many events,
+// and each save writes the full conversation.
+session.subscribe(() => localStorage.setItem("chat", JSON.stringify(session.save())));
+```
+
+`save()` returns a `PiSnapshot`. It is safe to call at any time, also while the model
+answers. The snapshot holds only the messages that are complete.
+
+| Field           | Type             | Description                                       |
+| --------------- | ---------------- | ------------------------------------------------- |
+| `version`       | `number`         | The format. `readPiSnapshot()` checks it          |
+| `messages`      | `AgentMessage[]` | The transcript, in the format that the agent uses |
+| `provider`      | `string`         | The provider of the conversation                  |
+| `model`         | `string`         | Its model                                         |
+| `thinkingLevel` | `ThinkingLevel`  | Its thinking level                                |
+| `title`         | `string`         | The title from the model, if you asked for one    |
+
+More than the transcript is saved. A transcript alone comes back with the model that the
+browser used last, and not with the model that wrote the answers. The values in the
+snapshot are used before the saved browser settings, but only for the conversation that
+you open. Later changes by the user are kept as usual.
+
+Notes:
+
+- **Read a stored snapshot with `readPiSnapshot()`.** It returns `undefined` if the value
+  is not a snapshot, or if it uses an older format. That result starts a new conversation
+  instead of an error.
+- **Agentak repairs the transcript when it opens one.** A tool call with no result is
+  removed, because a provider refuses that conversation. A failed turn at the end is
+  removed as well. Tool approvals are not saved: the user is asked again.
+- **Store the snapshot where you want.** Use `localStorage`, `chrome.storage`, or your own
+  server. For several conversations, store one snapshot for each, and switch conversations
+  by creating a new session with that snapshot.
 
 ### Providers
 
@@ -385,6 +438,10 @@ Leave out any feature that your session does not support. Agentak will hide the 
 `dispose` is not part of `ChatSession` because Agentak never calls it. The code that
 creates a session is responsible for cleaning it up. The included `createPiSession()`
 returns a session with a `dispose()` method.
+
+Storing a conversation works the same way. `ChatSession` has no save method, and the chat
+UI never lists or loads a conversation. A session that supports it offers its own method,
+as `createPiSession()` does with `save()`.
 
 ### Snapshot fields
 

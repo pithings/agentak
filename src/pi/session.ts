@@ -6,6 +6,12 @@ import { type AgentOptions, createAgent, SYSTEM_PROMPT } from "@/pi/create-agent
 import { findModel } from "@/pi/models";
 import { type AnyModel, availableProviders, findProvider, type Provider } from "@/pi/providers";
 import {
+  PI_SNAPSHOT_VERSION,
+  type PiSnapshot,
+  usablePiMessages,
+  type WholePiSnapshot,
+} from "@/pi/snapshot";
+import {
   storeApiKey,
   storedApiKey,
   storedModelId,
@@ -20,8 +26,8 @@ import { generateTitle, titleRequest } from "@/pi/title";
 import type { ChatAgent, ChatProvider } from "@/components/chat/types";
 import type { ChatSession, ChatSessionOptions, ChatSnapshot } from "@/session";
 
-/** `AgentOptions`, minus what the picker decides for itself. */
-export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "model"> {
+/** `AgentOptions`, minus what the picker and the snapshot decide for themselves. */
+export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "messages" | "model"> {
   /**
    * A key for the provider named by `provider`, or one per provider id. Without
    * one the picker asks, and keeps what it is given in `localStorage`; the
@@ -30,10 +36,17 @@ export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "model">
    */
   apiKey?: string | Record<string, string>;
   /**
-   * Which provider to open on. Default: the one this browser stored, or none —
-   * a fresh session chooses nothing, and the picker asks with the first message.
+   * Which provider to open on. Default: the snapshot's, then the one this
+   * browser stored, then none — a fresh session chooses nothing, and the picker
+   * asks with the first message.
    */
   provider?: string;
+  /**
+   * A conversation to open on: what `save()` returned, from wherever the host
+   * kept it. Its provider, model and thinking level come back with the
+   * transcript, and they win over the per-browser defaults.
+   */
+  snapshot?: PiSnapshot;
   /** Name the conversation with the model rather than the first message. */
   generateTitle?: boolean;
 }
@@ -48,6 +61,16 @@ export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "model">
 export interface PiSession extends ChatSession {
   /** Stops listening to the agent and drops every listener. */
   dispose(): void;
+  /**
+   * This conversation, ready to be stored — the transcript and the choices it
+   * ran under. Cheap, and safe to call while the model streams: what has landed
+   * is in it, and the turn in flight is not.
+   *
+   * It is `dispose()`'s neighbour rather than a `ChatSession` member for the
+   * same reason: the surface never calls it, so it is what this factory owes its
+   * caller, not what the chat asks of a harness.
+   */
+  save(): PiSnapshot;
 }
 
 /** Keys already in hand: what a host passed, over what the browser stored. */
@@ -90,20 +113,36 @@ const openingProvider = (
  * composer is the one place anything is chosen.
  */
 export function createPiSession(options: PiSessionOptions = {}): PiSession {
-  const { apiKey, provider: openOn, generateTitle: named, ...agentOptions } = options;
+  const {
+    apiKey,
+    provider: openOn,
+    generateTitle: named,
+    snapshot: stored,
+    ...agentOptions
+  } = options;
 
   // Where the surface runs decides the list: a page drops the providers that
   // answer no preflight. Fixed for the life of the session.
   const available = availableProviders();
-  const wanted = openOn ?? storedProviderId();
+  const wanted = openOn ?? stored?.provider ?? storedProviderId();
 
   let keys = seedKeys(available, apiKey, wanted);
   let providerId = openingProvider(available, keys, wanted);
   let preferences: ChatSessionOptions = { generateTitle: named };
+  /**
+   * The stored choices, until they land: the model waits for its catalog, and
+   * the level for the model. Spent once, because a pick after that is the
+   * visitor's and must not be overruled by the file it came from.
+   */
+  let opening = stored;
 
   // Keys are read through the closure, so adding one does not rebuild the agent
   // and lose the transcript. pi asks per provider, which is the id it passes.
-  const runtime = createAgent({ ...agentOptions, apiKey: (provider) => keys[provider] });
+  const runtime = createAgent({
+    ...agentOptions,
+    apiKey: (provider) => keys[provider],
+    messages: stored ? usablePiMessages(stored.messages) : [],
+  });
   const store = createAgentStore(runtime);
 
   const listeners = new Set<() => void>();
@@ -114,9 +153,16 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   /** Typed before a provider was chosen. It goes as soon as one can answer. */
   let pending = "";
   let pickerOpen = false;
-  let titled: { for: string; title: string } | undefined;
+  /**
+   * A restored title is the model's own from last time, kept against the same
+   * first message it named — and `asked` with it, so bringing a conversation
+   * back does not buy its title a second time.
+   */
+  const restoredTitle = stored?.title ? titleRequest(store.snapshot().messages).derived : undefined;
+  let titled =
+    restoredTitle && stored?.title ? { for: restoredTitle, title: stored.title } : undefined;
   /** What was asked already, so a second event does not ask twice. */
-  let asked: string | undefined;
+  let asked: string | undefined = restoredTitle;
 
   const notify = () => {
     cached = undefined;
@@ -131,18 +177,25 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   /** What the current model offers, in order. `off` alone when it cannot reason. */
   const levels = (): ThinkingLevel[] => getSupportedThinkingLevels(model());
 
+  /** The stored conversation's own choices, while they are still owed. */
+  const restoring = () => (opening?.provider === providerId ? opening : undefined);
+
   /**
-   * Run the model at the level this browser last used it at — and never at one
-   * it does not offer, because a level carried over from another model would go
-   * to a provider that refuses it.
+   * Run the model at the level the conversation was written at, or the one this
+   * browser last used it at — and never at one it does not offer, because a
+   * level carried over from another model would go to a provider that refuses
+   * it.
    */
   const followThinking = () => {
     if (!providerId) return;
-    const kept = storedThinkingLevel(providerId, model().id);
+    const restore = restoring();
+    const kept = restore?.thinkingLevel ?? storedThinkingLevel(providerId, model().id);
     const offered = levels();
-    const stored = offered.find((level) => level === kept);
-    const wanted = stored ?? runtime.agent.state.thinkingLevel;
+    const known = offered.find((level) => level === kept);
+    const wanted = known ?? runtime.agent.state.thinkingLevel;
     store.setThinkingLevel(offered.includes(wanted) ? wanted : "off");
+    // The last thing a restore owed, so the snapshot is spent here.
+    if (restore) opening = undefined;
   };
 
   const chooseModel = (next: AnyModel) => {
@@ -164,13 +217,20 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    */
   const follow = () => {
     if (!providerId || models.length === 0) return;
-    // Already on this provider's model: only the level is left to restore.
-    if (model().provider === providerId) {
+    const restore = restoring();
+    // Already on this provider's model: only the level is left to restore. A
+    // stored conversation is not on it yet, whatever the agent happens to
+    // hold — the default model belongs to a provider too, so the shortcut is
+    // not taken while a snapshot is still owed.
+    if (!restore && model().provider === providerId) {
       followThinking();
       return;
     }
-    const next = findModel(models, storedModelId(providerId));
+    const next = findModel(models, restore?.model ?? storedModelId(providerId));
+    // Its model may be gone from the catalog. The level is still the
+    // conversation's, and the snapshot is spent either way.
     if (next) chooseModel(next);
+    else if (restore) followThinking();
     flush();
   };
 
@@ -262,6 +322,10 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     })),
   });
 
+  /** The model's own title, once it names the conversation it was asked about. */
+  const generated = (derived?: string) =>
+    titled && titled.for === derived ? titled.title : undefined;
+
   const build = (): ChatSnapshot => {
     const loop = store.snapshot();
     const live = ready();
@@ -280,7 +344,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       queued: loop.queued,
       thinkingLevel: live ? loop.thinkingLevel : undefined,
       thinkingLevels: live ? levels() : undefined,
-      title: titled && titled.for === derived ? titled.title : derived,
+      title: generated(derived) ?? derived,
       usage: live ? loop.usage : undefined,
     };
   };
@@ -322,6 +386,8 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       titled = undefined;
       asked = undefined;
       pending = "";
+      // A new conversation owes the stored one nothing, catalog landed or not.
+      opening = undefined;
       store.reset();
     },
 
@@ -387,6 +453,26 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       preferences = { ...preferences, ...next };
       maybeTitle();
       notify();
+    },
+
+    /**
+     * A copy of the transcript, and the three choices it ran under. The array is
+     * copied because the agent goes on mutating its own.
+     *
+     * `WholePiSnapshot` is what makes this the one place to edit: a field added
+     * to `PiSnapshot` has to be written here, or the object below no longer
+     * compiles.
+     */
+    save() {
+      const whole: WholePiSnapshot = {
+        messages: [...runtime.agent.state.messages],
+        model: ready() ? model().id : undefined,
+        provider: providerId,
+        thinkingLevel: ready() ? runtime.agent.state.thinkingLevel : undefined,
+        title: generated(titleRequest(store.snapshot().messages).derived),
+        version: PI_SNAPSHOT_VERSION,
+      };
+      return whole;
     },
 
     dispose() {

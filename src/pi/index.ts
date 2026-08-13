@@ -10,6 +10,14 @@ export {
   type AgentRuntime,
 } from "@/pi/create-agent";
 export {
+  PI_SNAPSHOT_FIELDS,
+  PI_SNAPSHOT_VERSION,
+  type PiSnapshot,
+  readPiSnapshot,
+  usablePiMessages,
+  type WholePiSnapshot,
+} from "@/pi/snapshot";
+export {
   type ApprovalGate,
   type ApprovalPolicy,
   type ApprovalRequest,
@@ -24,6 +32,7 @@ export {
   findModel,
 } from "@/pi/models";
 export { cachedCatalog, loadCatalog } from "@/pi/catalog";
+export { describeFailure } from "@/pi/errors";
 export {
   type AnyModel,
   availableProviders,

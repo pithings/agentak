@@ -3,6 +3,7 @@ import { DEFAULT_COMPACTION_SETTINGS, shouldCompact } from "@earendil-works/pi-a
 import type { ImageContent, TextContent, Usage } from "@earendil-works/pi-ai";
 
 import type { ApprovalRequest } from "@/pi/approvals";
+import { describeFailure } from "@/pi/errors";
 import type { AnyModel } from "@/pi/providers";
 import type { ContextCosts } from "@/components/ai-elements/context";
 import type {
@@ -82,7 +83,7 @@ export function toViewMessages(
           id: `a${index}`,
           role: "assistant",
           parts,
-          error: message.errorMessage,
+          error: describeFailure(message.errorMessage),
         };
 
         for (const block of message.content) {

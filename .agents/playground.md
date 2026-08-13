@@ -23,6 +23,7 @@ drop the chat into.
 | `styles.css`          | `@import "tailwindcss"`, and the `@theme` that reads the `--*` names  |
 | `theme.ts`            | `.dark` on the root — the whole theme switch, page and widget         |
 | `chat-store.ts`       | the widget state the topbar and the catalog both reach for            |
+| `chat-history.ts`     | the conversations this browser has had, in `localStorage`             |
 | `components/*.vue`    | topbar, sidebar, chatbox, preview card, and the preact bridge         |
 | `views/*.vue`         | readme home, catalog grid, demo transcript, single-component page     |
 | `catalog.tsx`         | every component with fixture data, plus the lookups the routes use    |
@@ -58,9 +59,9 @@ the free providers need no key.
 The demo is the other `ChatMode`, and not a state anything starts in: it is one
 **Play the demo** button under the greeting, passed in as `emptyActions`. Taking it
 swaps the wrapper for `DemoAgent` over the canned turns — a hand-mounted `PreactHost`
-island, because canned turns are the one surface with no session behind them. Neither
-keeps its transcript across the swap: the session watcher ends the live one, and the
-element that took it goes with it.
+island, because canned turns are the one surface with no session behind them. The
+session watcher ends the live one on the way, and stores it first — so the demo keeps
+nothing, and going back to live reopens the conversation where it was left.
 
 **One title bar.** The surface heads itself — context meter and new conversation in
 the header, model and provider in the composer, next to send — so the page puts no
@@ -73,11 +74,37 @@ chat is the only view `AgentChat` has, so the box never loses its minimise butto
 empty actions show only before the first message.
 
 The panel hides rather than unmounting, so minimising keeps the transcript; changing
-mode does not. Escape minimises it as well, from inside the agent too. The handler
+mode ends the session instead, and the store is what brings it back. Escape minimises it as well, from inside the agent too. The handler
 skips a `defaultPrevented` Escape, which is how one keystroke dismisses an open popover
 **or** the box, never both: `PopoverContent` calls `preventDefault()` when it closes
 on Escape. The docked rail is the exception — it covers nothing, so Escape in its
 composer must not take a column of the page away.
+
+### The conversations it keeps
+
+`chat-history.ts` and the clock button in the header. A session is one conversation and
+knows nothing of the ones beside it, so listing them is the host's work: pi hands over a
+`PiSnapshot` through `save()` and opens on one through the `snapshot` option — see
+[`pi.md`](pi.md) — and everything here is about where they go and how they come back.
+
+Two keys, not one: an index of what exists, and one entry per conversation. The menu reads
+the index alone, so opening it parses no transcript, and a conversation is dropped by its
+own key rather than by rewriting the rest. Twenty are kept; past that the oldest goes, and
+a write that will not fit gives up older conversations until it lands. Every access is
+guarded — a page can deny `localStorage` outright, and a full one throws just the same — so
+a failure means the conversation lives for this page load and no longer.
+
+The widget owns the wiring. `conversations.currentId` is what its session watcher keys on,
+so picking a conversation in the menu swaps the session, and the page opens on the newest
+one. Writes are debounced a beat past the last event, because a streamed answer notifies per
+token and each write stringifies the whole transcript; `pagehide` flushes what the beat has
+not. Nothing is stored for a conversation with no messages: the header's **new
+conversation** button empties the session, and the widget reads that as a fresh id rather
+than as the stored conversation being emptied — so the old one stays in the list.
+
+The menu is preact inside the vue app, like the rest of `chat-actions.tsx`, and vue's
+reactivity is still the one source: `useConversations()` is a `watch` that turns a change
+into a render. The demo carries no menu — its turns are canned.
 
 ### Three layouts, one surface
 

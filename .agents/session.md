@@ -89,6 +89,11 @@ field would otherwise leave the picker shut for good.
 transcript. A host that keeps several switches between them by switching sessions, which
 `useSession` keys on — the seam does not grow a history API.
 
+What a harness stores is its own shape, beside `dispose()` rather than in the `Pick`: pi
+has `save()` and a `snapshot` option, carrying the transcript with the provider, model and
+thinking level it ran under — see [`pi.md`](pi.md). `playground/src/chat-history.ts` is a
+host doing the listing part with them.
+
 ## Subscribe and snapshot, not a hook
 
 The adapter is a plain object, not a `useSession`-shaped prop. Three reasons: a hook

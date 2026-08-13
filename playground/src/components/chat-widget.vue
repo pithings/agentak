@@ -6,6 +6,12 @@ import { createPiSession, type PiSession } from "@/pi/session";
 import { u } from "@/styles/base";
 import { ChatPanel } from "@/vue";
 import { ChatActions, StartDemo } from "../chat-actions";
+import {
+  conversations,
+  keepConversation,
+  newConversation,
+  storedConversation,
+} from "../chat-history";
 import { chat, closeChat, openChat, setChatMode } from "../chat-store";
 import { DemoAgent } from "../demo-agent";
 import PreactHost from "./preact-host.vue";
@@ -35,8 +41,9 @@ import PreactHost from "./preact-host.vue";
  * message, and the model renames it once the first answer lands. It is one
  * extra request, so the surface leaves it off unless a host asks.
  *
- * The panel hides rather than unmounts, so minimising keeps the transcript.
- * Switching surface does not — each holds its own.
+ * The panel hides rather than unmounts, so minimising keeps the transcript. The
+ * demo swap ends the live session instead — but the conversation is stored
+ * before it goes, so coming back reopens it where it was left.
  *
  * ## Three layouts, one surface
  *
@@ -72,23 +79,85 @@ const startDemo = h(StartDemo, { onStart: playDemo });
  *
  * Made on the first live mount rather than at setup: a phone lands minimised and
  * unmounted, and a session made there would load a stored provider's model list
- * for a chat nobody opened. `pre` flush, so it exists before the element that
- * takes it renders, and the demo swap ends it.
+ * for a chat nobody opened. The demo swap ends it.
+ *
+ * ## One session, one conversation
+ *
+ * The session holds a single conversation and knows nothing of the ones beside
+ * it, so the page keeps the list — `chat-history.ts` — and switches between them
+ * by switching sessions. The transcript, the provider, the model and the
+ * thinking level all travel in the snapshot, so a reload comes back on the same
+ * model the answers were written by rather than whatever this browser used last.
  */
 const session = shallowRef<PiSession>();
 
+/** The conversation the live session holds, and the id its transcript is kept under. */
+let held: string | undefined;
+let untrack: (() => void) | undefined;
+let pending: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * Written a beat after the agent settles rather than on every event: a streamed
+ * answer notifies per token, and each write is a `JSON.stringify` of the whole
+ * transcript.
+ */
+const SETTLE = 400;
+
+function store() {
+  if (pending) {
+    clearTimeout(pending);
+    pending = undefined;
+  }
+  const live = session.value;
+  if (!live || !held) return;
+
+  const snapshot = live.save();
+  // Empty, with something stored under the same id: the header's new
+  // conversation button was taken. The stored one stays where it is, and the
+  // box moves on to an id of its own.
+  if (snapshot.messages.length === 0) {
+    if (storedConversation(held)) newConversation();
+    return;
+  }
+  keepConversation(held, snapshot);
+}
+
+function open(id: string | undefined) {
+  store();
+  untrack?.();
+  untrack = undefined;
+  session.value?.dispose();
+  held = id;
+
+  if (!id) {
+    session.value = undefined;
+    return;
+  }
+  const live = createPiSession({ snapshot: storedConversation(id) });
+  session.value = live;
+  untrack = live.subscribe(() => {
+    if (pending) clearTimeout(pending);
+    pending = setTimeout(store, SETTLE);
+  });
+}
+
 watch(
-  () => chat.mounted && chat.mode === "live",
-  (live) => {
-    if (live) {
-      session.value ??= createPiSession();
+  () => (chat.mounted && chat.mode === "live" ? conversations.currentId : undefined),
+  (id) => {
+    // The id minted for the session already up: it is empty and nothing is
+    // stored under the new id, so only the name of what is being written moves.
+    // Picking a stored conversation is the other case, and that one swaps.
+    if (id && held && session.value?.save().messages.length === 0 && !storedConversation(id)) {
+      held = id;
       return;
     }
-    session.value?.dispose();
-    session.value = undefined;
+    open(id);
   },
   { immediate: true },
 );
+
+// A tab closing does not wait for the beat above.
+const flush = () => store();
 
 // The demo is the one surface the wrapper does not cover — canned turns, no
 // loop — so it stays a hand-mounted island. A stable factory: `PreactHost`
@@ -187,6 +256,7 @@ function onKey(event: KeyboardEvent) {
 
 onMounted(() => {
   globalThis.addEventListener("keydown", onKey);
+  globalThis.addEventListener("pagehide", flush);
   phone?.addEventListener("change", measure);
   desktop?.addEventListener("change", measure);
   measure();
@@ -194,8 +264,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   globalThis.removeEventListener("keydown", onKey);
+  globalThis.removeEventListener("pagehide", flush);
   phone?.removeEventListener("change", measure);
   desktop?.removeEventListener("change", measure);
+  store();
+  untrack?.();
   session.value?.dispose();
   session.value = undefined;
 });
@@ -219,8 +292,9 @@ onBeforeUnmount(() => {
         class="flex flex-col overflow-hidden"
         aria-label="Assistant"
       >
-        <!-- One surface at a time, and neither keeps its transcript across the
-             swap: the watcher above ends the session with the mode.
+        <!-- One surface at a time: the watcher above ends the session with the
+             mode, and stores the conversation on the way out. The demo keeps
+             nothing — its turns are canned.
              `tokens` is off because `main.ts` declares them for the page. -->
         <ChatPanel
           v-if="session"

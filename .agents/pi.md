@@ -25,6 +25,7 @@ session: AgentSnapshot + providers + models + title -> ChatSnapshot -> Chat
 | `storage.ts`      | `localStorage` for the keys, the provider and the model   |
 | `transcript.ts`   | `AgentMessage[]` -> renderable parts, and the usage panel |
 | `store.ts`        | a subscribable view of `Agent` events                     |
+| `errors.ts`       | a failed turn, worded for the person reading it           |
 | `use-agent.ts`    | the store as a hook — `ChatState`, unchanged              |
 | `session.ts`      | the store, the picker and the title as one `ChatSession`  |
 | `title.ts`        | the conversation's name — derived, or asked of the model  |
@@ -163,6 +164,60 @@ client is told to drop a header it always sets.
 Their paid models are not listed: LLM7 and Zen answer `invalid_api_key` for those, so
 only the free tier is written down. Free tiers rotate — a model that starts to 404 is
 a line to delete.
+
+## Storing a conversation
+
+`snapshot.ts`, and two members of `PiSession`: `save()` hands the conversation over, and
+the `snapshot` option opens on one. Where it is kept is the host's — `localStorage` in the
+playground, `chrome.storage` in a panel, a server for a host with accounts.
+
+```ts
+const session = createPiSession({ snapshot: readPiSnapshot(JSON.parse(stored)) });
+session.subscribe(() => keep(session.save())); // debounced by whoever stores it
+```
+
+It sits beside `dispose()` for the same reason: nothing in the surface calls it, so it is
+what this factory owes its caller, not what the chat asks of a harness.
+[`session.md`](session.md) is the other half — `ChatSession` holds one live conversation
+and never lists them, so a host switches conversations by switching sessions.
+
+**More than the transcript travels.** A transcript alone comes back under whatever model
+this browser used last rather than the one that wrote the answers, so `PiSnapshot` carries
+the provider, the model, the thinking level and the generated title as well. Those beat the
+per-browser defaults in `storage.ts`, which stay what a _new_ conversation opens on. They
+land at different moments — the model waits for its provider's catalog, the level for the
+model — so `opening` holds them until then and is spent once: a pick after that is the
+visitor's, and must not be overruled by the file it came from.
+
+**A stored transcript is cut before the loop sees it.** `usablePiMessages()` cuts at the
+first tool call nothing answered — a page closes wherever it closes, and every provider
+expects a result in the message after the call, so the request is rejected before the model
+reads a word of it. Approvals do not come back either, which is the same cut. Any failed
+turn left at the end goes too, exactly as `retry()` drops one.
+
+**One field, three places.** Adding to `PiSnapshot` means the type, `PI_SNAPSHOT_FIELDS`
+and wherever it lands in `session.ts`. Two of the three are checked: the field list fails to
+compile if it misses a key, and `save()` builds a `WholePiSnapshot`, which is the snapshot
+with nothing left out. The third is checked at runtime — `test/pi/snapshot.test.ts` walks
+`PI_SNAPSHOT_FIELDS` over a round trip, so a field that is saved and restored nowhere fails
+there. `PI_SNAPSHOT_VERSION` is for a shape that can no longer be restored, not for a field
+added: `readPiSnapshot()` drops a stored snapshot of another version, keeps the fields it
+knows, and answers `undefined` for anything else — which is a new conversation, not an
+error.
+
+## When a turn fails
+
+A provider that refuses a request often sends an empty body with it, and the sdk then has
+only the status line to report: `429 status code (no body)`. `describeFailure()` in
+`errors.ts` says what that status means instead — rate limited, key refused, out of credit,
+provider down — and does the same for a request that never got an answer at all. A response
+that carries a message passes through word for word, because the provider says more than
+any rule here can.
+
+Both places that show a failure run through it: `store.ts` for the error row above the
+composer, and `transcript.ts` for the failed turn left in the transcript. `clearError()`
+still compares the raw message, so dismissing works on what pi holds rather than on what is
+displayed.
 
 ## What feeds each element
 

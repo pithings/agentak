@@ -1,5 +1,6 @@
 import {
   Agent,
+  type AgentMessage,
   type AgentTool,
   type StreamFn,
   type ThinkingLevel,
@@ -27,6 +28,13 @@ export interface AgentOptions {
   apiKey?: string | ((provider: string) => string | undefined);
   /** Defaults to the default provider's default model. */
   model?: AnyModel;
+  /**
+   * A transcript to start from, rather than an empty one — a conversation a host
+   * stored and brought back. Pass it through `usablePiMessages()` first: pi
+   * takes whatever it is given, and a transcript cut mid tool call is one no
+   * provider accepts.
+   */
+  messages?: AgentMessage[];
   thinkingLevel?: ThinkingLevel;
   systemPrompt?: string;
   /** The agent tools. None are included, so the loop answers from the chat alone. */
@@ -54,6 +62,7 @@ export interface AgentRuntime {
 export function createAgent({
   apiKey,
   model = DEFAULT_MODEL,
+  messages = [],
   thinkingLevel = "off",
   systemPrompt = SYSTEM_PROMPT,
   tools = [],
@@ -66,6 +75,7 @@ export function createAgent({
     initialState: {
       systemPrompt,
       model,
+      messages,
       thinkingLevel,
       tools,
     },

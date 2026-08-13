@@ -1,7 +1,9 @@
 import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
 
 import type { AgentRuntime } from "@/pi/create-agent";
+import { describeFailure } from "@/pi/errors";
 import type { AnyModel } from "@/pi/providers";
+import { isFailedTurn } from "@/pi/snapshot";
 import { type ContextUsageView, toContextUsage, toViewMessages } from "@/pi/transcript";
 import type { ViewMessage } from "@/types";
 
@@ -59,14 +61,6 @@ const userMessage = (text: string): AgentMessage => ({
   content: [{ type: "text", text }],
   timestamp: Date.now(),
 });
-
-/**
- * A turn that ended in an error. pi records one as an empty assistant message
- * carrying `errorMessage`, so this is what stands between the transcript and a
- * `continue()`, which reads an assistant message as a turn already answered.
- */
-const isFailedTurn = (message: AgentMessage) =>
-  message.role === "assistant" && Boolean(message.errorMessage);
 
 const isUserText = (message: AgentMessage, text: string) =>
   message.role === "user" &&
@@ -140,7 +134,7 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
       isStreaming: agent.state.isStreaming,
       model: agent.state.model as AnyModel,
       thinkingLevel: agent.state.thinkingLevel,
-      error: error === dismissed ? undefined : error,
+      error: error === dismissed ? undefined : describeFailure(error),
       queued,
     };
   };
