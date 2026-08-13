@@ -5,30 +5,28 @@
 <h1 align="center">Agentak</h1>
 
 <p align="center">
-  An agent chat for any web page. Mount one component, and it needs one line of
-  setup.
+  An agent chat for any web page. Mount one component and you're done.
 </p>
 
-- 🧩 **One component and one session.** `<AgentakChat session={…} />` is the whole
-  chat — the providers, the styles, the tools. Two imports, and no setup line.
-- ⚡ **React, vue, preact, or no framework at all.** One subpath each, or `mount()` it
-  into any element — one call, from a CDN.
-- 🎨 **It ships no stylesheet.** Every style is inline on the element that carries it,
-  so the chat changes no page style of yours.
-- 🔄 **The agent is a separate import.** The chat surface holds no loop: it takes a
-  `ChatSession`. Use the built-in agent, or put your own harness behind the same UI.
+- 🧩 **One component, one session.** `<AgentakChat session={…} />` is the entire chat —
+  providers, styles and tools included. Two imports, no setup.
+- ⚡ **React, Vue, Preact, or no framework at all.** There's a subpath for each, or call
+  `mount()` on any element — a single call, straight from a CDN.
+- 🎨 **No stylesheet ships.** Every style is inline on the element that carries it, so the
+  chat won't touch anything on your page.
+- 🔄 **The agent is a separate import.** The chat surface has no loop of its own — it takes
+  a `ChatSession`. Use the built-in pi agent, or put your own harness behind the same UI.
 - 🔌 **9 providers** — OpenAI, Groq, Cerebras, OpenRouter, Vercel AI Gateway, LLM7,
-  OVHcloud, Kilo, OpenCode Zen. 4 providers are free and need no key.
-- 🚀 **No setup screen** — the composer has one picker for the provider, the model and
-  the key. The first message opens the picker. To select a free provider, click one
-  time.
-- 👀 **The agent reads the page** — the `read_page` and `find_elements` tools are
-  built in. Thus the agent can answer questions about the current page.
-- 💬 **Streaming, tool approvals, markdown, code blocks, and a message queue.**
-- 🔒 **Keys stay in the browser** (`localStorage`). Requests go directly to the
-  provider. No server of yours is necessary.
-- 🌗 **Light and dark themes**, from CSS custom properties that you can change.
-- 🧭 **A Chrome side panel** is included (MV3). It gives the same chat for all tabs.
+  OVHcloud, Kilo and OpenCode Zen.
+- 🚀 **No setup screen.** The composer has a single picker for provider, model and key, and
+  the first message opens it. Picking a free provider is one click.
+- 👀 **The agent reads the page.** The `read_page` and `find_elements` tools are built in,
+  so it can answer questions about whatever the user is looking at.
+- 💬 **Streaming, tool approvals, markdown, code blocks and a message queue.**
+- 🔒 **Keys never leave the browser** (`localStorage`). Requests go straight to the
+  provider, so you don't need a server.
+- 🌗 **Light and dark themes**, driven by CSS custom properties you can override.
+- 🧭 **A Chrome side panel** is included (MV3), giving you the same chat on every tab.
 
 ## 📦 Install
 
@@ -36,25 +34,53 @@
 npx nypm i agentak
 ```
 
-## 🛠️ Usage
+---
 
-### ⚛️ In react, vue, or preact
+## 🚀 Quick Start
 
-One element for your framework. It declares the CSS variables and it sizes like any
-other component — but it carries **no agent**: `session` is what runs the chat, and
-`agentak/pi` is the import that makes one.
+```html
+<div id="chat" style="height: 600px"></div>
+
+<script type="module">
+  // Renders chat UI (no agent, no provider, no loop)
+  import { mount } from "https://esm.sh/agentak";
+
+  // The built-in PI agent
+  import { createPiSession } from "https://esm.sh/agentak/pi";
+
+  mount("#chat", { session: createPiSession() });
+</script>
+```
+
+That's it. The chat opens with no provider chosen — the first message opens the picker in
+the composer, a free provider is one click away and needs no key, and the answers are still
+there on the next visit.
+
+---
+
+## 💬 Chat Component
+
+One element for your framework. It declares the CSS variables and sizes like any other
+component, but it brings **no agent** with it: `session` is what actually runs the chat.
+
+### ⚛️ React
 
 ```tsx
-import { AgentakChat } from "agentak/react"; // or agentak/preact
+import { useMemo } from "react";
+import { AgentakChat } from "agentak/react";
 import { createPiSession } from "agentak/pi";
 
-const session = useMemo(() => createPiSession(), []);
-
-<AgentakChat session={session} style={{ height: "600px" }} />;
+export function Assistant() {
+  const session = useMemo(() => createPiSession(), []);
+  return <AgentakChat session={session} style={{ height: "600px" }} />;
+}
 ```
+
+### 🟢 Vue
 
 ```vue
 <script setup lang="ts">
+import { onBeforeUnmount } from "vue";
 import { AgentakChat } from "agentak/vue";
 import { createPiSession } from "agentak/pi";
 
@@ -67,63 +93,65 @@ onBeforeUnmount(() => session.dispose());
 </template>
 ```
 
-| Prop                      | What                                                     |
-| ------------------------- | -------------------------------------------------------- |
-| `session`                 | what runs the chat. **Required**                         |
-| `generateTitle`           | ask the model to name the conversation. One more request |
-| `tokens`                  | `false` if your page declares the CSS variables itself   |
-| `actions`, `emptyActions` | header buttons, and content for the empty state          |
-| `class` / `className`     | —                                                        |
-| `style`                   | the box around the chat. Give it a height                |
-
-`createPiSession()` takes the provider, the key and the loop's own options; it is
-described below. **Whoever makes the session ends it** — the component never calls
-`dispose()`, because it never made the object. That is why `dispose()` is on the
-`PiSession` that `createPiSession()` returns and not on `ChatSession` itself: it is what
-the factory asks of you, not what the chat asks of a harness.
-
-One session is one conversation, and it lasts the whole of it: provider, model and key
-all change from the picker inside the composer, with the transcript kept. To hold
-several conversations, hold several sessions and swap the prop.
-
-The chat is preact inside, in all three. React and vue therefore give it one `<div>`
-that preact fills, and `actions` and `emptyActions` are preact children — build them
-with `h()` from preact, or do not pass them.
-
-### 🧩 In any page
-
-A build step is not necessary, and neither is a framework. Import from a CDN and
-`mount`:
-
-```html
-<div id="chat" style="height: 600px"></div>
-
-<script type="module">
-  import { mount } from "https://esm.sh/agentak";
-  // the built-in agent — this import is what brings the loop
-  import { createPiSession } from "https://esm.sh/agentak/pi";
-
-  mount("#chat", { session: createPiSession() });
-</script>
-```
-
-`mount(target, props)` is the wrappers' work for a page that has no framework: it
-declares the CSS variables, makes the element a box the chat fills, and renders the
-surface inside it. Size that element — the chat takes its height.
-
-`target` is a selector or an element. `props` is every `AgentChat` prop, plus `tokens:
-false` if your page declares the variables itself. It returns `{ update, unmount }`:
-`update(props)` redraws in one diff, with the transcript kept, and `unmount()` empties
-the element. Neither one ends the session — you made it, so you end it.
-
-### 🧩 The surface, over a session you make
-
-`AgentChat` is the same chat with nothing under it: it takes the session that runs it.
-`createPiSession()` is the built-in one, and it is the import that brings the agent loop
-with it. Create it one time, outside the tree — whoever makes a session ends it:
+### 🟣 Preact
 
 ```tsx
-import { AgentChat, tokens } from "agentak";
+import { AgentakChat } from "agentak/preact";
+import { createPiSession } from "agentak/pi";
+
+const session = createPiSession();
+
+<AgentakChat session={session} style={{ height: "600px" }} />;
+```
+
+### 🧩 No framework
+
+```ts
+import { mount } from "agentak";
+import { createPiSession } from "agentak/pi";
+
+const chat = mount("#chat", { session: createPiSession() });
+```
+
+#### `mount(target, props)`
+
+`target` is a selector or an element. `props` is every [`AgentChat` prop](#agentchat), plus
+`tokens: false` if your page already declares the CSS variables.
+
+`mount` does three things you'd otherwise do in a framework wrapper: it declares the CSS
+variables, it turns your element into a box the chat fills, and it renders the surface
+inside. **Give that element a size** — the chat takes its height from it.
+
+You get back `{ update, unmount }`. `update(props)` redraws in one diff and keeps the
+transcript; `unmount()` empties the element. Neither ends the session — you created it, so
+you close it.
+
+
+### Props
+
+`AgentakChat` takes the same props in all three frameworks:
+
+| Prop                  | Type            | What                                                      |
+| --------------------- | --------------- | --------------------------------------------------------- |
+| `session`             | `ChatSession`   | What runs the chat. **Required**                          |
+| `generateTitle`       | `boolean`       | Ask the model to name the conversation. Costs one request |
+| `tokens`              | `boolean`       | `false` if your page already declares the CSS variables   |
+| `actions`             | preact children | Buttons for the end of the header                         |
+| `emptyActions`        | preact children | Content for the empty state, under the greeting           |
+| `class` / `className` | `string`        | Goes on the box around the chat                           |
+| `style`               | style object    | The box around the chat. **Give it a height**             |
+
+`class` is the Vue name and `className` the React and Preact one; Vue accepts `style` too.
+Both land on the single element the wrapper owns.
+
+#### `AgentChat`
+
+`AgentChat` from the root entry is the same surface without the host box around it — it's
+what the wrappers render. Reach for it inside a Preact tree that already sizes its
+children:
+
+```tsx
+import { AgentChat } from "agentak";
 import { createPiSession } from "agentak/pi";
 
 const session = createPiSession({ provider: "openai", apiKey: "sk-…" });
@@ -136,23 +164,122 @@ const session = createPiSession({ provider: "openai", apiKey: "sk-…" });
 />;
 ```
 
-| Prop            | What                                                               |
-| --------------- | ------------------------------------------------------------------ |
-| `session`       | What runs the chat. Required                                       |
-| `generateTitle` | Ask the model to name the conversation. One more request           |
-| `actions`       | Buttons for the end of the header                                  |
-| `emptyActions`  | Content for the empty state                                        |
-| `style`         | Styles that are merged over the chat box. Use them to set the size |
-| `className`     | —                                                                  |
+It takes `session`, `generateTitle`, `actions`, `emptyActions`, `className` and `style` —
+everything above except `tokens`, which belongs to the wrappers. Declare the variables
+yourself with `injectTokens()` from `agentak`.
 
-`createPiSession()` takes `provider`, `apiKey` (one key, or `{ [providerId]: key }`),
-and the loop's own options — `page`, `tools`, `approvals`, `systemPrompt`. Give it
-none and the picker asks, then keeps your answers for the next time.
+### Notes
 
-### 🔧 Bring your own agent
+- **Whoever creates the session closes it.** No wrapper calls `dispose()`, since none of
+  them made the object.
+- **One session is one conversation,** and it lasts as long as the conversation does:
+  provider, model, key and thinking level all change from the picker in the composer,
+  transcript intact. For several conversations, keep several sessions and swap the prop.
+- **The chat is Preact under the hood, in all three frameworks.** React and Vue each hand
+  it a single `<div>` that Preact fills, which makes `actions` and `emptyActions` Preact
+  children — build them with `h()` from preact, or leave them out.
+- **`generateTitle` is a prop, not a session option,** so you can change it without
+  creating a new session and losing the transcript.
 
-The surface knows no agent runtime. Write a `ChatSession` and the built-in loop is never
-loaded — `agentak/pi` is the only entry that carries one.
+---
+
+## 🤖 PI Agent
+
+`agentak/pi` is the built-in harness: [pi-agent-core](https://www.npmjs.com/package/@earendil-works/pi-agent-core)
+over the page tools, with the provider, model and key picker in front of it. It's the only
+entry that carries an agent loop.
+
+```ts
+import { createPiSession } from "agentak/pi";
+
+const session = createPiSession();
+// … mount the chat over it …
+session.dispose();
+```
+
+Pass nothing and the picker does the asking: the first message opens it, a free provider
+takes one click, and the answers are kept in `localStorage` for next time. Or name the
+provider and key yourself:
+
+```ts
+const session = createPiSession({
+  provider: "openai",
+  apiKey: "sk-…",
+  systemPrompt: "You are a support agent for example.com. Answer from the page.",
+  approvals: "never",
+});
+```
+
+### Options
+
+| Option          | Type                                                     | What                                                                     |
+| --------------- | -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `provider`      | `string`                                                 | Which provider to open on. Defaults to the one this browser stored, if any |
+| `apiKey`        | `string \| Record<string, string>`                       | A key for `provider`, or one per provider id. Free providers need none   |
+| `generateTitle` | `boolean`                                                | Let the model name the conversation instead of the first message         |
+| `model`         | `AnyModel`                                               | The model to start on. Defaults to the picker's, or the built-in default |
+| `thinkingLevel` | `off \| minimal \| low \| medium \| high \| xhigh \| max` | Defaults to `off`, and never a level the model refuses                   |
+| `systemPrompt`  | `string`                                                 | Defaults to a short browsing-assistant prompt                            |
+| `page`          | `PageBridge`                                             | How the tools reach the page. Defaults to the document this script runs in |
+| `tools`         | `AgentTool[]`                                            | Defaults to `read_page` and `find_elements`                              |
+| `approvals`     | `"always" \| "once" \| "never"`                          | How often a tool call is confirmed. Defaults to `once` per tool          |
+| `streamFn`      | `StreamFn`                                               | A scripted provider for tests. Defaults to the api the model names       |
+
+`createPiSession()` returns a `PiSession` — a `ChatSession` plus `dispose()`. Create it
+**once, outside the render tree**, and dispose it when the conversation goes away.
+
+### Providers
+
+| Provider                                 | Key      | Api                |
+| ---------------------------------------- | -------- | ------------------ |
+| LLM7, Kilo, OVHcloud, OpenCode Zen       | **free** | openai-completions |
+| Vercel AI Gateway, OpenRouter (gateways) | yours    | per model          |
+| OpenAI                                   | yours    | openai-responses   |
+| Groq, Cerebras                           | yours    | openai-completions |
+
+Keys go from the browser straight to the provider, and each one is stored per provider — so
+switching back to a provider you've already set up asks for nothing.
+
+**Two of the nine answer no CORS preflight** — Kilo and OpenCode Zen — so a web page gets 7
+and the Chrome panel gets all 9. A model catalog is only fetched once its provider is
+picked, and the api module only on the first turn that needs it, so a provider you don't
+use costs you nothing.
+
+### Page tools
+
+`read_page` returns the visible text, the title and the url; `find_elements` runs a CSS
+selector and returns what it matched. Both go through a `PageBridge`, which is just two
+calls:
+
+```ts
+interface PageBridge {
+  read(maxChars: number): Promise<PageSnapshot>;
+  find(selector: string, limit: number): Promise<PageElement[]>;
+}
+```
+
+By default it reads the document the script runs in. Pass `page` to read a different one —
+an iframe, or a tab through `chrome.scripting`. Pass `tools` to replace the two tools
+entirely.
+
+### The parts
+
+The session is the whole loop in one object, but the pieces are exported too:
+
+```ts
+import { createAgent, useAgent, createAgentStore } from "agentak/pi";
+```
+
+`createAgent()` gives you the pi `Agent` and the approval gate; `createAgentStore()` turns
+its events into a snapshot; `useAgent()` is the same thing as a Preact hook, for when you
+drive `Chat` yourself.
+
+---
+
+## 🔧 Custom Agents
+
+The surface knows nothing about agent runtimes. Write a `ChatSession` and the built-in loop
+never loads — `agentak/pi` is the only entry that carries one.
 
 ```tsx
 import { AgentChat, type ChatSession, type ChatSnapshot } from "agentak";
@@ -186,54 +313,69 @@ const session: ChatSession = {
 <AgentChat session={session} />;
 ```
 
-The framework wrappers take the same object, and they carry no loop either — so
-`agentak/react` over your own harness resolves no pi module, exactly as the root does.
+The framework wrappers take the same object and carry no loop either, so `agentak/react`
+over your own harness resolves no pi module — exactly like the root entry.
 
-Those five members — `subscribe`, `snapshot`, `send`, `stop` and `reset` — are all that
-a session must have. Everything else is optional, and what you leave out is left out of
-the UI:
+### The required five
 
-| Optional           | What it adds                                   |
-| ------------------ | ---------------------------------------------- |
-| `respondToTool`    | approve or deny a tool call, and say why       |
-| `dequeue`          | remove a message that waits its turn           |
-| `dismissError`     | a button that closes the error row             |
-| `retry`            | a button that runs the failed turn again       |
-| `selectProvider`   | the provider level of the picker               |
-| `selectModel`      | the model level                                |
-| `setThinkingLevel` | the thinking level, under the chosen model     |
-| `saveKey`          | the key level                                  |
-| `setPickerOpen`    | your session opens and holds the picker itself |
-| `setOptions`       | it receives `generateTitle` from the host      |
+`subscribe`, `snapshot`, `send`, `stop` and `reset` are all a session really needs.
 
-`dispose` is not among them: nothing in the library calls it, so it belongs to whatever
-made the session. `createPiSession()` returns one that has it.
+Two rules keep the seam tight:
 
-The snapshot works the same way. `messages` and `isStreaming` are required; `error`,
-`title`, `agent`, `usage`, `queued`, `providers`, `providerId`, `providerLabel`,
-`models`, `modelsLoading`, `modelId`, `thinkingLevel`, `thinkingLevels` and `pickerOpen`
-each turn on one part of the surface. With no `providers`, the picker is your one model
-list, headed by `providerLabel`. With no `usage`, the composer shows no context meter —
-and `usage.nearLimit` is what turns that meter amber, so a harness that counts tokens
-decides for itself when the window is as good as spent.
+1. **`snapshot()` must be cheap, and return the same object between notifications.** The
+   surface reads it more than once per render, so cache it and drop the cache when you
+   notify.
+2. **`subscribe` fires after the change, not before.**
 
-Data and method pair up: `models` with `selectModel`, `providers` with
+### The optional rest
+
+Whatever you leave out is left out of the UI — absent means gone, not broken:
+
+| Optional           | What it adds                                    |
+| ------------------ | ----------------------------------------------- |
+| `respondToTool`    | approve or deny a tool call, and say why        |
+| `dequeue`          | remove a message waiting its turn               |
+| `dismissError`     | a button that closes the error row              |
+| `retry`            | a button that runs the failed turn again        |
+| `selectProvider`   | the provider level of the picker                |
+| `selectModel`      | the model level                                 |
+| `setThinkingLevel` | the thinking level, under the chosen model      |
+| `saveKey`          | the key level                                   |
+| `setPickerOpen`    | lets your session open and hold the picker      |
+| `setOptions`       | receives `generateTitle` from the host          |
+
+`dispose` isn't on the list: nothing in the library calls it, so it belongs to whoever made
+the session. `createPiSession()` returns one that has it.
+
+### The snapshot
+
+`messages` and `isStreaming` are required. `error`, `title`, `agent`, `usage`, `queued`,
+`providers`, `providerId`, `providerLabel`, `models`, `modelsLoading`, `modelId`,
+`thinkingLevel`, `thinkingLevels` and `pickerOpen` each switch on one part of the surface.
+
+Without `providers`, the picker is a single model list headed by `providerLabel`. Without
+`usage`, the composer shows no context meter — and since `usage.nearLimit` is what turns
+that meter amber, a harness that counts its own tokens decides for itself when the window
+is as good as spent.
+
+Data and method come in pairs: `models` with `selectModel`, `providers` with
 `selectProvider`, `queued` with `dequeue`, `thinkingLevels` with `setThinkingLevel`. One
-without the other is a list nothing chooses from, or a method nothing calls.
-`pickerOpen` is the one to watch — a session that answers `setPickerOpen` owns both
-halves, and must then report `pickerOpen` too.
+without the other leaves you a list nobody chooses from, or a method nobody calls.
+`pickerOpen` is the one to watch — a session that answers `setPickerOpen` owns both halves,
+and has to report `pickerOpen` as well.
 
-`ChatSnapshot` is a subset of the props of `Chat`, thus the compiler holds the two sides
-together — and it checks the rest of that subset as well, so a prop the surface gains
-cannot go missing from the seam without failing the build.
+`ChatSnapshot` is a subset of the props of `Chat`, so the compiler holds the two sides
+together: a prop the surface gains can't go missing from the seam without breaking the
+build.
 
-### 🧱 Use the parts
+### Use the parts
 
 ```ts
 import { Chat, injectTokens } from "agentak"; // only the surface — messages in, callbacks out
-import { createAgent, useAgent } from "agentak/pi"; // only the loop
 import { Message, PromptInput } from "agentak/components"; // the components
 ```
+
+---
 
 ## 📤 Exports
 
@@ -247,10 +389,10 @@ import { Message, PromptInput } from "agentak/components"; // the components
 | `agentak/components` | every built-in component                    | no         |
 
 **`agentak/pi` is the only import that carries the loop.** Every other entry takes the
-session as a prop, thus your bundle holds an agent runtime because you asked for one.
+session as a prop, so an agent runtime ends up in your bundle only if you asked for one.
 
-`react` and `vue` are optional peers: you install the one you use, and the other is
-never resolved.
+`react` and `vue` are optional peers: install the one you use, and the other is never
+resolved.
 
 ## 🧭 Chrome extension
 
