@@ -319,6 +319,20 @@ export const spinOptions: KeyframeAnimationOptions = {
   iterations: Infinity,
 };
 
+/**
+ * One word arriving mid-stream — see `components/markdown.tsx`. It plays once
+ * per word, on mount, so the resting style is the element's own: opacity 1,
+ * no blur, which is also what a reduced-motion reader gets.
+ */
+export const fadeInKeyframes: Keyframe[] = [
+  { opacity: 0, filter: "blur(4px)" },
+  { opacity: 1, filter: "blur(0)" },
+];
+export const fadeInOptions: KeyframeAnimationOptions = {
+  duration: 300,
+  easing: "ease-out",
+};
+
 export const pulseKeyframes: Keyframe[] = [
   { offset: 0, opacity: 1 },
   { offset: 0.5, opacity: 0.5 },

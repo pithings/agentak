@@ -67,6 +67,31 @@ export function animateOnMount<T extends Element = HTMLElement>(
 }
 
 /** Mirrors the `globalThis.matchMedia?.(...).matches ?? false` idiom already used in `catalog.tsx`. */
-function prefersReducedMotion(): boolean {
+export function prefersReducedMotion(): boolean {
   return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+}
+
+/**
+ * A device that should not pay for an animation of many elements at once —
+ * the per-word fade in `components/markdown.tsx`, whose cost is the spans it
+ * needs as much as the animation itself. A caller checks this *before* it
+ * builds those elements; one animated element is cheap everywhere, and does
+ * not ask.
+ *
+ * The hints are what the browser gives away for free — no benchmark, no probe:
+ * `deviceMemory` (chromium only, in GB, and capped at 8) and
+ * `hardwareConcurrency`. Neither is reported by every engine, so a coarse
+ * pointer on a narrow screen answers for the rest: a phone is treated as low
+ * power whatever it claims, since its GPU is also driving the tallest DPI.
+ *
+ * Deliberately not cached. Hardware does not change mid-session, but the two
+ * property reads cost nothing next to a render, and a test can then stub them.
+ */
+export function isLowPowerDevice(): boolean {
+  const agent = globalThis.navigator as (Navigator & { deviceMemory?: number }) | undefined;
+  if (!agent) return true; // no DOM — a server render animates nothing anyway
+
+  if (agent.deviceMemory !== undefined && agent.deviceMemory <= 4) return true;
+  if (agent.hardwareConcurrency !== undefined && agent.hardwareConcurrency <= 4) return true;
+  return globalThis.matchMedia?.("(pointer: coarse) and (max-width: 820px)").matches ?? false;
 }

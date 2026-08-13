@@ -11,7 +11,7 @@ import { ChatEmpty } from "@/components/chat/empty";
 import { ChatHeader } from "@/components/chat/header";
 import { ChatMessage, type ChatRespond } from "@/components/chat/message";
 import { ChatQueue } from "@/components/chat/queue";
-import type { ChatAgent, ChatQueueItem, ChatUsage } from "@/components/chat/types";
+import type { ChatAgent, ChatQueueItem } from "@/components/chat/types";
 import type { ViewMessage } from "@/types";
 import { sx, type Sx } from "@/styles/sx";
 
@@ -55,8 +55,6 @@ export interface ChatProps extends ChatComposerProps {
   className?: string;
   /** Merged over the chat's own box — how a host sizes the surface. */
   style?: Sx;
-  /** The context meter. Omitted, the header carries none. */
-  usage?: ChatUsage;
   /** Shown in the empty state, so the tools are visible before the first turn. */
   agent?: ChatAgent;
   /** Messages queued behind the current turn. */
@@ -89,7 +87,6 @@ export function Chat({
   onReset,
   className,
   style,
-  usage,
   agent,
   queued = [],
   onDequeue,
@@ -104,7 +101,7 @@ export function Chat({
 
   return (
     <div className={className} style={sx(S.chat, style)}>
-      <ChatHeader actions={actions} onReset={onReset} usage={usage} />
+      <ChatHeader actions={actions} onReset={onReset} />
 
       <Conversation pin={last?.id}>
         <ConversationContent>

@@ -20,6 +20,30 @@ rather than calling `renderToHtml`:
 flicker. `CLASSES` in that file is the tag allowlist — a tag missing from it renders
 its children, so a new md4x tag degrades to text instead of reaching the DOM unstyled.
 
+## Streaming
+
+`<Markdown animate>` fades each word in as it arrives. Streaming text otherwise grows
+one text node, which no animation can reach, so under `animate` every word becomes a
+span keyed by its position: a word already on screen keeps its key and its element, so
+its mount-time fade never plays twice, and only the words that just arrived animate.
+The fade is `fadeInKeyframes`/`fadeInOptions` (`styles/base.ts`) through
+`animateOnMount()` — a module-scope ref callback, because the renderer emits an unknown
+number of them and cannot call a hook per word. Whitespace alone stays a bare string,
+since the only text nodes under a `ul` or a `table` are the gaps between rows.
+
+The spans last as long as the stream. `animate` comes from the trailing part of the
+last message (`chat/message.tsx` -> `MessageResponse`, and `ReasoningContent` from its
+own `isStreaming`); when it goes false the block renders as plain text again, so a
+settled transcript carries no extra DOM.
+
+`animate` is a request, and two checks can refuse it: `prefersReducedMotion()` and
+`isLowPowerDevice()`, both in `lib/use-animation.ts`. The device is called low power
+when it reports `deviceMemory` of 4 GB or less, or 4 cores or fewer, or answers a
+coarse pointer on a screen no wider than 820px — a phone, whatever it claims to have.
+Both are read in `Markdown` rather than in the fade, because a reader who gets no
+animation should not pay for the spans that carry it. One animated element is cheap
+everywhere and asks nothing — this is for the many-at-once case alone.
+
 Every import is `md4x/standalone`, which carries the wasm inline as deflated base64 and
 inflates it through `DecompressionStream`. One entry, one branch, node and browser
 alike — no export conditions, no build plugin, no emitted asset for a host page or an

@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/preact";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Markdown } from "@/components/markdown";
 import { loadMarkdown } from "@/lib/markdown";
@@ -10,7 +10,22 @@ beforeAll(async () => {
   expect(await loadMarkdown()).toBe(true);
 });
 
-afterEach(cleanup);
+// jsdom reports the host machine's core count and no `matchMedia` at all, so
+// every test below states the device it means — see `isLowPowerDevice()`.
+const setCores = (cores: number) =>
+  Object.defineProperty(navigator, "hardwareConcurrency", { configurable: true, value: cores });
+
+/** `matches` for the queries named here, and for nothing else. */
+const setMedia = (...queries: string[]) =>
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: queries.some((part) => query.includes(part)),
+  }));
+
+afterEach(() => {
+  Reflect.deleteProperty(navigator, "hardwareConcurrency");
+  vi.unstubAllGlobals();
+  cleanup();
+});
 
 describe("Markdown", () => {
   it("renders block and inline markup", () => {
@@ -73,5 +88,46 @@ describe("Markdown", () => {
     const { container } = render(<Markdown>{"a **bold"}</Markdown>);
 
     expect(container.querySelector("strong")?.textContent).toBe("bold");
+  });
+
+  it("wraps a word at a time while animating, and nothing when it is done", () => {
+    setCores(8);
+    const { container, rerender } = render(<Markdown animate>{"one two\n\n- item"}</Markdown>);
+
+    // A word per span, with the spaces kept; the list keeps its own shape.
+    const words = [...container.querySelectorAll("p span")].map((span) => span.textContent);
+    expect(words).toEqual(["one ", "two"]);
+    expect(container.querySelector("li")?.textContent).toBe("item");
+
+    rerender(<Markdown>{"one two\n\n- item"}</Markdown>);
+    expect(container.querySelectorAll("span")).toHaveLength(0);
+    expect(container.textContent).toBe("one twoitem");
+  });
+
+  it("keeps a word that is already on screen, so its fade plays once", () => {
+    setCores(8);
+    const { container, rerender } = render(<Markdown animate>{"one two"}</Markdown>);
+    const first = container.querySelector("p span");
+
+    rerender(<Markdown animate>{"one two three"}</Markdown>);
+
+    expect(container.querySelector("p span")).toBe(first); // same element, not remounted
+    expect(container.querySelectorAll("p span")).toHaveLength(3);
+  });
+
+  it("builds no spans on a device that would not animate them", () => {
+    setCores(2); // a low-end phone, by its own report
+    const { container, rerender } = render(<Markdown animate>{"one two"}</Markdown>);
+    expect(container.querySelectorAll("span")).toHaveLength(0);
+
+    setCores(8); // a capable machine, but a phone screen — and then reduced motion
+    setMedia("pointer: coarse");
+    rerender(<Markdown animate>{"one two three"}</Markdown>);
+    expect(container.querySelectorAll("span")).toHaveLength(0);
+
+    setMedia("prefers-reduced-motion");
+    rerender(<Markdown animate>{"one two three four"}</Markdown>);
+    expect(container.querySelectorAll("span")).toHaveLength(0);
+    expect(container.textContent).toBe("one two three four");
   });
 });

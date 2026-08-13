@@ -1,4 +1,17 @@
+import {
+  Context,
+  ContextContent,
+  ContextContentBody,
+  ContextContentFooter,
+  ContextContentHeader,
+  ContextCacheUsage,
+  ContextInputUsage,
+  ContextOutputUsage,
+  ContextReasoningUsage,
+  ContextTrigger,
+} from "@/components/ai-elements/context";
 import { ChatPicker, type ChatPickerProps } from "@/components/chat/picker";
+import type { ChatUsage } from "@/components/chat/types";
 import {
   PromptInput,
   PromptInputBody,
@@ -25,16 +38,33 @@ const S = {
     flex: "1",
     marginLeft: "-0.5rem",
   },
+  // The anchor for the panel below, which the composer's last row cannot hold.
+  usage: {
+    position: "relative",
+    flexShrink: "0",
+  },
+  // The composer sits at the foot of the surface, so the breakdown opens over
+  // the transcript instead of pushing the composer taller.
+  usagePanel: {
+    position: "absolute",
+    right: "0",
+    bottom: "100%",
+    zIndex: "50",
+    marginTop: "0",
+    marginBottom: "0.5rem",
+  },
 } satisfies Record<string, Sx>;
 
 export interface ChatComposerProps extends ChatPickerProps {
   isStreaming: boolean;
   onSend: (text: string) => void;
   onStop: () => void;
+  /** The context meter, beside send. Omitted, the composer carries none. */
+  usage?: ChatUsage;
 }
 
 /** The last row of the surface: what to say, which model says it, and send. */
-export function ChatComposer({ isStreaming, onSend, onStop, ...picker }: ChatComposerProps) {
+export function ChatComposer({ isStreaming, onSend, onStop, usage, ...picker }: ChatComposerProps) {
   return (
     <div style={S.composer}>
       <PromptInput onSubmit={(message) => message.text.trim() && onSend(message.text)}>
@@ -50,6 +80,30 @@ export function ChatComposer({ isStreaming, onSend, onStop, ...picker }: ChatCom
               <ChatPicker {...picker} />
             )}
           </PromptInputTools>
+          {usage && (
+            <Context
+              costs={usage.costs}
+              maxTokens={usage.maxTokens}
+              modelId={usage.modelId}
+              style={S.usage}
+              usage={usage.usage}
+              usedTokens={usage.usedTokens}
+            >
+              <ContextTrigger />
+              <ContextContent style={S.usagePanel}>
+                <ContextContentHeader />
+                {usage.usage && (
+                  <ContextContentBody>
+                    <ContextInputUsage />
+                    <ContextOutputUsage />
+                    <ContextReasoningUsage />
+                    <ContextCacheUsage />
+                  </ContextContentBody>
+                )}
+                {usage.costs && <ContextContentFooter />}
+              </ContextContent>
+            </Context>
+          )}
           <PromptInputSubmit onStop={onStop} status={isStreaming ? "streaming" : undefined} />
         </PromptInputFooter>
       </PromptInput>

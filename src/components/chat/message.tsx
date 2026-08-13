@@ -1,3 +1,5 @@
+import { useEffect, useState } from "preact/hooks";
+
 import {
   Confirmation,
   ConfirmationAccepted,
@@ -75,7 +77,7 @@ interface ChatPartProps {
 
 function ChatPart({ part, isActive, onRespond }: ChatPartProps) {
   if (part.kind === "text") {
-    return <MessageResponse>{part.text}</MessageResponse>;
+    return <MessageResponse animate={isActive}>{part.text}</MessageResponse>;
   }
   if (part.kind === "thinking") {
     return (
@@ -98,8 +100,15 @@ function ChatToolPart({ part, onRespond }: { part: ViewToolPart; onRespond?: Cha
   // An unanswered gate has no approval yet, only the call it holds.
   const approval = part.approval ?? (pending ? { id: part.toolCallId } : undefined);
 
+  // The call renders before the gate asks, so `defaultOpen` would never see the
+  // request. Open on the edge into `pending`, and leave the toggle to the reader.
+  const [open, setOpen] = useState(pending);
+  useEffect(() => {
+    if (pending) setOpen(true);
+  }, [pending]);
+
   return (
-    <Tool defaultOpen={pending}>
+    <Tool onOpenChange={setOpen} open={open}>
       <ToolHeader state={state} toolName={part.name} type="dynamic-tool" />
       <ToolContent>
         <ToolInput input={part.args} />

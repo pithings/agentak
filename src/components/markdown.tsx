@@ -13,7 +13,8 @@ import {
   CodeBlockTitle,
 } from "@/components/ai-elements/code-block";
 import { parseMarkdown, useMarkdown } from "@/lib/markdown";
-import { reset } from "@/styles/base";
+import { animateOnMount, isLowPowerDevice, prefersReducedMotion } from "@/lib/use-animation";
+import { fadeInKeyframes, fadeInOptions, reset } from "@/styles/base";
 import { sx, type Sx, type WithSx } from "@/styles/sx";
 
 const S = {
@@ -223,8 +224,42 @@ const Fence = ({ props, nodes }: { props: ComarkElementAttributes; nodes: Comark
   );
 };
 
-const renderNodes = (nodes: ComarkNode[], prefix: string): ComponentChildren[] =>
-  nodes.map((node, index) => renderNode(node, `${prefix}.${index}`));
+/**
+ * The fade played by every word that arrives while `animate` is set — one
+ * module-scope callback for the whole tree, because the renderer emits an
+ * unknown number of them and cannot call a hook per word. See
+ * `lib/use-animation.ts`.
+ */
+const fadeIn = animateOnMount<HTMLSpanElement>(fadeInKeyframes, fadeInOptions);
+
+/** A word with the whitespace that follows it, so no space is lost between spans. */
+const WORD = /\S+\s*|\s+/g;
+
+/**
+ * Each word in its own span, so only the words that just arrived animate: a
+ * word already on screen keeps its key, so preact leaves that element alone
+ * and its mount-time fade never plays again. Streaming text otherwise grows a
+ * single text node, which no animation can reach.
+ *
+ * The spans exist only while the text streams — `animate` goes false at the
+ * end of the message, and the whole block renders as plain text again.
+ *
+ * Whitespace alone stays a bare string: the only text nodes under a `ul` or a
+ * `table` are the gaps between their rows, where a span would be invalid HTML.
+ */
+function fadeWords(value: string, key: string): ComponentChildren {
+  const words = /\S/.test(value) ? value.match(WORD) : undefined;
+  if (!words) return value;
+
+  return words.map((word, index) => (
+    <span key={`${key}~${index}`} ref={fadeIn}>
+      {word}
+    </span>
+  ));
+}
+
+const renderNodes = (nodes: ComarkNode[], prefix: string, animate: boolean): ComponentChildren[] =>
+  nodes.map((node, index) => renderNode(node, `${prefix}.${index}`, animate));
 
 /** Narrows `isValidElement` so the clone below can type the `style` it adds. */
 function hasStyle(child: ComponentChild): child is VNode<{ style?: Sx }> {
@@ -248,19 +283,19 @@ function withGap(children: ComponentChildren, gap: Sx): ComponentChildren {
   );
 }
 
-function renderNode(node: ComarkNode, key: string): ComponentChildren {
-  if (typeof node === "string") return node;
+function renderNode(node: ComarkNode, key: string, animate: boolean): ComponentChildren {
+  if (typeof node === "string") return animate ? fadeWords(node, key) : node;
 
   const [tag, props, ...children] = node;
-  if (!tag) return renderNodes(children, key);
+  if (!tag) return renderNodes(children, key, animate);
 
   switch (tag) {
     case "a": {
       const href = attr(props, "href") ?? "";
-      if (!isSafeUrl(href)) return renderNodes(children, key);
+      if (!isSafeUrl(href)) return renderNodes(children, key, animate);
       return (
         <a href={href} key={key} rel="noreferrer" style={sx(reset.link, S.mdA)} target="_blank">
-          {renderNodes(children, key)}
+          {renderNodes(children, key, animate)}
         </a>
       );
     }
@@ -288,7 +323,7 @@ function renderNode(node: ComarkNode, key: string): ComponentChildren {
     case "p":
       return (
         <p key={key} style={sx(reset.text, S.mdP)}>
-          {renderNodes(children, key)}
+          {renderNodes(children, key, animate)}
         </p>
       );
 
@@ -302,7 +337,7 @@ function renderNode(node: ComarkNode, key: string): ComponentChildren {
               style={sx(reset.control, S.mdTaskInput)}
               type="checkbox"
             />
-            <span>{renderNodes(children, key)}</span>
+            <span>{renderNodes(children, key, animate)}</span>
           </li>
         );
       }
@@ -311,15 +346,15 @@ function renderNode(node: ComarkNode, key: string): ComponentChildren {
     case "table":
       return (
         <div key={key} style={S.mdTableScroll}>
-          <table style={TAGS.table?.sx}>{renderNodes(children, key)}</table>
+          <table style={TAGS.table?.sx}>{renderNodes(children, key, animate)}</table>
         </div>
       );
   }
 
   const look = TAGS[tag];
-  if (!look) return renderNodes(children, key);
+  if (!look) return renderNodes(children, key, animate);
   const align = ALIGN[attr(props, "align") ?? ""];
-  const rendered = renderNodes(children, key);
+  const rendered = renderNodes(children, key, animate);
 
   return h(
     tag,
@@ -334,6 +369,8 @@ function renderNode(node: ComarkNode, key: string): ComponentChildren {
 
 export type MarkdownProps = WithSx<Omit<ComponentProps<"div">, "children">> & {
   children: string;
+  /** This text is still arriving: fade each new word in. See `fadeWords()`. */
+  animate?: boolean;
 };
 
 /**
@@ -341,18 +378,25 @@ export type MarkdownProps = WithSx<Omit<ComponentProps<"div">, "children">> & {
  * renders verbatim until it is ready — one frame at most, and never blank.
  */
 export const Markdown = memo(
-  ({ children, className, style, ...props }: MarkdownProps) => {
+  ({ children, className, style, animate = false, ...props }: MarkdownProps) => {
     const isReady = useMarkdown();
     const nodes = useMemo(
       () => (isReady ? parseMarkdown(children) : undefined),
       [children, isReady],
     );
 
+    // Both checks belong here rather than in the fade itself: a reader who gets
+    // no animation should not pay for the spans that carry it either.
+    const fade = animate && !prefersReducedMotion() && !isLowPowerDevice();
+
     return (
       <div className={className} style={sx(S.md, nodes ? undefined : S.mdPlain, style)} {...props}>
-        {nodes ? withGap(renderNodes(nodes, "md"), S.mdGap) : children}
+        {nodes ? withGap(renderNodes(nodes, "md", fade), S.mdGap) : children}
       </div>
     );
   },
-  (prev, next) => prev.children === next.children && prev.className === next.className,
+  (prev, next) =>
+    prev.children === next.children &&
+    prev.className === next.className &&
+    prev.animate === next.animate,
 );

@@ -190,9 +190,13 @@ export type ReasoningContentProps = Omit<
 
 /** Thinking text, rendered as markdown. */
 export const ReasoningContent = memo(
-  ({ className, style, children, ...props }: ReasoningContentProps) => (
-    <CollapsibleContent className={className} style={sx(S.reasoningContent, style)} {...props}>
-      <Markdown>{children}</Markdown>
-    </CollapsibleContent>
-  ),
+  ({ className, style, children, ...props }: ReasoningContentProps) => {
+    const { isStreaming } = useReasoning();
+
+    return (
+      <CollapsibleContent className={className} style={sx(S.reasoningContent, style)} {...props}>
+        <Markdown animate={isStreaming}>{children}</Markdown>
+      </CollapsibleContent>
+    );
+  },
 );

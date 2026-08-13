@@ -120,16 +120,26 @@ export const MessageAction = ({
 
 export type MessageResponseProps = WithSx<ComponentProps<"div">> & {
   children: string;
+  /** This text is still arriving — each new word fades in. */
+  animate?: boolean;
 };
 
 /** Assistant text, rendered as markdown. */
 export const MessageResponse = memo(
-  ({ className, children, style, ...props }: MessageResponseProps) => (
-    <Markdown className={className} style={sx(S.messageResponse, style)} {...props}>
+  ({ className, children, style, animate, ...props }: MessageResponseProps) => (
+    <Markdown
+      animate={animate}
+      className={className}
+      style={sx(S.messageResponse, style)}
+      {...props}
+    >
       {children}
     </Markdown>
   ),
-  (prev, next) => prev.children === next.children && prev.className === next.className,
+  (prev, next) =>
+    prev.children === next.children &&
+    prev.className === next.className &&
+    prev.animate === next.animate,
 );
 
 export type MessageToolbarProps = WithSx<ComponentProps<"div">>;
