@@ -58,7 +58,7 @@ package has a side effect — `sideEffects: false`.
 
 | Subpath              | Entry                     | What                                          |
 | -------------------- | ------------------------- | --------------------------------------------- |
-| `agentak`            | `src/index.ts`            | `Chat`, `AgentChat`, `ChatSession`, `tokens`  |
+| `agentak`            | `src/index.ts`            | `Chat`, `AgentChat`, `mount()`, `ChatSession` |
 | `agentak/components` | `src/components/index.ts` | every built-in component, named               |
 | `agentak/pi`         | `src/pi/index.ts`         | the loop — `createPiSession()` and its parts  |
 | `agentak/preact`     | `src/preact/index.tsx`    | `AgentakChat` — the chat, as a preact element |

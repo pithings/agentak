@@ -11,8 +11,8 @@
 
 - 🧩 **One component and one session.** `<AgentakChat session={…} />` is the whole
   chat — the providers, the styles, the tools. Two imports, and no setup line.
-- ⚡ **React, vue, preact, or no framework at all.** One subpath each, or mount it into
-  any element with preact's `render`.
+- ⚡ **React, vue, preact, or no framework at all.** One subpath each, or `mount()` it
+  into any element — one call, from a CDN.
 - 🎨 **It ships no stylesheet.** Every style is inline on the element that carries it,
   so the chat changes no page style of yours.
 - 🔄 **The agent is a separate import.** The chat surface holds no loop: it takes a
@@ -88,28 +88,29 @@ with `h()` from preact, or do not pass them.
 
 ### 🧩 In any page
 
-A build step is not necessary. Import from a CDN and mount:
+A build step is not necessary, and neither is a framework. Import from a CDN and
+`mount`:
 
 ```html
 <div id="chat" style="height: 600px"></div>
 
 <script type="module">
-  import { h, render } from "https://esm.sh/preact";
-  import { AgentChat, tokens } from "https://esm.sh/agentak";
+  import { mount } from "https://esm.sh/agentak";
   // the built-in agent — this import is what brings the loop
   import { createPiSession } from "https://esm.sh/agentak/pi";
 
-  // Adds the CSS variables that the chat uses.
-  const sheet = new CSSStyleSheet();
-  sheet.replaceSync(tokens);
-  document.adoptedStyleSheets.push(sheet);
-
-  render(
-    h(AgentChat, { session: createPiSession(), style: { height: "100%" } }),
-    document.querySelector("#chat"),
-  );
+  mount("#chat", { session: createPiSession() });
 </script>
 ```
+
+`mount(target, props)` is the wrappers' work for a page that has no framework: it
+declares the CSS variables, makes the element a box the chat fills, and renders the
+surface inside it. Size that element — the chat takes its height.
+
+`target` is a selector or an element. `props` is every `AgentChat` prop, plus `tokens:
+false` if your page declares the variables itself. It returns `{ update, unmount }`:
+`update(props)` redraws in one diff, with the transcript kept, and `unmount()` empties
+the element. Neither one ends the session — you made it, so you end it.
 
 ### 🧩 The surface, over a session you make
 
@@ -217,14 +218,14 @@ import { Message, PromptInput } from "agentak/components"; // the components
 
 ## 📤 Exports
 
-| Import               | What                                         | Agent loop |
-| -------------------- | -------------------------------------------- | ---------- |
-| `agentak/react`      | `AgentakChat` — the chat as a react element  | no         |
-| `agentak/vue`        | the same, in vue                             | no         |
-| `agentak/preact`     | the same, in preact                          | no         |
-| `agentak`            | `Chat`, `AgentChat`, `ChatSession`, `tokens` | no         |
-| `agentak/pi`         | `createPiSession()`, and the parts below it  | **yes**    |
-| `agentak/components` | every built-in component                     | no         |
+| Import               | What                                        | Agent loop |
+| -------------------- | ------------------------------------------- | ---------- |
+| `agentak/react`      | `AgentakChat` — the chat as a react element | no         |
+| `agentak/vue`        | the same, in vue                            | no         |
+| `agentak/preact`     | the same, in preact                         | no         |
+| `agentak`            | `Chat`, `AgentChat`, `mount()`, `tokens`    | no         |
+| `agentak/pi`         | `createPiSession()`, and the parts below it | **yes**    |
+| `agentak/components` | every built-in component                    | no         |
 
 **`agentak/pi` is the only import that carries the loop.** Every other entry takes the
 session as a prop, thus your bundle holds an agent runtime because you asked for one.

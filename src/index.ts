@@ -1,9 +1,11 @@
 // The surface and nothing behind it. This entry loads no agent runtime: `Chat`
 // takes a `ViewMessage[]` from anything, and `AgentChat` takes a `ChatSession`
 // from anything. The built-in loop is `agentak/pi` — `createPiSession()` — and a
-// host mounts the surface itself, with preact's `render`.
+// host mounts the surface with `mount()`, or with preact's `render` itself.
 export { Chat, type ChatProps } from "@/components/chat";
 export { AgentChat, type AgentChatProps } from "@/agent-chat";
+// One call for a page with no framework: the tokens, the box, the surface.
+export { type ChatMount, mount, type MountOptions } from "@/wrap";
 export {
   type ChatSession,
   type ChatSessionOptions,

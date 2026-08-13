@@ -2,6 +2,7 @@ import { cleanup, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 import { createApp, h } from "vue";
 
+import { mount } from "@/index";
 import { AgentakChat } from "@/preact";
 import type { ChatSession } from "@/session";
 import { type AgentakChatProps, AgentakChat as VueAgentakChat } from "@/vue";
@@ -51,6 +52,48 @@ describe("the framework wrapper", () => {
     const { unmount } = render(<AgentakChat session={session} />);
     unmount();
     expect(session.disposed).toBe(0);
+  });
+});
+
+/** The framework-less mount: what a `<script type="module">` calls. */
+describe("mount()", () => {
+  const host = () => {
+    const element = document.createElement("div");
+    element.id = "chat";
+    document.body.append(element);
+    return element;
+  };
+
+  it("takes a selector, declares the tokens, and fills the element", () => {
+    const element = host();
+    const chat = mount("#chat", { session: fakeSession() });
+
+    expect(screen.getByRole("textbox")).toBeTruthy();
+    expect(document.head.querySelector("style[data-agentak-tokens]")).toBeTruthy();
+    // The host box, so the surface fills whatever height the page gave it.
+    expect(element.style.display).toBe("flex");
+
+    chat.unmount();
+    expect(element.firstElementChild).toBeNull();
+    element.remove();
+  });
+
+  it("redraws in place, and ends no session", () => {
+    const element = host();
+    const session = fakeSession();
+    const chat = mount(element, { session, tokens: false });
+
+    chat.update({ session });
+    expect(screen.getByRole("textbox")).toBeTruthy();
+    expect(document.head.querySelector("style[data-agentak-tokens]")).toBeNull();
+
+    chat.unmount();
+    expect(session.disposed).toBe(0);
+    element.remove();
+  });
+
+  it("says so when the selector finds nothing", () => {
+    expect(() => mount("#nowhere", { session: fakeSession() })).toThrow(/nowhere/);
   });
 });
 

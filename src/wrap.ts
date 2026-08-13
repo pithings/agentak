@@ -2,6 +2,7 @@ import { type ComponentChildren, h, render } from "preact";
 
 import { AgentChat, type AgentChatProps } from "@/agent-chat";
 import type { ChatSession, ChatSessionOptions } from "@/session";
+import { injectTokens } from "@/styles/inject";
 import type { Sx } from "@/styles/sx";
 
 /**
@@ -65,5 +66,43 @@ export function mountChat(target: Element, props: AgentChatProps): ChatMount {
   return {
     update: draw,
     unmount: () => render(null, target),
+  };
+}
+
+export interface MountOptions extends AgentChatProps {
+  /** Declare the `--*` tokens on the page. Default: yes. */
+  tokens?: boolean;
+}
+
+/**
+ * The chat in a plain page, in one call: the tokens declared, the element made
+ * a box the surface fills, and the surface inside it.
+ *
+ * It is what the framework wrappers do, for a host that has no framework — a
+ * CDN `<script type="module">` needs no preact import of its own:
+ *
+ * ```js
+ * import { mount } from "agentak";
+ * import { createPiSession } from "agentak/pi";
+ *
+ * const chat = mount("#chat", { session: createPiSession() });
+ * ```
+ *
+ * `target` is an element or a selector. Size that element — the surface fills
+ * it. `update()` redraws with new props, `unmount()` empties the element;
+ * neither ends the session, because this never made one.
+ */
+export function mount(target: Element | string, props: MountOptions): ChatMount {
+  const element = typeof target === "string" ? document.querySelector(target) : target;
+  if (!element) throw new Error(`agentak: no element for ${String(target)}`);
+
+  if (props.tokens !== false) injectTokens(element.ownerDocument);
+  // The host box, as the wrappers set it on the div they own themselves.
+  if (element instanceof HTMLElement) Object.assign(element.style, HOST);
+
+  const island = mountChat(element, { style: SURFACE, ...props });
+  return {
+    update: (next) => island.update({ style: SURFACE, ...next }),
+    unmount: island.unmount,
   };
 }
