@@ -13,6 +13,7 @@ useAgent: every event -> toViewMessages(agent.state) -> AgentChat
 | File              | What                                                      |
 | ----------------- | --------------------------------------------------------- |
 | `create-agent.ts` | the `Agent`, the stream function, the system prompt       |
+| `free-models.ts`  | the hand-written catalogs of the four keyless providers   |
 | `approvals.ts`    | the confirmation gate behind `beforeToolCall`             |
 | `models.ts`       | catalog filtering, the defaults                           |
 | `providers.ts`    | the provider list, the api modules, `streamFor()`         |
@@ -33,8 +34,9 @@ for a value. Everything comes from a subpath:
 - `api/<name>` — `streamSimple`, fetched with the first turn that needs it. The
   anthropic and openai sdks are ~100 KB each and land in chunks of their own.
 
-Only the Anthropic catalog (5 KB) is imported statically, in `models.ts`, so
-`DEFAULT_MODEL` exists and an agent can be built before any chunk lands.
+Only `free-models.ts` is imported statically, in `models.ts`, so `DEFAULT_MODEL` exists
+and an agent can be built before any chunk lands. It is written by hand and weighs a
+couple of KB, so nothing is saved by fetching it.
 
 The pi-ai root is browser-safe — `node:` imports live under its `./node` export, which
 nothing here touches. Every api module sets `dangerouslyAllowBrowser`: the key goes
@@ -48,6 +50,7 @@ so `streamFor()` picks the module per turn and a gateway model costs no extra co
 
 | Provider                                 | Api                                |
 | ---------------------------------------- | ---------------------------------- |
+| LLM7, Kilo, OVHcloud, OpenCode Zen       | openai-completions — free, no key  |
 | Vercel AI Gateway, OpenRouter (gateways) | per model — any of the three below |
 | OpenAI                                   | openai-responses                   |
 | Groq, Cerebras                           | openai-completions                 |
@@ -63,6 +66,30 @@ provider each (Google, Mistral).
 
 A key is stored per provider, so switching back to one already set up asks nothing.
 `getApiKey(provider)` is how pi asks for the right one.
+
+### The free four
+
+`free: true` means the endpoint answers an anonymous request. The gate is skipped, the
+picker opens on LLM7, and a page can answer before anyone is asked for anything. They
+are rate limited by IP address, and `Provider.note` says how much.
+
+pi-ai carries no catalog for them, so `free-models.ts` writes one each: only chat models
+that stream and take tools, priced at zero. Two shapes of "no key":
+
+| Provider     | Endpoint                                           | Auth                       |
+| ------------ | -------------------------------------------------- | -------------------------- |
+| LLM7         | `https://api.llm7.io/v1`                           | `Bearer unused`            |
+| Kilo Gateway | `https://api.kilo.ai/api/gateway`                  | `Bearer unused`            |
+| OVHcloud     | `https://oai.endpoints.kepler.ai.cloud.ovh.net/v1` | no header — a token is 403 |
+| OpenCode Zen | `https://opencode.ai/zen/v1`                       | no header — a token is 401 |
+
+`createWebAgent()` hands pi the string `unused` when a free provider has no key of its
+own. The other two get `Authorization: null` on every model, which is how the openai
+client is told to drop a header it always sets.
+
+Their paid models are not listed: LLM7 and Zen answer `invalid_api_key` for those, so
+only the free tier is written down. Free tiers rotate — a model that starts to 404 is
+a line to delete.
 
 ## What feeds each element
 

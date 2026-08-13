@@ -1,9 +1,9 @@
-import { ANTHROPIC_MODELS } from "@earendil-works/pi-ai/providers/anthropic.models";
-
+import { LLM7_MODELS } from "@/agent/free-models";
 import { type AnyModel, SUPPORTED_APIS } from "@/agent/providers";
 
-export const DEFAULT_PROVIDER_ID = "vercel";
-export const DEFAULT_MODEL_ID = "claude-sonnet-5";
+/** A keyless provider, so a fresh page can answer before anyone is asked for a key. */
+export const DEFAULT_PROVIDER_ID = "llm7";
+export const DEFAULT_MODEL_ID = "gemini-3.1-flash-lite";
 
 /** A dated snapshot. The same model is listed under a rolling id as well. */
 const DATED = /-\d{8}$/;
@@ -30,8 +30,9 @@ export const findModel = (models: AnyModel[], id?: string): AnyModel | undefined
 
 /**
  * The default provider's catalog, imported rather than loaded, so an agent
- * exists before any chunk arrives. It is 5 KB; every other catalog is fetched.
+ * exists before any chunk arrives. The free catalogs are written here and cost
+ * a couple of KB together; every vendor catalog is fetched.
  */
-export const DEFAULT_MODELS = catalogModels(ANTHROPIC_MODELS);
+export const DEFAULT_MODELS = catalogModels(LLM7_MODELS);
 
 export const DEFAULT_MODEL = findModel(DEFAULT_MODELS, DEFAULT_MODEL_ID) ?? DEFAULT_MODELS[0];

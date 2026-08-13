@@ -71,10 +71,10 @@ export interface WebAgentProps {
   /**
    * A key for the current provider, or one per provider id. Without one the
    * surface asks and keeps it in `localStorage`; the extension will pass one
-   * from `chrome.storage` instead.
+   * from `chrome.storage` instead. A free provider asks for none.
    */
   apiKey?: string | Record<string, string>;
-  /** Which provider to open on. Default: the stored one, or Anthropic. */
+  /** Which provider to open on. Default: the stored one, or LLM7. */
   provider?: string;
 }
 
@@ -168,7 +168,7 @@ export function WebAgent({ className, style, apiKey, provider: openOn }: WebAgen
     );
   }
 
-  if (!keys[providerId] || editing) {
+  if ((!keys[providerId] && !provider.free) || editing) {
     return (
       <Settings
         className={className}
@@ -223,7 +223,8 @@ interface SettingsProps {
  *
  * The key goes straight from this page to the provider — every one listed
  * allows that — and is kept in this browser. A provider already set up keeps
- * its key, so switching back asks nothing.
+ * its key, so switching back asks nothing. A free provider asks for nothing at
+ * all; there the form only says what the limit is.
  */
 function Settings({ provider, keys, onSelectProvider, onSave, className, style }: SettingsProps) {
   const [draft, setDraft] = useState(keys[provider.id] ?? "");
@@ -233,7 +234,8 @@ function Settings({ provider, keys, onSelectProvider, onSave, className, style }
       className={className}
       onSubmit={(event) => {
         event.preventDefault();
-        if (draft.trim()) onSave(draft.trim());
+        if (provider.free) onSave("unused");
+        else if (draft.trim()) onSave(draft.trim());
       }}
       style={sx(S.gate, style)}
     >
@@ -247,7 +249,13 @@ function Settings({ provider, keys, onSelectProvider, onSave, className, style }
               setDraft(keys[entry.id] ?? "");
             }}
             size="sm"
-            title={entry.gateway ? "Gateway — one key, many vendors" : entry.label}
+            title={
+              entry.free
+                ? `Free — ${entry.note}`
+                : entry.gateway
+                  ? "Gateway — one key, many vendors"
+                  : entry.label
+            }
             type="button"
             variant={entry.id === provider.id ? "default" : "outline"}
           >
@@ -256,22 +264,34 @@ function Settings({ provider, keys, onSelectProvider, onSave, className, style }
         ))}
       </div>
 
-      <span style={S.gateLabel}>{provider.label} API key</span>
-      <div style={S.gateRow}>
-        <Input
-          autoComplete="off"
-          onInput={(event) => setDraft((event.target as HTMLInputElement).value)}
-          placeholder={provider.keyPlaceholder}
-          type="password"
-          value={draft}
-        />
-        <Button type="submit">Save</Button>
-      </div>
-      <a href={provider.keyUrl} rel="noreferrer noopener" style={S.gateLink} target="_blank">
-        Get a key
-        <ExternalLinkIcon style={u.icon} />
-      </a>
-      <p style={u.muted}>Kept in this browser, and sent only to the provider you pick.</p>
+      {provider.free ? (
+        <>
+          <span style={S.gateLabel}>{provider.label} needs no key</span>
+          <div style={S.gateRow}>
+            <Button type="submit">Start</Button>
+          </div>
+          <p style={u.muted}>Free, rate limited by IP address: {provider.note}</p>
+        </>
+      ) : (
+        <>
+          <span style={S.gateLabel}>{provider.label} API key</span>
+          <div style={S.gateRow}>
+            <Input
+              autoComplete="off"
+              onInput={(event) => setDraft((event.target as HTMLInputElement).value)}
+              placeholder={provider.keyPlaceholder}
+              type="password"
+              value={draft}
+            />
+            <Button type="submit">Save</Button>
+          </div>
+          <a href={provider.keyUrl} rel="noreferrer noopener" style={S.gateLink} target="_blank">
+            Get a key
+            <ExternalLinkIcon style={u.icon} />
+          </a>
+          <p style={u.muted}>Kept in this browser, and sent only to the provider you pick.</p>
+        </>
+      )}
     </form>
   );
 }

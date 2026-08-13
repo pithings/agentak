@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { catalogModels, DEFAULT_MODEL, findModel } from "@/agent/models";
+import { catalogModels, DEFAULT_MODEL, DEFAULT_PROVIDER_ID, findModel } from "@/agent/models";
 import {
   type AnyModel,
   findProvider,
@@ -58,10 +58,21 @@ describe("PROVIDERS", () => {
     }
   }, 20_000);
 
-  it("opens on Anthropic, and finds a provider by id", () => {
-    expect(DEFAULT_MODEL.provider).toBe("anthropic");
+  it("opens on a provider that needs no key, and finds a provider by id", () => {
+    expect(DEFAULT_MODEL.provider).toBe(DEFAULT_PROVIDER_ID);
+    expect(findProvider(DEFAULT_PROVIDER_ID)?.free).toBe(true);
     expect(findProvider("openrouter")?.gateway).toBe(true);
     expect(findProvider("nope")).toBeUndefined();
+  });
+
+  it("prices a free provider at nothing, and asks it for no key", async () => {
+    for (const provider of PROVIDERS.filter((entry) => entry.free)) {
+      expect(provider.keyUrl, `${provider.id} points at a key page`).toBeUndefined();
+      expect(provider.note, `${provider.id} does not say what the limit is`).toBeTruthy();
+      for (const entry of catalogModels(await provider.load())) {
+        expect(Object.values(entry.cost), `${provider.id}/${entry.id}`).toEqual([0, 0, 0, 0]);
+      }
+    }
   });
 });
 

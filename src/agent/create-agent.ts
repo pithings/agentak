@@ -8,7 +8,7 @@ import {
 import { type ApprovalGate, type ApprovalPolicy, createApprovalGate } from "@/agent/approvals";
 import { DEFAULT_MODEL } from "@/agent/models";
 import { documentBridge, type PageBridge } from "@/agent/page-bridge";
-import { type AnyModel, streamFor } from "@/agent/providers";
+import { type AnyModel, findProvider, streamFor } from "@/agent/providers";
 import { createPageTools } from "@/agent/tools";
 
 export const AGENT_NAME = "Page reader";
@@ -25,9 +25,10 @@ export const SYSTEM_PROMPT = [
 export interface WebAgentOptions {
   /**
    * The key for a provider. A function, so a key from storage can change, and a
-   * second provider can be added, without a new agent.
+   * second provider can be added, without a new agent. A free provider needs
+   * none.
    */
-  apiKey: string | ((provider: string) => string | undefined);
+  apiKey?: string | ((provider: string) => string | undefined);
   /** Defaults to the default provider's default model. */
   model?: AnyModel;
   thinkingLevel?: ThinkingLevel;
@@ -77,7 +78,11 @@ export function createWebAgent({
       tools: tools ?? createPageTools(page),
     },
     streamFn,
-    getApiKey: (provider) => (typeof apiKey === "function" ? apiKey(provider) : apiKey),
+    // A free provider needs no key, but the openai client wants a string.
+    getApiKey: (provider) => {
+      const key = typeof apiKey === "function" ? apiKey(provider) : apiKey;
+      return key || (findProvider(provider)?.free ? "unused" : key);
+    },
     beforeToolCall: (context, signal) => gate.beforeToolCall(context, signal),
   });
 

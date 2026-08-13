@@ -93,7 +93,8 @@ extension/                      MV3 side panel, `@web-agent/extension`
 
 ## Status
 
-The loop runs end to end against 5 providers with the page tools. Nothing is verified
+The loop runs end to end against 9 providers with the page tools, 4 of them free and
+keyless, so a fresh page answers before anyone is asked for a key. Nothing is verified
 in a real browser yet — the element, markdown and the panel are written but untested
 there.
 

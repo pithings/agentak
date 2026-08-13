@@ -1,25 +1,40 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { Api, AssistantMessageEventStream, Model } from "@earendil-works/pi-ai";
 
+import {
+  KILO_MODELS,
+  LLM7_MODELS,
+  OPENCODE_ZEN_MODELS,
+  OVHCLOUD_MODELS,
+} from "@/agent/free-models";
+
 /** A model from any provider. The api it speaks is on the model itself. */
 export type AnyModel = Model<Api>;
 
 type Catalog = Record<string, AnyModel>;
 
 /**
- * A place to send requests. Every one here authenticates with a single api key,
- * so the surface asks for one string and nothing else. Providers that need an
- * account id in the url (Cloudflare), an OAuth flow (Copilot, Codex) or signed
- * requests (Bedrock) are left out.
+ * A place to send requests. Every one here authenticates with a single api key
+ * or with none at all, so the surface asks for one string and nothing else.
+ * Providers that need an account id in the url (Cloudflare), an OAuth flow
+ * (Copilot, Codex) or signed requests (Bedrock) are left out.
  */
 export interface Provider {
   id: string;
   label: string;
   /** One key, many vendors' models. */
   gateway?: boolean;
-  /** Where the key comes from. */
-  keyUrl: string;
-  keyPlaceholder: string;
+  /**
+   * No account and no key: the endpoint answers an anonymous request. LLM7 and
+   * Kilo want the string `unused`; OVHcloud and OpenCode Zen reject any bearer
+   * token, so their models drop the header instead.
+   */
+  free?: boolean;
+  /** What free costs — the published limit. */
+  note?: string;
+  /** Where the key comes from. A free provider has none. */
+  keyUrl?: string;
+  keyPlaceholder?: string;
   /** Picked when this provider is chosen and nothing is stored. */
   defaultModelId: string;
   /** The catalog. Loaded on demand — OpenRouter's alone is 136 KB of json. */
@@ -27,6 +42,39 @@ export interface Provider {
 }
 
 export const PROVIDERS: Provider[] = [
+  {
+    id: "llm7",
+    label: "LLM7",
+    free: true,
+    note: "10 requests a minute, 500K tokens a day.",
+    defaultModelId: "gemini-3.1-flash-lite",
+    load: async () => LLM7_MODELS,
+  },
+  {
+    id: "kilo",
+    label: "Kilo Gateway",
+    gateway: true,
+    free: true,
+    note: "200 requests an hour.",
+    defaultModelId: "kilo-auto/free",
+    load: async () => KILO_MODELS,
+  },
+  {
+    id: "ovhcloud",
+    label: "OVHcloud",
+    free: true,
+    note: "2 requests a minute.",
+    defaultModelId: "gpt-oss-20b",
+    load: async () => OVHCLOUD_MODELS,
+  },
+  {
+    id: "opencode-zen",
+    label: "OpenCode Zen",
+    free: true,
+    note: "A fair-use limit the provider does not publish.",
+    defaultModelId: "deepseek-v4-flash-free",
+    load: async () => OPENCODE_ZEN_MODELS,
+  },
   {
     id: "vercel-ai-gateway",
     label: "Vercel AI Gateway",
