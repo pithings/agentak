@@ -249,7 +249,11 @@ function Command({
         data-slot="command"
         onKeyDown={(event) => {
           onKeyDown?.(event);
-          if (event.defaultPrevented || visible.length === 0) return;
+          if (event.defaultPrevented) return;
+          // Enter belongs to the palette, never to a form around it — the
+          // composer holds one, and would otherwise submit on an empty list.
+          if (event.key === "Enter") event.preventDefault();
+          if (visible.length === 0) return;
 
           const index = active ? visible.indexOf(active) : -1;
           const last = visible.length - 1;

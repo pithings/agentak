@@ -2,8 +2,9 @@
 
 Preact components under `src/components/`: `ui/` are shadcn primitives, `ai-elements/`
 are ports of the [AI SDK Elements](https://elements.ai-sdk.dev) registry, and
-`agent-chat.tsx` assembles them. Every registry component that needs no new npm
-dependency is ported; the rest is in [components/porting.md](components/porting.md).
+`chat.tsx` assembles them over the rows in `chat/`. Every registry component that
+needs no new npm dependency is ported; the rest is in
+[components/porting.md](components/porting.md).
 
 Read this page first — the rules below hold everywhere. Then read the one page in
 `components/` for the job at hand.

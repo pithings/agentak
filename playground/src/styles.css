@@ -34,3 +34,171 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Theme override — a minimal vscode look, Light Modern / Dark Modern.
+
+   `main.ts` appends the library `tokens` to `<head>` at runtime, so that sheet
+   comes after this one. Doubling the selector (`:root:root`) outranks it on
+   specificity instead of on order; the dark block doubles again, so it still
+   beats the light one. Every `--wa-*` token is restated here — nothing falls
+   back to the library values.
+   --------------------------------------------------------------------------- */
+
+:root:root {
+  color-scheme: light;
+
+  /* Flat corners — vscode rounds by 2-4px, never more. */
+  --wa-radius: 4px;
+  --wa-radius-sm: 2px;
+  --wa-radius-md: 3px;
+  --wa-radius-lg: 4px;
+
+  --wa-font-sans: system-ui, "Segoe UI", -apple-system, Ubuntu, "Droid Sans", sans-serif;
+  --wa-font-mono:
+    "Cascadia Mono", Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace;
+
+  --wa-background: #ffffff;
+  --wa-foreground: #3b3b3b;
+  --wa-primary: #005fb8;
+  --wa-primary-foreground: #ffffff;
+  --wa-secondary: #f8f8f8;
+  --wa-secondary-foreground: #3b3b3b;
+  --wa-muted: #f8f8f8;
+  --wa-muted-foreground: #616161;
+  --wa-accent: #f2f2f2;
+  --wa-accent-foreground: #3b3b3b;
+  --wa-destructive: #e51400;
+  --wa-destructive-foreground: #ffffff;
+  --wa-border: #e5e5e5;
+  --wa-input: #cecece;
+  --wa-ring: #005fb8;
+
+  --wa-surface: #ffffff;
+  --wa-surface-hover: #f2f2f2;
+  --wa-hover: #f2f2f2;
+  --wa-hover-foreground: #3b3b3b;
+  --wa-muted-surface: #f8f8f8;
+  --wa-destructive-surface: color-mix(in oklab, var(--wa-destructive) 8%, transparent);
+  /* One hairline, the way vscode paints focus. */
+  --wa-focus-ring: 0 0 0 1px var(--wa-ring);
+  --wa-invalid-ring: 0 0 0 1px var(--wa-destructive);
+  --wa-shadow-xs: none;
+  --wa-transition: 0.1s ease;
+
+  --wa-info: #0078d4;
+  --wa-success: #16825d;
+  --wa-warning: #bf8803;
+  --wa-notice: #cd6f00;
+  --wa-danger: #e51400;
+
+  /* Light+ syntax colors. */
+  --shj-fg: #3b3b3b;
+  --shj-kwd: #0000ff;
+  --shj-oper: #3b3b3b;
+  --shj-err: #cd3131;
+  --shj-deleted: #cd3131;
+  --shj-class: #267f99;
+  --shj-cmnt: #008000;
+  --shj-bracket: #0431fa;
+  --shj-num: #098658;
+  --shj-bool: #0000ff;
+  --shj-type: #267f99;
+  --shj-section: #800000;
+  --shj-var: #001080;
+  --shj-str: #a31515;
+  --shj-func: #795e26;
+  --shj-esc: #ee0000;
+  --shj-insert: #098658;
+
+  --wa-terminal-bg: #ffffff;
+  --wa-terminal-fg: #3b3b3b;
+  --wa-terminal-muted: color-mix(in oklab, var(--wa-terminal-fg) 60%, transparent);
+  --wa-ansi-black: #000000;
+  --wa-ansi-red: #cd3131;
+  --wa-ansi-green: #00bc00;
+  --wa-ansi-yellow: #949800;
+  --wa-ansi-blue: #0451a5;
+  --wa-ansi-magenta: #bc05bc;
+  --wa-ansi-cyan: #0598bc;
+  --wa-ansi-white: #555555;
+  --wa-ansi-bright-black: #666666;
+  --wa-ansi-bright-red: #cd3131;
+  --wa-ansi-bright-green: #14ce14;
+  --wa-ansi-bright-yellow: #b5ba00;
+  --wa-ansi-bright-blue: #0451a5;
+  --wa-ansi-bright-magenta: #bc05bc;
+  --wa-ansi-bright-cyan: #0598bc;
+  --wa-ansi-bright-white: #a5a5a5;
+}
+
+:root:root.dark {
+  color-scheme: dark;
+
+  --wa-background: #1f1f1f;
+  --wa-foreground: #cccccc;
+  --wa-primary: #0078d4;
+  --wa-primary-foreground: #ffffff;
+  --wa-secondary: #181818;
+  --wa-secondary-foreground: #cccccc;
+  --wa-muted: #202020;
+  --wa-muted-foreground: #9d9d9d;
+  --wa-accent: #2a2d2e;
+  --wa-accent-foreground: #ffffff;
+  --wa-destructive: #f14c4c;
+  --wa-destructive-foreground: #ffffff;
+  --wa-border: #2b2b2b;
+  --wa-input: #3c3c3c;
+  --wa-ring: #0078d4;
+
+  --wa-surface: #313131;
+  --wa-surface-hover: #3a3a3a;
+  --wa-hover: #2a2d2e;
+  --wa-hover-foreground: #ffffff;
+  --wa-muted-surface: #181818;
+  --wa-destructive-surface: color-mix(in oklab, var(--wa-destructive) 12%, transparent);
+
+  --wa-info: #3794ff;
+  --wa-success: #89d185;
+  --wa-warning: #cca700;
+  --wa-notice: #d18616;
+  --wa-danger: #f14c4c;
+
+  /* Dark+ syntax colors. */
+  --shj-fg: #d4d4d4;
+  --shj-kwd: #569cd6;
+  --shj-oper: #d4d4d4;
+  --shj-err: #f44747;
+  --shj-deleted: #f44747;
+  --shj-class: #4ec9b0;
+  --shj-cmnt: #6a9955;
+  --shj-bracket: #ffd700;
+  --shj-num: #b5cea8;
+  --shj-bool: #569cd6;
+  --shj-type: #4ec9b0;
+  --shj-section: #569cd6;
+  --shj-var: #9cdcfe;
+  --shj-str: #ce9178;
+  --shj-func: #dcdcaa;
+  --shj-esc: #d7ba7d;
+  --shj-insert: #b5cea8;
+
+  --wa-terminal-bg: #1f1f1f;
+  --wa-terminal-fg: #cccccc;
+  --wa-ansi-black: #000000;
+  --wa-ansi-red: #cd3131;
+  --wa-ansi-green: #0dbc79;
+  --wa-ansi-yellow: #e5e510;
+  --wa-ansi-blue: #2472c8;
+  --wa-ansi-magenta: #bc3fbc;
+  --wa-ansi-cyan: #11a8cd;
+  --wa-ansi-white: #e5e5e5;
+  --wa-ansi-bright-black: #666666;
+  --wa-ansi-bright-red: #f14c4c;
+  --wa-ansi-bright-green: #23d18b;
+  --wa-ansi-bright-yellow: #f5f543;
+  --wa-ansi-bright-blue: #3b8eea;
+  --wa-ansi-bright-magenta: #d670d6;
+  --wa-ansi-bright-cyan: #29b8db;
+  --wa-ansi-bright-white: #ffffff;
+}

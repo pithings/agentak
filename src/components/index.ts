@@ -61,7 +61,12 @@ export * from "@/components/ai-elements/tool";
 export * from "@/components/ai-elements/transcription";
 export * from "@/components/ai-elements/web-preview";
 
-// The chat surface, the markdown renderer, and the element registry.
-export * from "@/components/agent-chat";
+// The chat surface and its parts, the markdown renderer, and the element registry.
+export * from "@/components/chat";
+export * from "@/components/chat/composer";
+export * from "@/components/chat/empty";
+export * from "@/components/chat/header";
+export * from "@/components/chat/message";
+export * from "@/components/chat/queue";
 export * from "@/components/elements";
 export * from "@/components/markdown";

@@ -11,7 +11,6 @@ const swatch = btoa(
 
 /**
  * Canned assistant turns, cycled per send so every renderer is exercised.
- * Exported so `render.test.tsx` can drive the whole surface from real fixtures.
  */
 export const replies: ((stamp: number) => ViewPart[])[] = [
   (stamp) => [
@@ -31,7 +30,7 @@ export const replies: ((stamp: number) => ViewPart[])[] = [
         "stays testable on its own. The real loop is one hook away:",
         "",
         "```ts [src/web-agent.tsx]",
-        'import { AgentChat } from "@/components/agent-chat";',
+        'import { AgentChat } from "@/components/chat";',
         'import { createWebAgent } from "@/agent/create-agent";',
         'import { useAgent } from "@/agent/use-agent";',
         "",
@@ -246,7 +245,7 @@ export const replies: ((stamp: number) => ViewPart[])[] = [
                 name: "components",
                 path: "src/components",
                 children: [
-                  { name: "agent-chat.tsx", path: "src/components/agent-chat.tsx" },
+                  { name: "chat.tsx", path: "src/components/chat.tsx" },
                   { name: "markdown.tsx", path: "src/components/markdown.tsx" },
                 ],
               },

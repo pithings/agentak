@@ -1,8 +1,9 @@
+import type { ComponentChildren } from "preact";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { createWebAgent, SYSTEM_PROMPT } from "@/agent/create-agent";
-import { DEFAULT_PROVIDER_ID, findModel } from "@/agent/models";
-import { findProvider, type Provider, PROVIDERS } from "@/agent/providers";
+import { findModel } from "@/agent/models";
+import { findProvider, PROVIDERS } from "@/agent/providers";
 import {
   storeApiKey,
   storedApiKey,
@@ -13,54 +14,46 @@ import {
 } from "@/agent/storage";
 import { useAgent } from "@/agent/use-agent";
 import { useCatalog } from "@/agent/use-catalog";
-import { AgentChat } from "@/components/agent-chat";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { AgentChat } from "@/components/chat";
 import { Spinner } from "@/components/ui/spinner";
-import { ExternalLinkIcon } from "@/lib/icons";
 import { u } from "@/styles/base";
 import { sx, type Sx } from "@/styles/sx";
 
 const S = {
-  gate: {
+  // Everything the chat is not — today only the wait for a catalog. It paints
+  // the same box, so the host chrome sits on the same bar throughout.
+  frame: {
     boxSizing: "border-box",
     display: "flex",
+    minWidth: "0",
     minHeight: "0",
     flexDirection: "column",
-    justifyContent: "center",
-    gap: "0.75rem",
+    overflow: "hidden",
     background: "var(--wa-background)",
-    padding: "1.5rem",
     color: "var(--wa-foreground)",
     fontFamily: "var(--wa-font-sans)",
     fontSize: "0.875rem",
     lineHeight: "1.25rem",
-    overflowY: "auto",
   },
-  gateTitle: {
-    fontSize: "0.9375rem",
-    fontWeight: "600",
-  },
-  gateLabel: {
-    fontSize: "0.75rem",
-    fontWeight: "500",
-  },
-  gateProviders: {
+  frameBar: {
+    boxSizing: "border-box",
     display: "flex",
-    flexWrap: "wrap",
-    gap: "0.375rem",
-  },
-  gateRow: {
-    display: "flex",
+    flexShrink: "0",
     alignItems: "center",
+    justifyContent: "flex-end",
+    gap: "0.125rem",
+    borderBottom: "1px solid var(--wa-border)",
+    padding: "0.375rem 0.5rem",
+  },
+  wait: {
+    boxSizing: "border-box",
+    display: "flex",
+    minHeight: "0",
+    flex: "1",
+    alignItems: "center",
+    justifyContent: "center",
     gap: "0.5rem",
-  },
-  gateLink: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "0.25rem",
-    color: "var(--wa-muted-foreground)",
-    fontSize: "0.75rem",
+    padding: "1.5rem",
   },
 } satisfies Record<string, Sx>;
 
@@ -69,37 +62,67 @@ export interface WebAgentProps {
   /** Merged over the chat's own box — how a host sizes the element. */
   style?: Sx;
   /**
-   * A key for the current provider, or one per provider id. Without one the
-   * surface asks and keeps it in `localStorage`; the extension will pass one
-   * from `chrome.storage` instead. A free provider asks for none.
+   * A key for the provider named by `provider`, or one per provider id. Without
+   * one the picker asks, and keeps what it is given in `localStorage`; the
+   * extension will pass one from `chrome.storage` instead. A free provider asks
+   * for none.
    */
   apiKey?: string | Record<string, string>;
-  /** Which provider to open on. Default: the stored one, or LLM7. */
+  /**
+   * Which provider to open on. Default: the one this browser stored, or none —
+   * a fresh surface chooses nothing, and the picker asks with the first message.
+   */
   provider?: string;
+  /**
+   * Host buttons for the end of the header. `<web-agent>` fills this with a
+   * `<slot name="actions">`, so a page can put its own chrome — minimise, and
+   * whatever else it owns — on the agent's one title bar.
+   */
+  actions?: ComponentChildren;
+  /**
+   * Host content for the chat's empty state — a suggestion, a launcher.
+   * `<web-agent>` fills this with a `<slot name="empty">`. It shows only before
+   * the first message.
+   */
+  emptyActions?: ComponentChildren;
 }
 
 /** Keys already in hand: what a host passed, over what the browser stored. */
-function seedKeys(apiKey: WebAgentProps["apiKey"], providerId: string): Record<string, string> {
+function seedKeys(apiKey: WebAgentProps["apiKey"], providerId?: string): Record<string, string> {
   const keys: Record<string, string> = {};
   for (const provider of PROVIDERS) {
     const stored = storedApiKey(provider.id);
     if (stored) keys[provider.id] = stored;
   }
-  if (typeof apiKey === "string") keys[providerId] = apiKey;
+  if (typeof apiKey === "string" && providerId) keys[providerId] = apiKey;
   else if (apiKey) Object.assign(keys, apiKey);
   return keys;
 }
 
 /**
- * Top-level container: the key gate, then the loop — pi's `Agent` over the page
- * tools — driving `AgentChat`.
+ * Top-level container: the loop — pi's `Agent` over the page tools — driving
+ * `AgentChat`. There is no key screen in front of it. Provider, model and key
+ * are all the composer's picker, so the chat is the only view the surface has.
  */
-export function WebAgent({ className, style, apiKey, provider: openOn }: WebAgentProps) {
-  const [providerId, setProviderId] = useState(
-    () => openOn ?? storedProviderId() ?? DEFAULT_PROVIDER_ID,
+export function WebAgent({
+  className,
+  style,
+  apiKey,
+  provider: openOn,
+  actions,
+  emptyActions,
+}: WebAgentProps) {
+  const wanted = openOn ?? storedProviderId();
+  const [keys, setKeys] = useState(() => seedKeys(apiKey, wanted));
+  // Nothing is chosen on a fresh surface: no provider, and so no model. One
+  // that cannot answer counts as none — a stored key may have been dropped, or
+  // a host may name a provider it passed no key for.
+  const [providerId, setProviderId] = useState(() =>
+    wanted && (findProvider(wanted)?.free || keys[wanted]) ? wanted : undefined,
   );
-  const [keys, setKeys] = useState(() => seedKeys(apiKey, providerId));
-  const [editing, setEditing] = useState(false);
+  // Typed before a provider was chosen. It goes as soon as one can answer.
+  const [pending, setPending] = useState("");
+  const [asking, setAsking] = useState(false);
 
   // Keys are read through a ref, so adding one does not rebuild the agent and
   // lose the transcript. pi asks per provider, which is the id it passes here.
@@ -112,24 +135,47 @@ export function WebAgent({ className, style, apiKey, provider: openOn }: WebAgen
 
   const chat = useAgent(runtime);
   const catalog = useCatalog(providerId);
-  const provider = findProvider(providerId) ?? PROVIDERS[0];
-  const { setModel } = chat;
+  const provider = findProvider(providerId);
+  const { send, setModel } = chat;
   const modelProvider = chat.model.provider;
+  // The loop is built on a model of its own, so "chosen" is the provider's own
+  // model in hand — not whatever the agent happens to hold.
+  const ready = Boolean(providerId) && modelProvider === providerId;
 
   // Follow the provider: the model last used with it, else the one it suggests.
   useEffect(() => {
-    if (catalog.models.length === 0 || modelProvider === providerId) return;
+    if (!provider || catalog.models.length === 0 || modelProvider === providerId) return;
     const next =
-      findModel(catalog.models, storedModelId(providerId)) ??
+      findModel(catalog.models, storedModelId(provider.id)) ??
       findModel(catalog.models, provider.defaultModelId) ??
       catalog.models[0];
     if (next) setModel(next);
   }, [catalog.models, modelProvider, provider, providerId, setModel]);
 
+  // The question is the menu itself: a first message with nothing chosen opens
+  // it and waits, rather than answering from a provider nobody picked.
+  const onSend = useCallback(
+    (text: string) => {
+      if (ready) {
+        send(text);
+        return;
+      }
+      setPending(text);
+      setAsking(true);
+    },
+    [ready, send],
+  );
+
+  useEffect(() => {
+    if (!pending || !ready) return;
+    send(pending);
+    setPending("");
+  }, [pending, ready, send]);
+
   const onModelChange = useCallback(
     (id: string) => {
       const next = findModel(catalog.models, id);
-      if (!next) return;
+      if (!next || !providerId) return;
       setModel(next);
       storeModelId(providerId, id);
     },
@@ -141,10 +187,36 @@ export function WebAgent({ className, style, apiKey, provider: openOn }: WebAgen
     storeProviderId(id);
   }, []);
 
+  const onSaveKey = useCallback((id: string, key: string) => {
+    setKeys((current) => ({ ...current, [id]: key }));
+    storeApiKey(id, key);
+  }, []);
+
+  // Provider, model and key are all one picker in the composer, so this is the
+  // whole of what the surface knows about a provider. The picker asks for a key
+  // before it hands a keyed provider back, so `providerId` can always answer.
+  const providers = useMemo(
+    () =>
+      PROVIDERS.map((entry) => ({
+        hasKey: Boolean(keys[entry.id]),
+        id: entry.id,
+        keyed: !entry.free,
+        keyPlaceholder: entry.keyPlaceholder,
+        keyUrl: entry.keyUrl,
+        label: entry.label,
+        note: entry.free
+          ? `Free — ${entry.note}`
+          : entry.gateway
+            ? "Gateway — one key, many vendors"
+            : undefined,
+      })),
+    [keys],
+  );
+
   const agent = useMemo(
     () => ({
       name: runtime.name,
-      model: chat.model.name,
+      model: ready ? chat.model.name : undefined,
       instructions: SYSTEM_PROMPT,
       tools: runtime.agent.state.tools.map((tool) => ({
         name: tool.name,
@@ -152,146 +224,68 @@ export function WebAgent({ className, style, apiKey, provider: openOn }: WebAgen
         inputSchema: tool.parameters,
       })),
     }),
-    [chat.model, runtime],
+    [chat.model, ready, runtime],
   );
 
   // A catalog is a chunk: until it lands the agent still holds the last
   // provider's model, and a message sent now would go to the wrong place.
-  if (modelProvider !== providerId && catalog.loading) {
+  if (provider && modelProvider !== providerId && catalog.loading) {
     return (
-      <div className={className} style={sx(S.gate, style)}>
-        <div style={S.gateRow}>
+      <Frame actions={actions} className={className} style={style}>
+        <div style={S.wait}>
           <Spinner />
           <span style={u.muted}>Loading the {provider.label} models…</span>
         </div>
-      </div>
-    );
-  }
-
-  if ((!keys[providerId] && !provider.free) || editing) {
-    return (
-      <Settings
-        className={className}
-        keys={keys}
-        onSave={(key) => {
-          setKeys({ ...keys, [providerId]: key });
-          storeApiKey(providerId, key);
-          setEditing(false);
-        }}
-        onSelectProvider={onSelectProvider}
-        provider={provider}
-        style={style}
-      />
+      </Frame>
     );
   }
 
   return (
     <AgentChat
+      actions={actions}
       agent={agent}
       className={className}
+      emptyActions={emptyActions}
       error={chat.error ?? catalog.error}
       isStreaming={chat.isStreaming}
       messages={chat.messages}
-      modelId={chat.model.id}
+      modelId={ready ? chat.model.id : undefined}
       models={catalog.models}
       onDequeue={chat.dequeue}
-      onEditKey={() => setEditing(true)}
       onModelChange={onModelChange}
+      onPickerOpenChange={setAsking}
+      onProviderChange={onSelectProvider}
       onReset={chat.reset}
       onRespond={chat.respond}
-      onSend={chat.send}
+      onSaveKey={onSaveKey}
+      onSend={onSend}
       onStop={chat.stop}
-      providerLabel={provider.label}
+      pickerOpen={asking}
+      providerId={providerId}
+      providers={providers}
       queued={chat.queued}
       style={style}
-      usage={chat.usage}
+      usage={ready ? chat.usage : undefined}
     />
   );
 }
 
-interface SettingsProps {
-  provider: Provider;
-  keys: Record<string, string>;
-  onSelectProvider: (id: string) => void;
-  onSave: (key: string) => void;
+/** The box a non-chat view paints, with the host's chrome on top of it. */
+function Frame({
+  actions,
+  className,
+  children,
+  style,
+}: {
+  actions?: ComponentChildren;
   className?: string;
+  children: ComponentChildren;
   style?: Sx;
-}
-
-/**
- * Provider and key.
- *
- * The key goes straight from this page to the provider — every one listed
- * allows that — and is kept in this browser. A provider already set up keeps
- * its key, so switching back asks nothing. A free provider asks for nothing at
- * all; there the form only says what the limit is.
- */
-function Settings({ provider, keys, onSelectProvider, onSave, className, style }: SettingsProps) {
-  const [draft, setDraft] = useState(keys[provider.id] ?? "");
-
+}) {
   return (
-    <form
-      className={className}
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (provider.free) onSave("unused");
-        else if (draft.trim()) onSave(draft.trim());
-      }}
-      style={sx(S.gate, style)}
-    >
-      <span style={S.gateTitle}>Provider</span>
-      <div style={S.gateProviders}>
-        {PROVIDERS.map((entry) => (
-          <Button
-            key={entry.id}
-            onClick={() => {
-              onSelectProvider(entry.id);
-              setDraft(keys[entry.id] ?? "");
-            }}
-            size="sm"
-            title={
-              entry.free
-                ? `Free — ${entry.note}`
-                : entry.gateway
-                  ? "Gateway — one key, many vendors"
-                  : entry.label
-            }
-            type="button"
-            variant={entry.id === provider.id ? "default" : "outline"}
-          >
-            {entry.label}
-          </Button>
-        ))}
-      </div>
-
-      {provider.free ? (
-        <>
-          <span style={S.gateLabel}>{provider.label} needs no key</span>
-          <div style={S.gateRow}>
-            <Button type="submit">Start</Button>
-          </div>
-          <p style={u.muted}>Free, rate limited by IP address: {provider.note}</p>
-        </>
-      ) : (
-        <>
-          <span style={S.gateLabel}>{provider.label} API key</span>
-          <div style={S.gateRow}>
-            <Input
-              autoComplete="off"
-              onInput={(event) => setDraft((event.target as HTMLInputElement).value)}
-              placeholder={provider.keyPlaceholder}
-              type="password"
-              value={draft}
-            />
-            <Button type="submit">Save</Button>
-          </div>
-          <a href={provider.keyUrl} rel="noreferrer noopener" style={S.gateLink} target="_blank">
-            Get a key
-            <ExternalLinkIcon style={u.icon} />
-          </a>
-          <p style={u.muted}>Kept in this browser, and sent only to the provider you pick.</p>
-        </>
-      )}
-    </form>
+    <div className={className} style={sx(S.frame, style)}>
+      {actions ? <div style={S.frameBar}>{actions}</div> : null}
+      {children}
+    </div>
   );
 }

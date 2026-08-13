@@ -17,8 +17,10 @@ const S = {
   prompt: {
     width: "100%",
   },
+  // Never `overflow: hidden`: the footer holds the model picker, whose popover
+  // is an absolutely positioned child and would be clipped by the composer.
   promptGroup: {
-    overflow: "hidden",
+    overflow: "visible",
   },
   // Adds no box — the group lays the composer out.
   promptBody: {

@@ -1,7 +1,7 @@
 import { reactive } from "vue";
 
-/** `choose` is the box's opening state: neither surface is mounted yet. */
-export type ChatMode = "choose" | "live" | "demo";
+/** The surface in the box: the real loop, or the canned turns. */
+export type ChatMode = "live" | "demo";
 
 /**
  * The widget state, shared: the topbar and the catalog both open the chat, and
@@ -12,11 +12,11 @@ export type ChatMode = "choose" | "live" | "demo";
  */
 export const chat = reactive({
   // The box opens with the page: the widget is what this page exists to show.
-  // It opens on the chooser, so nothing starts a loop the visitor did not ask
-  // for — the live surface would go straight to the key gate.
+  // It opens on the live agent, which starts on no provider at all — the first
+  // message opens its picker. The demo is one button inside it.
   open: true,
   mounted: true,
-  mode: "choose" as ChatMode,
+  mode: "live" as ChatMode,
 });
 
 export function openChat(mode?: ChatMode) {
@@ -30,8 +30,8 @@ export function closeChat() {
 }
 
 /**
- * Live runs the real loop and asks for a key; demo replays the canned turns;
- * `choose` goes back to the picker, which drops whichever was running.
+ * Live runs the real loop; demo replays the canned turns. Switching drops
+ * whichever surface was up, transcript and all.
  */
 export function setChatMode(mode: ChatMode) {
   chat.mode = mode;

@@ -1,6 +1,6 @@
 // UI plus the agent loop. `AgentChat` still takes a `ViewMessage[]` from
 // anything; `createWebAgent` + `useAgent` are what the element drives it with.
-export { AgentChat, type AgentChatProps } from "@/components/agent-chat";
+export { AgentChat, type AgentChatProps } from "@/components/chat";
 export { WebAgent, type WebAgentProps } from "@/web-agent";
 export { defineWebAgent, WebAgentElement } from "@/element";
 // Styles are inline on every element. The one thing a host must declare is the

@@ -6,5 +6,5 @@
       "@/*": ["../src/*"]
     }
   },
-  "include": ["src", "src/**/*.vue", "test", "*.config.ts"]
+  "include": ["src", "src/**/*.vue", "*.config.ts"]
 }

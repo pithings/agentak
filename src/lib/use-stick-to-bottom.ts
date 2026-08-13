@@ -7,8 +7,13 @@ const THRESHOLD = 32;
  * Keeps a scroll container pinned to its newest content, and releases the pin
  * as soon as the user scrolls up. Replaces `use-stick-to-bottom`, which is
  * React-only.
+ *
+ * `follow` is what the region has to follow. Off, growing content no longer
+ * pulls the view down — an empty transcript has no newest message, so it reads
+ * from the top like any other page. `scrollToBottom` still works: it is the
+ * reader asking.
  */
-export function useStickToBottom() {
+export function useStickToBottom(follow = true) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -57,7 +62,7 @@ export function useStickToBottom() {
 
     // Instant, not smooth: tokens arrive faster than an animation settles.
     const observer = new ResizeObserver(() => {
-      if (stickRef.current) el.scrollTo({ behavior: "auto", top: el.scrollHeight });
+      if (follow && stickRef.current) el.scrollTo({ behavior: "auto", top: el.scrollHeight });
     });
     observer.observe(content);
 
@@ -65,7 +70,7 @@ export function useStickToBottom() {
       el.removeEventListener("scroll", sync);
       observer.disconnect();
     };
-  }, [stick]);
+  }, [follow, stick]);
 
   return { contentRef, isAtBottom, scrollRef, scrollToBottom };
 }

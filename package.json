@@ -33,6 +33,7 @@
     "build:extension": "pnpm --filter @web-agent/extension build",
     "preview": "pnpm --filter @web-agent/playground preview",
     "typecheck": "tsc --noEmit && pnpm --filter @web-agent/playground typecheck && tsc --noEmit -p extension",
+    "size": "node scripts/bundle.ts",
     "lint": "oxlint",
     "fmt": "oxfmt .",
     "test": "vitest"
@@ -54,6 +55,7 @@
     "obuild": "^0.4.38",
     "oxfmt": "^0.63.0",
     "oxlint": "^1.78.0",
+    "rolldown": "^1.2.3",
     "typescript": "^7.0.2",
     "vite": "^8.2.1",
     "vitest": "^4.1.10"

@@ -85,11 +85,14 @@ export type ConversationProps = WithSx<ComponentProps<"div">> & {
  * ConversationScrollButton can anchor to it.
  */
 export const Conversation = ({ style, children, pin, ...props }: ConversationProps) => {
-  const stick = useStickToBottom();
+  // No pin is nothing to follow — an empty region stays at the top, so what a
+  // host puts above the fold is what the reader sees first.
+  const stick = useStickToBottom(pin != null);
   const { scrollToBottom } = stick;
 
   // A new message brings the reader back down, wherever they had scrolled to.
   useEffect(() => {
+    if (pin == null) return;
     scrollToBottom("auto");
   }, [pin, scrollToBottom]);
 

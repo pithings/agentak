@@ -12,14 +12,19 @@ export interface CatalogState {
 /** One chunk per provider, fetched once for the life of the page. */
 const cache = new Map<string, AnyModel[]>();
 
-/** The models of one provider. */
-export function useCatalog(providerId: string): CatalogState {
+/** The models of one provider. Without one there is nothing to load. */
+export function useCatalog(providerId?: string): CatalogState {
   const [state, setState] = useState<CatalogState>(() => ({
-    models: cache.get(providerId) ?? [],
-    loading: !cache.has(providerId),
+    models: (providerId && cache.get(providerId)) || [],
+    loading: Boolean(providerId) && !cache.has(providerId as string),
   }));
 
   useEffect(() => {
+    if (!providerId) {
+      setState({ models: [], loading: false });
+      return;
+    }
+
     const cached = cache.get(providerId);
     if (cached) {
       setState({ models: cached, loading: false });

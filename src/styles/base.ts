@@ -201,8 +201,8 @@ export const tokens = `
  * it used to be one rule over every element, and inlining it everywhere would be
  * a property on all ~355 elements this library renders. It sits instead in the
  * ~56 style objects where a size and a padding or border meet on the same
- * element, which is the only place it changes a pixel. `styles.test.tsx` fails
- * on any element that pairs the two without it.
+ * element, which is the only place it changes a pixel. Nothing checks this — a
+ * size next to a padding needs the property written in by hand.
  *
  * A caller's own children get no reset, and no box-sizing either — they are
  * outside every component's reach. See AGENTS.md.
@@ -268,6 +268,9 @@ export const u = {
   mono: { fontFamily: "var(--wa-font-mono)" },
   fill: { height: "100%" },
   viewport: { height: "100dvh" },
+  // A box that lays out nothing of its own — a `<slot>` whose children must
+  // sit in the flex row around it.
+  contents: { display: "contents" },
 
   srOnly: {
     boxSizing: "border-box",

@@ -374,6 +374,23 @@ export const TrashIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const KeyIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m15.5 7.5 3 3L22 7l-3-3" />
+    <path d="m21 2-9.6 9.6" />
+    <circle cx="7.5" cy="15.5" r="5.5" />
+  </Icon>
+);
+
+export const PlugIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 22v-5" />
+    <path d="M9 8V2" />
+    <path d="M15 8V2" />
+    <path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z" />
+  </Icon>
+);
+
 /**
  * Runtime marker for the icons above. A component that renders `children` can
  * then size and colour a caller-passed icon without a prop reaching this
@@ -425,6 +442,8 @@ const ICONS: ((props: IconProps) => JSX.Element)[] = [
   ChevronsUpDownIcon,
   TerminalIcon,
   TrashIcon,
+  KeyIcon,
+  PlugIcon,
 ];
 for (const component of ICONS) (component as IconComponent).isIcon = true;
 

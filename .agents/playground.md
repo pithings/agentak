@@ -1,7 +1,7 @@
 # Playground and extension
 
-Two sub-packages that host the library. Both alias `@` to `../src` in their vite and
-vitest configs, so they run against the **source**: the page is where the library is
+Two sub-packages that host the library. Both alias `@` to `../src` in their vite
+configs, so they run against the **source**: the page is where the library is
 worked on, and the panel is where the element is hosted. The `web-agent` dependency in
 each `package.json` is the honest declaration of that; nothing resolves through it.
 
@@ -27,6 +27,7 @@ page a consumer would drop the element into.
 | `catalog.tsx`       | every component with fixture data, plus the lookups the routes use      |
 | `demo-chat.ts`      | the canned turns and the catalog fixtures; `autoStart` streams them     |
 | `demo-agent.tsx`    | `AgentChat` over the canned turns — no loop, no key                     |
+| `chat-actions.tsx`  | the page's own buttons — minimise, back to live, play the demo          |
 | `demo-elements.tsx` | the demo renderers, registered into the element registry                |
 | `demo-*.tsx`        | data-driven wrappers, so the demo drives compound elements from props   |
 
@@ -37,16 +38,27 @@ The page is vue; every component in the library is preact. They meet in
 neither patches the other's nodes. A catalog preview is one such island; the demo
 chat is another.
 
-The chatbox is not an island. It opens with the page, on a chooser — the third
-`ChatMode`, and the state it starts in, so neither surface runs until it is asked
-for and a visitor never lands on the key gate.
+The chatbox is not an island. It opens with the page on the **live** agent —
+`<web-agent>`, the custom element, so the agent runs behind a shadow root: none
+of the page's tailwind reaches in, and nothing of the agent reaches out. Only
+the `--wa-*` tokens cross, because a custom property inherits. That makes the
+widget the real host-page integration, and the one place to check the element
+before the extension ships it. A visitor chooses nothing up front: the first
+message opens the picker, and the free providers need no key.
 
-Live mode writes `<web-agent>`, the custom element, so the agent runs behind a
-shadow root: none of the page's tailwind reaches in, and nothing of the agent
-reaches out. Only the `--wa-*` tokens cross, because a custom property inherits.
-That makes the widget the real host-page integration, and the one place to check
-the element before the extension ships it. Demo mode mounts `DemoAgent` as an
-island instead, and `Switch` in the header goes back to the chooser.
+The demo is the other `ChatMode`, and not a state anything starts in: it is one
+**Play the demo** button under the greeting, which the element projects through
+`slot="empty"`. Taking it swaps the element for `DemoAgent`, an island over the
+canned turns that streams on mount; the arrow in that header goes back to live.
+Neither surface keeps its transcript across the swap.
+
+**One title bar.** The surface heads itself — context meter and new conversation in
+the header, model and provider in the composer, next to send — so the page puts no
+bar of its own over it. Minimise, back-to-live and the demo launcher are all
+`chat-actions.tsx`, preact components the page renders _into_ the surface: as light
+DOM under `slot="actions"` and `slot="empty"` for the element, and as the `actions`
+prop for the demo island — which needs no launcher of its own. `WebAgent` carries the actions
+through the catalog wait, so the box never loses its minimise button; the empty slot shows on the chat alone, and only before the first message.
 
 The panel hides with `v-show` rather than unmounting, so minimising keeps the
 transcript; changing mode does not. Escape minimises it as well, from inside the
@@ -61,6 +73,11 @@ so the bubble grows into the box and shrinks back out of it. The launcher is gon
 while the box is up, and the header chevron is what minimises it. Both transitions
 carry `motion-reduce:transition-none`.
 
+Under `sm` the panel leaves the corner: `max-sm:` turns it `fixed` and full width,
+a sheet on the bottom edge that scales from the bottom — a phone gets the whole
+width, with no gutter to eat the transcript. The library constrains no width of its
+own, so this is the host page's call and lives in the widget alone.
+
 `vite.config.ts` tells the vue compiler that `web-agent` is a custom element, else
 the template resolves it as a component and warns.
 
@@ -74,8 +91,8 @@ drift apart.
 
 Tailwind preflight applies to the page **and** to the preview islands, which the
 shadow root spares the widget. A component that forgets a reset can therefore look
-right in a card and wrong in the chat; `styles.test.tsx` is what catches the one
-case that matters, and the human checks the widget itself.
+right in a card and wrong in the chat. Nothing catches that — the human checks the
+widget itself.
 
 ### Adding an element to the demo
 
@@ -85,28 +102,17 @@ A port is not done until a human can see it in a browser.
    `src/components/elements.tsx` is for the names the loop itself emits.
 2. Add a canned reply in `demo-chat.ts` that renders it with realistic fixture data.
    The transcript carries it as a `{ kind: "element", name, props }` part, which
-   `agent-chat.tsx` looks up in the registry — so a new element needs no change to the
+   `chat/message.tsx` looks up in the registry — so a new element needs no change to the
    `ViewPart` union and no branch of its own.
 3. Interactive components get static props and no-op callbacks; the demo store holds no
    state for them. A compound element gets a `demo-*.tsx` wrapper, so the demo shape
    stays out of the shipped component.
 
-### Tests
+### Checks
 
-`playground/test/` is the `playground` project of the root `pnpm vitest run`; the
-library's own `test/` is the `lib` project. Three of them are cross-cutting:
-
-- `render.test.tsx` — renders every element from the demo fixtures, and asserts every
-  element name in `demo-chat.ts` resolves in the registry.
-- `styles.test.tsx` — box-sizing over every fixture and the chat. See
-  [components/styling.md](components/styling.md).
-- `app.test.ts` — mounts the vue page over a memory router: the sidebar lists every
-  entry, the `?q=` filter narrows both panes, a component page pages to its
-  neighbours, and the launcher opens the chatbox. It opens the box in demo mode —
-  live would start the loop.
-
-`entries.tsx` is the shared fixture: every catalog entry rendered at once, without
-the vue chrome, for the two preact tests above.
+The package has **no tests**. `pnpm vitest run` covers the library alone; the page is
+checked by a human in a real browser, which is what the catalog and the chatbox are
+for. Nothing automated watches the demo, so a broken fixture shows up on screen.
 
 `pnpm typecheck` runs `vue-tsc` for this package, so `.vue` scripts are checked too.
 vue-tsc cannot load typescript 7, so the package pins typescript 5.9 for itself; the

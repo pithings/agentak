@@ -782,7 +782,7 @@ export const CATALOG: CatalogSection[] = [
   {
     id: "surface",
     title: "Chat surface",
-    note: "what agent-chat renders",
+    note: "what the chat surface renders",
     dir: "src/components/ai-elements",
     entries: surface,
   },

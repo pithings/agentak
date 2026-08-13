@@ -23,7 +23,7 @@ import {
   type PopoverProps,
   type PopoverTriggerProps,
 } from "@/components/ui/popover";
-import { buttonSx } from "@/components/ui/button";
+import { buttonSx, type ButtonSize, type ButtonVariant } from "@/components/ui/button";
 import { useControllableState } from "@/lib/use-controllable-state";
 import { useInteraction } from "@/lib/use-interaction";
 import { CheckIcon, ChevronsUpDownIcon } from "@/lib/icons";
@@ -43,9 +43,9 @@ const S = {
   // PopoverContent as `style` to keep outranking it.
   modelSelectorContent: { boxSizing: "border-box", width: "20rem", padding: "0" },
   // The trigger renders `PopoverTrigger`, not `Button`, so its box comes from
-  // `buttonSx({ variant: "outline", size: "sm" })` (ui/button.tsx) plus the
-  // two properties Button does not set — `justifyContent`/`minWidth`/
-  // `maxWidth` fit a value-and-chevron layout rather than centred text.
+  // `buttonSx()` (ui/button.tsx) over the `variant`/`size` props, plus the
+  // properties Button does not set — `justifyContent`/`minWidth`/`maxWidth`
+  // fit a value-and-chevron layout rather than centred text.
   modelSelectorTrigger: {
     justifyContent: "space-between",
     gap: "0.375rem",
@@ -114,9 +114,20 @@ function ModelSelector({
   );
 }
 
-export type ModelSelectorTriggerProps = PopoverTriggerProps;
+export type ModelSelectorTriggerProps = PopoverTriggerProps & {
+  /** The button look, for a trigger that sits in a composer rather than a bar. */
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+};
 
-function ModelSelectorTrigger({ className, style, children, ...props }: ModelSelectorTriggerProps) {
+function ModelSelectorTrigger({
+  className,
+  style,
+  children,
+  variant = "outline",
+  size = "sm",
+  ...props
+}: ModelSelectorTriggerProps) {
   const { focusVisible, handlers, hovered } = useInteraction<HTMLButtonElement>(props);
 
   return (
@@ -124,7 +135,7 @@ function ModelSelectorTrigger({ className, style, children, ...props }: ModelSel
       className={className}
       data-slot="model-selector-trigger"
       style={sx(
-        buttonSx({ focusVisible, hasIcon: true, hovered, size: "sm", variant: "outline" }),
+        buttonSx({ focusVisible, hasIcon: true, hovered, size, variant }),
         S.modelSelectorTrigger,
         style,
       )}
@@ -165,12 +176,17 @@ function ModelSelectorValue({
 
 export type ModelSelectorContentProps = PopoverContentProps & {
   filter?: CommandFilter;
+  /** The filter text, controlled — for a caller that swaps the list under it. */
+  search?: string;
+  onSearchChange?: (search: string) => void;
 };
 
 function ModelSelectorContent({
   className,
   children,
   filter,
+  search,
+  onSearchChange,
   style,
   ...props
 }: ModelSelectorContentProps) {
@@ -187,10 +203,12 @@ function ModelSelectorContent({
     >
       <Command
         filter={filter}
+        onSearchChange={onSearchChange}
         onValueChange={(next) => {
           setValue(next);
           setOpen(false);
         }}
+        search={search}
         value={value}
       >
         {children}
@@ -213,9 +231,9 @@ const ModelSelectorList = (props: ModelSelectorListProps) => (
 
 export type ModelSelectorEmptyProps = ComponentProps<typeof CommandEmpty>;
 
-const ModelSelectorEmpty = (props: ModelSelectorEmptyProps) => (
+const ModelSelectorEmpty = ({ children, ...props }: ModelSelectorEmptyProps) => (
   <CommandEmpty data-slot="model-selector-empty" {...props}>
-    No models found.
+    {children ?? "No models found."}
   </CommandEmpty>
 );
 
@@ -225,16 +243,19 @@ const ModelSelectorGroup = (props: ModelSelectorGroupProps) => (
   <CommandGroup data-slot="model-selector-group" {...props} />
 );
 
-export type ModelSelectorItemProps = CommandItemProps;
+export type ModelSelectorItemProps = CommandItemProps & {
+  /** Overrides the tick, for a row that stands for something else. */
+  checked?: boolean;
+};
 
-function ModelSelectorItem({ children, value, ...props }: ModelSelectorItemProps) {
+function ModelSelectorItem({ children, checked, value, ...props }: ModelSelectorItemProps) {
   const { value: chosen } = useModelSelector("ModelSelectorItem");
-  const checked = chosen === value;
+  const ticked = checked ?? chosen === value;
 
   return (
-    <CommandItem data-slot="model-selector-item" value={value} {...props}>
+    <CommandItem data-checked={ticked} data-slot="model-selector-item" value={value} {...props}>
       {children}
-      <CheckIcon data-checked={checked} style={sx(u.icon, !checked && { visibility: "hidden" })} />
+      <CheckIcon data-checked={ticked} style={sx(u.icon, !ticked && { visibility: "hidden" })} />
     </CommandItem>
   );
 }

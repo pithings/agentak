@@ -35,7 +35,7 @@ pnpm build             # dist/ (obuild) + playground/dist
 pnpm build:lib         # dist/ alone
 pnpm build:extension   # extension/dist (load unpacked)
 pnpm typecheck         # tsc --noEmit; vue-tsc for the playground, `.vue` included
-pnpm vitest run        # projects `lib` and `playground`
+pnpm vitest run        # the library's tests; the playground has none
 pnpm lint              # oxlint
 pnpm fmt               # oxfmt
 ```
@@ -61,6 +61,14 @@ beside every bundle.
 | `web-agent/components` | `src/components/index.ts` | every built-in component, named                           |
 | `web-agent/pi`         | `src/agent/index.ts`      | the loop alone; the root re-exports the same set          |
 
+`<web-agent>` takes two slots, both light DOM. `slot="actions"` lands at the end of
+the chat header, so a host page puts its own chrome — minimise, and the like — on the
+one title bar the surface already has. `slot="empty"` lands under the greeting, for a
+suggestion or a launcher the host owns; it shows only before the first message.
+`WebAgent` takes the same as `actions` and `emptyActions`, and carries the actions
+through the catalog wait too — the one view that is not the chat. Provider, model and
+key are all the composer's picker, so there is no gate in front of the surface.
+
 `dist/` is the published library and nothing else — the playground builds into
 `playground/dist` and the extension into `extension/dist`, so `files: ["dist"]` needs
 no filtering.
@@ -78,7 +86,8 @@ src/
   index.ts / element.tsx / web-agent.tsx   package entry, custom element, container
   components/ui/                shadcn primitives, in preact
   components/ai-elements/       AI SDK Elements, in preact
-  components/agent-chat.tsx     the chat surface — transcript in, callbacks out
+  components/chat.tsx           the chat surface — transcript in, callbacks out
+  components/chat/              its rows: header, empty, message, queue, composer, picker
   components/elements.tsx       name -> renderer registry for `{ kind: "element" }` parts
   components/markdown.tsx       md4x AST -> preact
   styles/base.ts                `tokens`, `reset` presets, `u`, keyframe/option pairs
@@ -94,7 +103,8 @@ extension/                      MV3 side panel, `@web-agent/extension`
 ## Status
 
 The loop runs end to end against 9 providers with the page tools, 4 of them free and
-keyless, so a fresh page answers before anyone is asked for a key. Nothing is verified
+keyless. A fresh surface chooses nothing: the first message opens the picker, and a
+free provider is then one click and no key. Nothing is verified
 in a real browser yet — the element, markdown and the panel are written but untested
 there.
 

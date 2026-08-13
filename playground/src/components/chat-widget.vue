@@ -5,34 +5,63 @@ import { onBeforeUnmount, onMounted } from "vue";
 import { u } from "@/styles/base";
 // Defines `<web-agent>`. Side effect: import it, then write the tag.
 import "@/element";
-import { type ChatMode, chat, closeChat, openChat, setChatMode } from "../chat-store";
+import { ChatActions, StartDemo } from "../chat-actions";
+import { chat, closeChat, openChat, setChatMode } from "../chat-store";
 import { DemoAgent } from "../demo-agent";
 import PreactHost from "./preact-host.vue";
 
 /**
  * The in-page chatbox, the way a host page mounts one.
  *
- * It opens on a chooser, so neither surface starts until it is asked for. Live
- * is then the custom element: a shadow root, so nothing of this page's tailwind
- * reaches the agent and nothing of the agent reaches the page — the only thing
- * that crosses is the `--wa-*` tokens, which inherit. Demo is the same surface
- * over the canned turns, mounted as a plain preact island. `Switch` in the
- * header goes back to the chooser, which drops whichever was running.
+ * It opens on the live agent — the custom element, so the agent runs behind a
+ * shadow root: nothing of this page's tailwind reaches in and nothing of the
+ * agent reaches out, and the only thing that crosses is the `--wa-*` tokens,
+ * which inherit. The agent starts on no provider: the first message
+ * opens its picker, where the free ones need no key.
+ *
+ * The demo is not a mode a visitor lands on. It is one button under the
+ * greeting, and taking it swaps the element for `DemoAgent` — the same surface
+ * over the canned turns, mounted as a plain preact island, streaming on mount.
+ *
+ * **One title bar.** The surface heads itself — the context meter and a new
+ * conversation in the header, the model and the provider in the composer — so
+ * the page puts no second bar over it. The page's own buttons go *into* that
+ * header, and its demo launcher into the empty state: light DOM under
+ * `slot="actions"` and `slot="empty"` for the element, the matching props for
+ * the demo island.
  *
  * The panel hides rather than unmounts, so minimising keeps the transcript.
+ * Switching surface does not — each holds its own.
  *
  * The launcher and the panel share the bottom-right corner: the button is the
  * one element in flow, the panel is absolute over it, and both scale from that
  * corner. So the bubble grows into the box and shrinks back out of it, and the
  * launcher is gone while the box is up — the header minimises it instead.
+ *
+ * Under `sm` the panel leaves that corner: it goes `fixed` across the viewport,
+ * a sheet on the bottom edge, and scales from the bottom instead. The launcher
+ * keeps its corner — it is never on screen at the same time.
  */
-const demo = () => h(DemoAgent, { autoStart: true, style: u.fill });
+const playDemo = () => setChatMode("demo");
+const goLive = () => setChatMode("live");
 
-const SUBTITLE: Record<ChatMode, string> = {
-  choose: "Pick a surface to open",
-  live: "Live — your key, your provider",
-  demo: "Demo — canned turns",
-};
+// Stable factories: `PreactHost` remounts its island when the prop changes.
+const liveActions = () => h(ChatActions, { onClose: closeChat });
+const liveEmpty = () => h(StartDemo, { onStart: playDemo });
+
+const demo = () =>
+  h(DemoAgent, {
+    actions: h(ChatActions, { onClose: closeChat, onLive: goLive }),
+    autoStart: true,
+    style: u.fill,
+  });
+
+// The box grows with the screen rather than sitting at one size: the `clamp` is
+// the desktop range — a small laptop gets the floor, a wide monitor the ceiling.
+// Under `sm` it stops being a floating box and becomes a sheet: the phone gets
+// the whole width, so a gutter never eats a line of the transcript.
+const box =
+  "h-[min(clamp(28rem,72dvh,44rem),calc(100dvh-7rem))] w-[min(clamp(23rem,30vw,32rem),calc(100vw-2rem))] max-sm:h-[85dvh] max-sm:w-full";
 
 /**
  * Escape minimises the box, from the page and from inside the agent alike — a
@@ -60,82 +89,21 @@ onBeforeUnmount(() => globalThis.removeEventListener("keydown", onKey));
       <section
         v-if="chat.mounted"
         v-show="chat.open"
-        class="absolute right-0 bottom-0 flex h-[min(34rem,calc(100dvh-8rem))] w-[min(23rem,calc(100vw-2rem))] origin-bottom-right flex-col overflow-hidden rounded-2xl border border-line bg-page shadow-2xl"
+        :class="box"
+        class="absolute right-0 bottom-0 flex origin-bottom-right flex-col overflow-hidden rounded-xl border border-line bg-page shadow-2xl max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:origin-bottom max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0"
         aria-label="Assistant"
       >
-        <header class="flex items-center gap-2 border-b border-line bg-surface px-3 py-2">
-          <span class="grid size-7 place-items-center rounded-full bg-brand text-brand-ink">
-            <svg
-              viewBox="0 0 24 24"
-              class="size-3.5"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <rect x="4" y="8" width="16" height="11" rx="3" />
-              <path d="M12 4v4M9 13h.01M15 13h.01" stroke-linecap="round" />
-            </svg>
-          </span>
-          <div class="min-w-0">
-            <p class="text-[0.8125rem] leading-4 font-semibold">Assistant</p>
-            <p class="truncate text-[0.6875rem] text-soft">{{ SUBTITLE[chat.mode] }}</p>
+        <!-- Light DOM: the element places these — the header, and the empty state. -->
+        <web-agent v-if="chat.mode === 'live'" class="block min-h-0 flex-1">
+          <div slot="actions" class="contents">
+            <PreactHost class="contents" :preview="liveActions" />
           </div>
-
-          <div class="ml-auto flex items-center gap-1">
-            <button
-              v-if="chat.mode !== 'choose'"
-              type="button"
-              class="rounded border border-line px-1.5 py-1 text-[0.6875rem] text-soft hover:bg-fill hover:text-ink"
-              @click="setChatMode('choose')"
-            >
-              Switch
-            </button>
-            <button
-              type="button"
-              class="rounded p-1 text-soft hover:bg-fill hover:text-ink"
-              aria-label="Minimise the assistant"
-              @click="closeChat()"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                class="size-4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
+          <div slot="empty" class="contents">
+            <PreactHost class="contents" :preview="liveEmpty" />
           </div>
-        </header>
+        </web-agent>
 
-        <div class="min-h-0 flex-1">
-          <div v-if="chat.mode === 'choose'" class="flex h-full flex-col justify-center gap-2 p-4">
-            <button
-              type="button"
-              class="rounded-xl border border-line p-3 text-left hover:bg-fill"
-              @click="setChatMode('live')"
-            >
-              <span class="block text-[0.8125rem] font-medium">Live agent</span>
-              <span class="mt-0.5 block text-[0.6875rem] text-soft">
-                The real loop over this page. Asks for a provider key, kept in this browser.
-              </span>
-            </button>
-            <button
-              type="button"
-              class="rounded-xl border border-line p-3 text-left hover:bg-fill"
-              @click="setChatMode('demo')"
-            >
-              <span class="block text-[0.8125rem] font-medium">Demo</span>
-              <span class="mt-0.5 block text-[0.6875rem] text-soft">
-                The canned turns, streamed. No key, and every ported element on show.
-              </span>
-            </button>
-          </div>
-
-          <web-agent v-else-if="chat.mode === 'live'" class="block h-full w-full" />
-          <PreactHost v-else class="h-full" :preview="demo" />
-        </div>
+        <PreactHost v-else class="min-h-0 flex-1" :preview="demo" />
       </section>
     </Transition>
 

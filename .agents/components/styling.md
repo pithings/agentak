@@ -116,10 +116,9 @@ subcomponent each.
 
 ## What the checks catch, and what they do not
 
-- **`playground/test/styles.test.tsx`** renders every catalog fixture and the chat, and fails on
-  any element that pairs a real size with a real padding or border and no
-  `box-sizing: border-box`. It cannot see a size a **caller** passes as `style` onto a
-  padded primitive.
+- **Nothing checks box-sizing.** An element that pairs a real size with a real padding
+  or border and no `box-sizing: border-box` fails in the browser alone — the playground
+  carries no tests, so the human catches it in the page.
 - **`ships no stylesheet`**, in `test/eject.test.ts`, globs the components for a
   `*Styles` export and fails if one comes back.
 - **Nothing catches an inverted `sx()` argument.** A state object merged before the

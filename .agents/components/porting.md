@@ -22,9 +22,9 @@ index endpoint: the component list comes from
    See [playground.md](../playground.md).
 6. **Drop what needs a new package**, and say so in the file, so the choice is
    deliberate and reversible.
-7. **Check.** `pnpm typecheck`, `pnpm vitest run`, `pnpm lint`, `pnpm fmt`. The
-   cross-cutting tests only see what they render, so add a render test for anything the
-   chat does not yet mount.
+7. **Check.** `pnpm typecheck`, `pnpm vitest run`, `pnpm lint`, `pnpm fmt`. Tests live
+   in the library's `test/` alone, so add one there for anything worth pinning; the
+   page itself is checked by hand.
 
 `src/index.ts` exports the shell, not single elements, so a port needs no barrel
 change; `src/components/index.ts` is the named export of every built-in.

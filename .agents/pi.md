@@ -67,11 +67,29 @@ provider each (Google, Mistral).
 A key is stored per provider, so switching back to one already set up asks nothing.
 `getApiKey(provider)` is how pi asks for the right one.
 
+**One picker, three levels.** Provider, model and key are all `chat/picker.tsx`, the
+`model-selector` in the composer. Nothing else chooses any of them: there is no key
+screen and no provider screen, and the chat is the only view `WebAgent` has apart from
+the catalog wait.
+
+**Nothing is chosen on a fresh surface** — no provider, and so no model. The first
+message opens the panel instead of going to a provider nobody picked; the text is held
+and sent as soon as one can answer. `storedProviderId()` is what a second visit opens
+on, so the question is asked once.
+
+The panel opens on the models of the chosen provider, with a strip under the search
+input that goes back to the providers — outside the list, so the filter cannot hide the
+way back. Picking a model assigns `agent.state.model`. Picking a provider that has no
+key opens the key level for it, and the provider changes only once the key is saved, so
+`providerId` always names a provider that can answer. That is why `WebAgent` falls back
+to the free default when a stored provider has lost its key. The **Key** button on the
+strip reopens that level for a provider already set up.
+
 ### The free four
 
-`free: true` means the endpoint answers an anonymous request. The gate is skipped, the
-picker opens on LLM7, and a page can answer before anyone is asked for anything. They
-are rate limited by IP address, and `Provider.note` says how much.
+`free: true` means the endpoint answers an anonymous request: the picker takes it on
+the click, with no key level in between. They are rate limited by IP address, and
+`Provider.note` says how much.
 
 pi-ai carries no catalog for them, so `free-models.ts` writes one each: only chat models
 that stream and take tools, priced at zero. Two shapes of "no key":
@@ -93,20 +111,20 @@ a line to delete.
 
 ## What feeds each element
 
-| Element                             | Source                                                                  |
-| ----------------------------------- | ----------------------------------------------------------------------- |
-| `conversation`, `message`, markdown | `user` / `assistant` text content                                       |
-| `reasoning`                         | `thinking` blocks; `redacted` renders a note instead                    |
-| `tool`                              | `toolCall` + `tool_execution_*` + the `toolResult` that answers it      |
-| `code-block`                        | tool output, and markdown fences                                        |
-| `confirmation`                      | `beforeToolCall`, parked on a promise the buttons resolve               |
-| `queue`                             | `agent.steer()` — a message typed mid-turn                              |
-| `context`                           | `usage` of the last turn, cost summed over all of them                  |
-| `model-selector`                    | the current provider's catalog; picking one assigns `agent.state.model` |
-| `agent`                             | the system prompt and `agent.state.tools`, in the empty state           |
-| `image`                             | `ImageContent` in a user message or a tool result                       |
-| `shimmer`                           | streaming, before the first block of the turn arrives                   |
-| `checkpoint`                        | `compactionSummary` / `branchSummary` messages                          |
+| Element                             | Source                                                             |
+| ----------------------------------- | ------------------------------------------------------------------ |
+| `conversation`, `message`, markdown | `user` / `assistant` text content                                  |
+| `reasoning`                         | `thinking` blocks; `redacted` renders a note instead               |
+| `tool`                              | `toolCall` + `tool_execution_*` + the `toolResult` that answers it |
+| `code-block`                        | tool output, and markdown fences                                   |
+| `confirmation`                      | `beforeToolCall`, parked on a promise the buttons resolve          |
+| `queue`                             | `agent.steer()` — a message typed mid-turn                         |
+| `context`                           | `usage` of the last turn, cost summed over all of them             |
+| `model-selector`                    | providers, then the chosen one's catalog — see Providers           |
+| `agent`                             | the system prompt and `agent.state.tools`, in the empty state      |
+| `image`                             | `ImageContent` in a user message or a tool result                  |
+| `shimmer`                           | streaming, before the first block of the turn arrives              |
+| `checkpoint`                        | `compactionSummary` / `branchSummary` messages                     |
 
 The other ported elements have no source in pi: `plan`, `task` and `chain-of-thought`
 need a todo tool, `sources` and `inline-citation` a search tool, `file-tree` a listing

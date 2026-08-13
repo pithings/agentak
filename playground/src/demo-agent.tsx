@@ -1,4 +1,6 @@
-import { AgentChat } from "@/components/agent-chat";
+import type { ComponentChildren } from "preact";
+
+import { AgentChat } from "@/components/chat";
 import type { Sx } from "@/styles/sx";
 
 import { useDemoChat } from "./demo-chat";
@@ -14,16 +16,20 @@ export function DemoAgent({
   className,
   style,
   autoStart,
+  actions,
 }: {
   className?: string;
   style?: Sx;
   /** Stream every canned turn on mount. */
   autoStart?: boolean;
+  /** Host chrome for the end of the header — see `chat-actions.tsx`. */
+  actions?: ComponentChildren;
 }) {
   const chat = useDemoChat({ autoStart });
 
   return (
     <AgentChat
+      actions={actions}
       className={className}
       isStreaming={chat.isStreaming}
       messages={chat.messages}
