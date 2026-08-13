@@ -1,33 +1,36 @@
 # agentak
 
-Standalone agent chat surface (`AgentChat`) + Chrome MV3 side panel, over
-[`@earendil-works/pi-agent-core`](https://www.npmjs.com/package/@earendil-works/pi-agent-core).
+Agentak provides a standalone chat UI (`AgentChat`) and a Chrome MV3 side panel. It uses
+[`@earendil-works/pi-agent-core`](https://www.npmjs.com/package/@earendil-works/pi-agent-core)
+for the included agent.
 
-A pnpm workspace: the library at the root, the dev page in `playground/`, the panel
-in `extension/`. Both sub-packages alias `@` to `../src`, so they import the library
-**source**, not `dist`.
+This is a pnpm workspace. The library is in the repository root, the development page is
+in `playground/`, and the browser extension is in `extension/`. Both sub-packages map `@`
+to `../src`, so they import the library source instead of `dist`.
 
 ## Stack
 
-- obuild (library) / vite (playground, extension)
-- preact
-- shadcn + AI SDK Elements components, ported to preact
-- library styles as inline style objects in typescript — no stylesheet ships
-- vue 3 + vue-router + tailwind v4, in the playground page only — the host app
-  around the library, never inside it
-- pi-agent-core + pi-ai
+- obuild for the library
+- Vite for the playground and extension
+- Preact
+- shadcn and AI SDK Elements components ported to Preact
+- Inline TypeScript style objects for the library; no stylesheet is included
+- Vue 3, Vue Router, and Tailwind CSS v4 for the playground host only
+- pi-agent-core and pi-ai
 
 ## Conventions
 
-- Native typescript, explicit `.ts` / `.tsx` imports, `@/` for source paths
-- Simplified Technical English
-- Prefer simplicity and minimalism in design
-- Comments ONLY for important notes, keep them short
-- Never e2e test — the human in the loop tests in a real browser
+- Use standard TypeScript with explicit `.ts` and `.tsx` import extensions.
+- Use `@/` for paths inside `src/`.
+- Write in Simplified Technical English.
+- Keep the design simple and minimal.
+- Only add comments when they explain something important. Keep them short.
+- Do not write or run end-to-end tests. A person tests the project in a real browser.
 
 ## Commands
 
-Run from the repo root; the playground and extension scripts delegate.
+Run these commands from the repository root. The playground and extension commands call
+their package scripts for you.
 
 ```sh
 pnpm dev               # playground on http://localhost:4050
@@ -42,128 +45,149 @@ pnpm fmt               # oxfmt
 
 ## Extended docs
 
-| File                                             | What                                                          |
-| ------------------------------------------------ | ------------------------------------------------------------- |
-| [`.agents/components.md`](.agents/components.md) | start here for the UI — the rules, and a map of `components/` |
-| [`.agents/components/`](.agents/components/)     | styling, the primitives, porting an element, markdown         |
-| [`.agents/session.md`](.agents/session.md)       | `ChatSession` — the seam between the surface and a harness    |
-| [`.agents/pi.md`](.agents/pi.md)                 | the agent loop, providers, tools, transcript                  |
-| [`.agents/playground.md`](.agents/playground.md) | the dev page and the extension package                        |
+| File                                             | Description                                             |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| [`.agents/components.md`](.agents/components.md) | UI rules and a guide to `components/`                   |
+| [`.agents/components/`](.agents/components/)     | Styling, primitives, component ports, and Markdown      |
+| [`.agents/session.md`](.agents/session.md)       | The `ChatSession` interface between the UI and an agent |
+| [`.agents/pi.md`](.agents/pi.md)                 | The agent loop, providers, tools, and transcript        |
+| [`.agents/playground.md`](.agents/playground.md) | The development page and browser extension              |
+
+Start with [`.agents/components.md`](.agents/components.md) for UI work.
 
 ## Exports
 
-Six entries, one bundle each; `build.config.ts` lists them. `.d.mts` is emitted
-beside every bundle, and the shared code lands in `dist/_chunks`. Nothing in the
-package has a side effect — `sideEffects: false`.
+The package has six entry points, and each one builds into its own bundle. They are listed
+in `build.config.ts`. Each bundle has a matching `.d.mts` file, while shared code is placed
+in `dist/_chunks`. The package declares `sideEffects: false`.
 
-| Subpath              | Entry                     | What                                          |
+| Subpath              | Entry                     | Exports                                       |
 | -------------------- | ------------------------- | --------------------------------------------- |
 | `agentak`            | `src/index.ts`            | `Chat`, `AgentChat`, `mount()`, `ChatSession` |
-| `agentak/components` | `src/components/index.ts` | every built-in component, named               |
-| `agentak/pi`         | `src/pi/index.ts`         | the loop — `createPiSession()` and its parts  |
-| `agentak/preact`     | `src/preact/index.tsx`    | `AgentakChat` — the chat, as a preact element |
-| `agentak/react`      | `src/react/index.ts`      | the same, in react                            |
-| `agentak/vue`        | `src/vue/index.ts`        | the same, in vue                              |
+| `agentak/components` | `src/components/index.ts` | All included components as named exports      |
+| `agentak/pi`         | `src/pi/index.ts`         | `createPiSession()` and lower-level Pi APIs   |
+| `agentak/preact`     | `src/preact/index.tsx`    | `AgentakChat` for Preact                      |
+| `agentak/react`      | `src/react/index.ts`      | `AgentakChat` for React                       |
+| `agentak/vue`        | `src/vue/index.ts`        | `AgentakChat` for Vue                         |
 
-**`agentak/pi` is the only entry that loads a loop.** Every other one — the root, the
-components, and all three framework wrappers — takes a `ChatSession` as a prop, so a
-host names its harness itself and pi is in a bundle because somebody imported it. See
-[`.agents/session.md`](.agents/session.md) for the interface and the guard test.
+Only `agentak/pi` loads the included agent loop. The root entry, component entry, and
+framework wrappers all require a `ChatSession`. This lets the host choose its own agent and
+keeps Pi out of bundles that do not import `agentak/pi`. See
+[`.agents/session.md`](.agents/session.md) for the interface and its import-graph test.
 
-**The framework entries are the surface, mounted the host's way.** `AgentakChat` is
-`AgentChat` plus two things a host would otherwise write itself: one element to size
-with `class`/`style`, and `injectTokens()` on mount. `session` is required on it, as it
-is on `AgentChat`, and no wrapper disposes one — it never made the object.
-`src/wrap.ts` is the shared half: the props, `chatProps()` and `mountChat()`. Preact
-renders `AgentChat` directly; react and vue own one div that preact fills, and neither
-patches the other's nodes. `actions` and `emptyActions` stay **preact** children in all
-three: the surface is preact wherever it is mounted, so a react or vue host builds them
-with `h()`. `react` and `vue` are optional peers, so neither has to be installed, and
-the import graph test keeps each one inside its own wrapper.
+### Framework wrappers
 
-`AgentChat` takes `actions` and `emptyActions` beside the `session` that runs it.
-`actions` lands at the end of the chat header, so a host puts its own chrome —
-minimise, and the like — on the one title bar the surface already has. `emptyActions`
-lands under the greeting, for a suggestion or a launcher the host owns; it shows only
-before the first message. Provider, model, thinking level and key are all the composer's
-picker — the pi session's, so a host harness that carries no providers gets no provider
-level, and a model that cannot reason gets no thinking level — so the chat is the only
-view there is, with no gate in front of it and no screen to swap to.
+`AgentakChat` wraps `AgentChat` with the two things a framework host usually needs:
 
-The header names the conversation after the first message. `generateTitle` asks the
-model for the name instead, once, after the first answer lands; it is one extra request,
-so it is off unless a host opts in, and a failure leaves the first-message title
-standing. It reaches the session through `setOptions()`, so changing the prop keeps the
-transcript. `Chat` takes the finished string as `title`. See `src/pi/title.ts`.
+1. An element that accepts `class` or `style` and sets the chat size.
+2. A call to `injectTokens()` when the component mounts.
 
-**There is no shadow root.** The surface renders into whatever element the host gives
-it, so a host page's stylesheet reaches it. Inline styles outrank every rule, which is
-what holds the look together; what a page can still reach is what no element carries
-inline — inherited text, and a caller's own children.
+A `session` is required for both `AgentakChat` and `AgentChat`. The wrappers never dispose
+of a session because they did not create it.
 
-`dist/` is the published library and nothing else — the playground builds into
-`playground/dist` and the extension into `extension/dist`, so `files: ["dist"]` needs
-no filtering.
+`src/wrap.ts` contains the shared props, `chatProps()`, and `mountChat()`. The Preact wrapper
+renders `AgentChat` directly. The React and Vue wrappers each render one `<div>`, then let
+Preact render inside it. React or Vue owns the outer element, and Preact owns its children.
+The renderers do not update each other's nodes.
 
-Build notes: rolldown reads `tsconfig.json`, so `jsxImportSource: "preact"` and the
-`@/*` paths apply with no build config — the react wrapper therefore writes no JSX and
-calls `createElement` itself, and no react runtime can reach any other bundle. Every
-dependency and optional peer is external, so the bundles carry source alone and the lazy `import()`s
-(`md4x/standalone`, `pi-ai/api/*`, `pi-ai/providers/*.models`) stay lazy for the
-consumer's bundler. `platform: "browser"` is the one hand-set option.
+`actions` and `emptyActions` are Preact children in every wrapper. React and Vue hosts must
+create them with Preact's `h()`. React and Vue are optional peer dependencies, and the
+import-graph tests make sure each framework is only imported by its own wrapper.
+
+### Chat behavior
+
+`AgentChat` receives `actions` and `emptyActions` with its required `session` prop.
+`actions` appears at the end of the chat header. Use it for host controls such as a
+minimize button. `emptyActions` appears below the greeting and is only shown before the
+first message.
+
+The provider, model, thinking level, and API key are all selected in the composer picker.
+These choices come from the Pi session. A custom session without providers does not show
+the provider level. A model without reasoning support does not show a thinking-level
+choice. The chat has no separate setup page.
+
+The first user message becomes the default conversation title. If `generateTitle` is
+true, the model creates a title after the first answer. This uses one extra request and is
+disabled by default. If the request fails, the first-message title stays in place.
+`AgentChat` sends changes to the session through `setOptions()`, so the prop can change
+without resetting the transcript. `Chat` receives the final string through its `title`
+prop. See `src/pi/title.ts`.
+
+### Styles and builds
+
+Agentak does not use a shadow root. It renders into the element supplied by the host, so
+styles from the host page can reach the chat. Inline styles protect most of the built-in
+appearance. The host can still affect inherited text styles and any children that it
+provides.
+
+Only the published library goes into `dist/`. The playground builds to `playground/dist`,
+and the extension builds to `extension/dist`. Because of this layout, `files: ["dist"]`
+does not need extra filtering.
+
+Rolldown reads `tsconfig.json`, so `jsxImportSource: "preact"` and the `@/*` paths work
+without duplicate build settings. The React wrapper does not use JSX. It calls
+`createElement()` so the React runtime cannot enter another bundle.
+
+All dependencies and optional peer dependencies are external. The bundles contain the
+project source, while lazy imports such as `md4x/standalone`, `pi-ai/api/*`, and
+`pi-ai/providers/*.models` stay lazy for the consumer's bundler. The only manually set
+platform option is `platform: "browser"`.
 
 ## Layout
 
-```
+```text
 src/
-  index.ts / agent-chat.tsx     package entry, and the container a host mounts
-  session.ts                    `ChatSession` — what the surface asks of a harness
-  wrap.ts                       what the three framework wrappers share
-  preact/ react/ vue/           `AgentakChat` — the surface, as a host's element
-  components/ui/                shadcn primitives, in preact
-  components/ai-elements/       AI SDK Elements, in preact
-  components/chat.tsx           the chat surface — transcript in, callbacks out
-  components/chat/              its rows: header, empty, message, queue, composer, picker
-  components/elements.tsx       name -> renderer registry for `{ kind: "element" }` parts
-  components/markdown.tsx       md4x AST -> preact
-  styles/base.ts                `tokens`, `reset` presets, `u`, keyframe/option pairs
-  styles/inject.ts              `injectTokens()` — the tokens, declared once
-  styles/sx.ts                  `Sx`, `WithSx`, `sx()` — merges caller-last
-  lib/                          icons, markdown loader, hooks (interaction, animation, …)
-  pi/                           the pi loop — see .agents/pi.md
-  types.ts                      UI types, inlined from the `ai` package
-test/                           library tests, importing source through `@/`
-playground/                     vue host app, `@agentak/playground`
-extension/                      MV3 side panel, `@agentak/extension`
+  index.ts / agent-chat.tsx     Package entry and the container mounted by a host
+  session.ts                    `ChatSession`, used by the UI to talk to an agent
+  wrap.ts                       Shared code for the three framework wrappers
+  preact/ react/ vue/           `AgentakChat` wrappers for each framework
+  components/ui/                shadcn primitives ported to Preact
+  components/ai-elements/       AI SDK Elements ported to Preact
+  components/chat.tsx           Chat UI with transcript input and callbacks
+  components/chat/              Header, empty state, messages, queue, composer, picker
+  components/elements.tsx       Renderer map for `{ kind: "element" }` parts
+  components/markdown.tsx       md4x AST rendered with Preact
+  styles/base.ts                `tokens`, reset presets, `u`, and animation settings
+  styles/inject.ts              `injectTokens()`, which adds the tokens once
+  styles/sx.ts                  `Sx`, `WithSx`, and `sx()` with caller styles last
+  lib/                          Icons, Markdown loader, and interaction hooks
+  pi/                           Included Pi agent; see `.agents/pi.md`
+  types.ts                      UI types copied from the `ai` package
+test/                           Library tests that import source through `@/`
+playground/                     Vue host app, package name `@agentak/playground`
+extension/                      MV3 side panel, package name `@agentak/extension`
 ```
 
-## Status
+## Current status
 
-The loop runs end to end against 9 providers with the page tools, 4 of them free and
-keyless. A fresh surface chooses nothing: the first message opens the picker, and a
-free provider is then one click and no key. Two of the nine — Kilo and OpenCode Zen —
-answer no CORS preflight, so a page is offered 7 and the extension all 9; see
-[`.agents/pi.md`](.agents/pi.md). Nothing is verified
-in a real browser yet — the surface, markdown and the panel are written but untested
-there.
+The agent works end to end with 9 providers and the page tools. Four providers are free
+and do not need an API key. A new chat starts without a provider. The first message opens
+the picker, and a free provider can be selected with one click.
 
-The loop is behind `ChatSession`, so the surface and the harness are separate packages
-of code in one repo: pi is reachable from `agentak/pi` alone, and a host can bring
-another harness. [`.agents/session.md`](.agents/session.md).
+Kilo and OpenCode Zen do not answer CORS preflight requests. Regular web pages therefore
+show 7 providers, while the extension shows all 9. See
+[`.agents/pi.md`](.agents/pi.md). The chat UI, Markdown renderer, and side panel have not
+yet been tested in a real browser.
 
-Next:
+`ChatSession` keeps the chat UI separate from the agent implementation. Pi is only
+available through `agentak/pi`, and a host can provide a different session. See
+[`.agents/session.md`](.agents/session.md).
 
-1. Extension `PageBridge` over `chrome.scripting.executeScript` against the active tab.
-   `documentBridge()` reads the side panel's own document today, which is empty. It is a
-   `page` option on `createPiSession()` in `extension/panel.tsx` — the session is the
-   only place the panel differs from a page.
-2. Extension key storage: `chrome.storage` instead of `localStorage`, passed as `apiKey`
-   to the same call.
-3. Verify the surface in a host page, and the loop against a real key. The playground
-   chatbox is `agentak/vue`, which is what a consumer writes, so the page checks the
-   wrapper and the surface at once — including what the page's tailwind preflight now
-   reaches, with no shadow root in between.
-4. Compaction. pi exports `compact()`, but it needs a `Models` store and the harness's
-   own `Entry[]`, so a long conversation still runs into the window. The warning half is
-   in: the context meter turns amber at `shouldCompact()`, which is pure and needs
-   neither — see `pi/transcript.ts`.
+### Next tasks
+
+1. **Read the active tab from the extension.** Add a `PageBridge` that uses
+   `chrome.scripting.executeScript`. `documentBridge()` currently reads the side panel's
+   empty document. Pass the new bridge through the `page` option of `createPiSession()` in
+   `extension/panel.tsx`. This session option should be the only difference between the
+   extension and a regular page.
+2. **Store extension keys with Chrome storage.** Replace `localStorage` with
+   `chrome.storage`, then pass the stored keys through the same `apiKey` option.
+3. **Test the UI in a real browser.** Test the chat inside a host page and test the agent
+   with a real API key. The playground uses `agentak/vue`, just like a consumer would. It
+   tests the Vue wrapper and chat UI together, including how Tailwind's preflight styles
+   reach the chat without a shadow root.
+4. **Add conversation compaction.** Pi exports `compact()`, but it needs a `Models` store
+   and the session's own `Entry[]`. Long conversations can still reach the context limit.
+   The warning is already implemented: the context meter turns amber when
+   `shouldCompact()` returns true. This helper needs neither dependency. See
+   `pi/transcript.ts`.
