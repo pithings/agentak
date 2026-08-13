@@ -4,10 +4,10 @@ import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 
-import { createAgent } from "@/agent/create-agent";
-import { documentBridge, type PageBridge } from "@/agent/page-bridge";
-import type { AnyModel } from "@/agent/providers";
-import { useAgent } from "@/agent/use-agent";
+import { createAgent } from "@/pi/create-agent";
+import { documentBridge, type PageBridge } from "@/pi/page-bridge";
+import type { AnyModel } from "@/pi/providers";
+import { useAgent } from "@/pi/use-agent";
 import type { ViewToolPart } from "@/types";
 
 const turn = (content: AssistantMessage["content"], stopReason: StopReason): AssistantMessage => ({

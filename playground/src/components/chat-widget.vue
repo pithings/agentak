@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { h } from "preact";
-import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from "vue";
 
-import { AgentChat } from "@/agent-chat";
-import { createPiSession } from "@/agent/session";
+import { createPiSession } from "@/pi/session";
 import type { ChatSession } from "@/session";
 import { u } from "@/styles/base";
+import { AgentakChat } from "@/vue";
 import { ChatActions, StartDemo } from "../chat-actions";
 import { chat, closeChat, openChat, setChatMode } from "../chat-store";
 import { DemoAgent } from "../demo-agent";
@@ -14,11 +14,13 @@ import PreactHost from "./preact-host.vue";
 /**
  * The in-page chatbox, the way a host page mounts one.
  *
- * It opens on the live agent — `AgentChat` over a pi session, mounted as a
- * preact island like every other piece of the library on this page. The page's
- * tokens reach it by inheritance, and the page's tailwind preflight reaches it
- * too: there is no shadow root between them. The agent starts on no provider:
- * the first message opens its picker, where the free ones need no key.
+ * It opens on the live agent — `AgentakChat` from `agentak/vue`, the surface as
+ * a vue element, over a pi session this page makes and ends itself. The wrapper
+ * carries no loop, so `createPiSession()` below is the one import that brings
+ * one. The page's tokens reach the surface by inheritance, and the page's
+ * tailwind preflight reaches it too: there is no shadow root between them. The
+ * agent starts on no provider: the first message opens its picker, where the
+ * free ones need no key.
  *
  * The demo is not a mode a visitor lands on. It is one button under the
  * greeting, and taking it swaps the island for `DemoAgent` — the same surface
@@ -59,43 +61,45 @@ import PreactHost from "./preact-host.vue";
 const playDemo = () => setChatMode("demo");
 const goLive = () => setChatMode("live");
 
-// The surface carries no loop, so the page picks one. Made on the first live
-// mount, and ended with it — this page owns the session, so this page disposes
-// it.
-let session: ChatSession | undefined;
+// The header chrome and the demo launcher are preact children — the surface
+// inside the element is preact, whatever renders the page around it. Constants:
+// nothing in them changes, so the island is never redrawn for their sake.
+const actions = h(ChatActions, { onClose: closeChat });
+const startDemo = h(StartDemo, { onStart: playDemo });
 
-// Stable factories: `PreactHost` remounts its island when the prop changes.
-const live = () => {
-  session ??= createPiSession();
-  return h(AgentChat, {
-    actions: h(ChatActions, { onClose: closeChat }),
-    emptyActions: h(StartDemo, { onStart: playDemo }),
-    generateTitle: true,
-    session,
-    style: u.fill,
-  });
-};
+/**
+ * The loop. The surface takes a session and makes none, so the page picks one —
+ * and whoever makes a session ends it.
+ *
+ * Made on the first live mount rather than at setup: a phone lands minimised and
+ * unmounted, and a session made there would load a stored provider's model list
+ * for a chat nobody opened. `pre` flush, so it exists before the element that
+ * takes it renders, and the demo swap ends it.
+ */
+const session = shallowRef<ChatSession>();
 
+watch(
+  () => chat.mounted && chat.mode === "live",
+  (live) => {
+    if (live) {
+      session.value ??= createPiSession();
+      return;
+    }
+    session.value?.dispose?.();
+    session.value = undefined;
+  },
+  { immediate: true },
+);
+
+// The demo is the one surface the wrapper does not cover — canned turns, no
+// loop — so it stays a hand-mounted island. A stable factory: `PreactHost`
+// remounts when the prop changes.
 const demo = () =>
   h(DemoAgent, {
     actions: h(ChatActions, { onClose: closeChat, onLive: goLive }),
     autoStart: true,
     style: u.fill,
   });
-
-const surface = computed(() => (chat.mode === "live" ? live : demo));
-
-// Neither surface keeps its transcript across the swap. `post`, so the island is
-// already gone when the session it ran ends.
-watch(
-  () => chat.mode,
-  (mode) => {
-    if (mode === "live") return;
-    session?.dispose?.();
-    session = undefined;
-  },
-  { flush: "post" },
-);
 
 /**
  * The two queries that pick the layout, watched rather than read once: a resize
@@ -193,8 +197,8 @@ onBeforeUnmount(() => {
   globalThis.removeEventListener("keydown", onKey);
   phone?.removeEventListener("change", measure);
   desktop?.removeEventListener("change", measure);
-  session?.dispose?.();
-  session = undefined;
+  session.value?.dispose?.();
+  session.value = undefined;
 });
 </script>
 
@@ -216,8 +220,19 @@ onBeforeUnmount(() => {
         class="flex flex-col overflow-hidden"
         aria-label="Assistant"
       >
-        <!-- One island, live or demo: a new factory is a new surface. -->
-        <PreactHost class="min-h-0 flex-1" :preview="surface" />
+        <!-- One surface at a time, and neither keeps its transcript across the
+             swap: the watcher above ends the session with the mode.
+             `tokens` is off because `main.ts` declares them for the page. -->
+        <AgentakChat
+          v-if="session"
+          class="min-h-0 flex-1"
+          :actions="actions"
+          :empty-actions="startDemo"
+          generate-title
+          :session="session"
+          :tokens="false"
+        />
+        <PreactHost v-else-if="chat.mode === 'demo'" class="min-h-0 flex-1" :preview="demo" />
       </section>
     </Transition>
   </div>

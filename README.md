@@ -9,10 +9,10 @@
   setup.
 </p>
 
-- 🧩 **One preact component.** `AgentChat` takes the session that runs it, and nothing
-  else is required.
-- ⚡ **Use it with any framework, or with no framework.** Mount it into any element
-  with preact's `render`.
+- 🧩 **One component and one session.** `<AgentakChat session={…} />` is the whole
+  chat — the providers, the styles, the tools. Two imports, and no setup line.
+- ⚡ **React, vue, preact, or no framework at all.** One subpath each, or mount it into
+  any element with preact's `render`.
 - 🎨 **It ships no stylesheet.** Every style is inline on the element that carries it,
   so the chat changes no page style of yours.
 - 🔄 **The agent is a separate import.** The chat surface holds no loop: it takes a
@@ -37,6 +37,54 @@ npx nypm i agentak
 ```
 
 ## 🛠️ Usage
+
+### ⚛️ In react, vue, or preact
+
+One element for your framework. It declares the CSS variables and it sizes like any
+other component — but it carries **no agent**: `session` is what runs the chat, and
+`agentak/pi` is the import that makes one.
+
+```tsx
+import { AgentakChat } from "agentak/react"; // or agentak/preact
+import { createPiSession } from "agentak/pi";
+
+const session = useMemo(() => createPiSession(), []);
+
+<AgentakChat session={session} style={{ height: "600px" }} />;
+```
+
+```vue
+<script setup lang="ts">
+import { AgentakChat } from "agentak/vue";
+import { createPiSession } from "agentak/pi";
+
+const session = createPiSession();
+onBeforeUnmount(() => session.dispose?.());
+</script>
+
+<template>
+  <AgentakChat :session="session" class="h-[600px]" />
+</template>
+```
+
+| Prop                      | What                                                     |
+| ------------------------- | -------------------------------------------------------- |
+| `session`                 | what runs the chat. **Required**                         |
+| `generateTitle`           | ask the model to name the conversation. One more request |
+| `tokens`                  | `false` if your page declares the CSS variables itself   |
+| `actions`, `emptyActions` | header buttons, and content for the empty state          |
+| `class` / `className`     | —                                                        |
+| `style`                   | the box around the chat. Give it a height                |
+
+`createPiSession()` takes the provider, the key and the loop's own options; it is
+described below. **Whoever makes the session ends it** — the component never calls
+`dispose()`, because it never made the object. One session lasts a whole conversation:
+provider, model and key all change from the picker inside the composer, with the
+transcript kept.
+
+The chat is preact inside, in all three. React and vue therefore give it one `<div>`
+that preact fills, and `actions` and `emptyActions` are preact children — build them
+with `h()` from preact, or do not pass them.
 
 ### 🧩 In any page
 
@@ -63,11 +111,11 @@ A build step is not necessary. Import from a CDN and mount:
 </script>
 ```
 
-### ⚛️ As a component
+### 🧩 The surface, over a session you make
 
-`AgentChat` takes the session that runs it. `createPiSession()` is the built-in one, and
-it is the import that brings the agent loop with it. Create it one time, outside the
-tree:
+`AgentChat` is the same chat with nothing under it: it takes the session that runs it.
+`createPiSession()` is the built-in one, and it is the import that brings the agent loop
+with it. Create it one time, outside the tree — whoever makes a session ends it:
 
 ```tsx
 import { AgentChat, tokens } from "agentak";
@@ -133,6 +181,9 @@ const session: ChatSession = {
 <AgentChat session={session} />;
 ```
 
+The framework wrappers take the same object, and they carry no loop either — so
+`agentak/react` over your own harness resolves no pi module, exactly as the root does.
+
 The five methods above and `subscribe` are all that a session must have. Everything
 else is optional, and what you leave out is left out of the UI:
 
@@ -159,7 +210,7 @@ sides together.
 ### 🧱 Use the parts
 
 ```ts
-import { Chat } from "agentak"; // only the surface — messages in, callbacks out
+import { Chat, injectTokens } from "agentak"; // only the surface — messages in, callbacks out
 import { createAgent, useAgent } from "agentak/pi"; // only the loop
 import { Message, PromptInput } from "agentak/components"; // the components
 ```
@@ -168,9 +219,18 @@ import { Message, PromptInput } from "agentak/components"; // the components
 
 | Import               | What                                         | Agent loop |
 | -------------------- | -------------------------------------------- | ---------- |
+| `agentak/react`      | `AgentakChat` — the chat as a react element  | no         |
+| `agentak/vue`        | the same, in vue                             | no         |
+| `agentak/preact`     | the same, in preact                          | no         |
 | `agentak`            | `Chat`, `AgentChat`, `ChatSession`, `tokens` | no         |
-| `agentak/pi`         | `createPiSession()`, and the parts below it  | yes        |
+| `agentak/pi`         | `createPiSession()`, and the parts below it  | **yes**    |
 | `agentak/components` | every built-in component                     | no         |
+
+**`agentak/pi` is the only import that carries the loop.** Every other entry takes the
+session as a prop, thus your bundle holds an agent runtime because you asked for one.
+
+`react` and `vue` are optional peers: you install the one you use, and the other is
+never resolved.
 
 ## 🧭 Chrome extension
 

@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 
-import { toTitle } from "@/agent/title";
+import { toTitle } from "@/pi/title";
 import { Chat } from "@/components/chat";
 import type { Sx } from "@/styles/sx";
 

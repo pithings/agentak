@@ -353,6 +353,8 @@ export const ContextContentFooter = ({ style, children, ...props }: ContextConte
     costs?.total ??
     (costs?.input ?? 0) + (costs?.output ?? 0) + (costs?.reasoning ?? 0) + (costs?.cache ?? 0);
 
+  if (!children && !total) return null;
+
   return (
     <div style={sx(S.contextFooter, style)} {...props}>
       {children ?? (
@@ -368,7 +370,8 @@ export const ContextContentFooter = ({ style, children, ...props }: ContextConte
 const Tokens = ({ tokens, cost }: { tokens?: number; cost?: number }) => (
   <span>
     {tokens === undefined ? "—" : compact.format(tokens)}
-    {cost === undefined ? null : <span style={S.contextCost}>• {currency.format(cost)}</span>}
+    {/* A zero costs nothing to hide, and reads as noise beside the tokens. */}
+    {cost ? <span style={S.contextCost}>• {currency.format(cost)}</span> : null}
   </span>
 );
 

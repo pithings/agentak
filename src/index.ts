@@ -11,6 +11,8 @@ export {
   useSession,
 } from "@/session";
 // Styles are inline on every element. The one thing a host must declare is the
-// `--*` tokens: put this text in a `<style>`, or copy the values.
+// `--*` tokens: put this text in a `<style>`, or copy the values —
+// `injectTokens()` is that line, for a host with nothing to say about it.
 export { tokens } from "@/styles/base";
+export { injectTokens } from "@/styles/inject";
 export type { ViewMessage, ViewPart } from "@/types";

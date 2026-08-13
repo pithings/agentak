@@ -1,20 +1,20 @@
 // The pi-agent-core loop, under the `agentak/pi` subpath — the one entry that
 // pulls pi in. `createPiSession` is what `AgentChat` runs on; the rest is for a
 // host that wants the loop under a surface of its own.
-export { createPiSession, type PiSessionOptions } from "@/agent/session";
+export { createPiSession, type PiSessionOptions } from "@/pi/session";
 export {
   AGENT_NAME,
   createAgent,
   SYSTEM_PROMPT,
   type AgentOptions,
   type AgentRuntime,
-} from "@/agent/create-agent";
+} from "@/pi/create-agent";
 export {
   type ApprovalGate,
   type ApprovalPolicy,
   type ApprovalRequest,
   createApprovalGate,
-} from "@/agent/approvals";
+} from "@/pi/approvals";
 export {
   catalogModels,
   DEFAULT_MODEL,
@@ -22,8 +22,8 @@ export {
   DEFAULT_MODELS,
   DEFAULT_PROVIDER_ID,
   findModel,
-} from "@/agent/models";
-export { cachedCatalog, loadCatalog } from "@/agent/catalog";
+} from "@/pi/models";
+export { cachedCatalog, loadCatalog } from "@/pi/catalog";
 export {
   type AnyModel,
   availableProviders,
@@ -33,15 +33,15 @@ export {
   PROVIDERS,
   streamFor,
   SUPPORTED_APIS,
-} from "@/agent/providers";
-export { type CatalogState, useCatalog } from "@/agent/use-catalog";
+} from "@/pi/providers";
+export { type CatalogState, useCatalog } from "@/pi/use-catalog";
 export {
   documentBridge,
   type PageBridge,
   type PageElement,
   type PageSnapshot,
-} from "@/agent/page-bridge";
-export { createPageTools } from "@/agent/tools";
+} from "@/pi/page-bridge";
+export { createPageTools } from "@/pi/tools";
 export {
   generateTitle,
   type GenerateTitleOptions,
@@ -50,12 +50,12 @@ export {
   type TitleRequest,
   toTitle,
   useTitle,
-} from "@/agent/title";
-export { type ContextUsageView, toContextUsage, toViewMessages } from "@/agent/transcript";
+} from "@/pi/title";
+export { type ContextUsageView, toContextUsage, toViewMessages } from "@/pi/transcript";
 export {
   type AgentSnapshot,
   type AgentStore,
   createAgentStore,
   type QueuedMessage,
-} from "@/agent/store";
-export { type ChatState, useAgent } from "@/agent/use-agent";
+} from "@/pi/store";
+export { type ChatState, useAgent } from "@/pi/use-agent";

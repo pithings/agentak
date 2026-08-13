@@ -40,28 +40,35 @@ The page is vue; every component in the library is preact. They meet in
 neither patches the other's nodes. A catalog preview is one such island; the demo
 chat is another.
 
-The chatbox is one such island too. It opens with the page — a phone excepted, where
-the sheet would cover the page a visitor came for, so `chat-store.ts` starts minimised
-and unmounted and the launcher waits. It opens on the **live** agent: `AgentChat` over
-a pi session the widget makes on the first live mount and disposes with it, since
-whoever makes a session ends it. There is no shadow root between the page and the
-agent — the `--*` tokens reach it by inheritance, and so does tailwind preflight.
-That makes the widget the real host-page integration, and the one place to check the
-surface before the extension ships it. A visitor chooses nothing up front: the first
-message opens the picker, and the free providers need no key.
+The chatbox is the one island the page does **not** hand-roll: it is `AgentakChat`
+from `agentak/vue`, which owns the same bridge inside the library — a div vue renders
+and preact fills. The wrapper carries no loop, so the widget still makes the pi session
+itself and still ends it: a `shallowRef` filled on the first live mount, dropped when
+the mode changes or the widget goes away. So the widget is also the check on that
+wrapper, which is what a consumer of this package writes.
+
+It opens with the page — a phone excepted, where the sheet would cover the page a
+visitor came for, so `chat-store.ts` starts minimised and unmounted and the launcher
+waits. There is no shadow root between the page and the agent — the `--*` tokens reach
+it by inheritance, and so does tailwind preflight. That makes the widget the real
+host-page integration, and the one place to check the surface before the extension
+ships it. A visitor chooses nothing up front: the first message opens the picker, and
+the free providers need no key.
 
 The demo is the other `ChatMode`, and not a state anything starts in: it is one
 **Play the demo** button under the greeting, passed in as `emptyActions`. Taking it
-swaps the island for `DemoAgent` over the canned turns, which streams on mount; the
-arrow in that header goes back to live. `PreactHost` remounts on a new factory, so the
-swap is one changed prop. Neither surface keeps its transcript across it, and the live
-session ends with its island.
+swaps the wrapper for `DemoAgent` over the canned turns — a hand-mounted `PreactHost`
+island, because canned turns are the one surface with no session behind them. Neither
+keeps its transcript across the swap: the session watcher ends the live one, and the
+element that took it goes with it.
 
 **One title bar.** The surface heads itself — context meter and new conversation in
 the header, model and provider in the composer, next to send — so the page puts no
 bar of its own over it. Minimise, back-to-live and the demo launcher are all
 `chat-actions.tsx`, preact components the page renders _into_ the surface, through the
-`actions` and `emptyActions` props — the demo island needs no launcher of its own. The
+`actions` and `emptyActions` props — the demo island needs no launcher of its own.
+They stay preact vnodes through the vue wrapper, which is why the widget builds them
+with `h()` and holds them as constants: a new vnode is a redraw of the island. The
 chat is the only view `AgentChat` has, so the box never loses its minimise button; the
 empty actions show only before the first message.
 
@@ -131,7 +138,8 @@ wrapper, and returning the tokens alone renders the code as running text.
 ### Tokens and the tailwind theme
 
 `main.ts` puts `tokens` in a `<style>` on the document, the way a host page must —
-nothing in the library injects them. `styles.css` then maps its palette onto the
+nothing in the library injects them, and the widget passes `:tokens="false"` because
+the page has already said it. `styles.css` then maps its palette onto the
 same names with `@theme inline`, so `bg-page` is `var(--background)` and one
 class repoints when `.dark` repoints the token. The page and the widget cannot
 drift apart.
@@ -170,13 +178,13 @@ library and the extension stay on the root's 7.
 
 WIP MV3 side panel. `pnpm build:extension` writes `extension/dist`; load it unpacked.
 
-| File             | What                                                         |
-| ---------------- | ------------------------------------------------------------ |
-| `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported |
-| `sidepanel.html` | the panel document — one full-height `#root` to render into  |
-| `panel.tsx`      | declares the `tokens`, then mounts `AgentChat` over pi       |
-| `background.ts`  | the service worker — opens the panel on the action click     |
-| `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`        |
+| File             | What                                                          |
+| ---------------- | ------------------------------------------------------------- |
+| `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported  |
+| `sidepanel.html` | the panel document — one full-height `#root` to render into   |
+| `panel.tsx`      | `AgentakChat` from `agentak/preact`, over `createPiSession()` |
+| `background.ts`  | the service worker — opens the panel on the action click      |
+| `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`         |
 
 Not built yet: a `PageBridge` over `chrome.scripting.executeScript` against the active
 tab (`documentBridge()` reads the panel's own empty document today), and key storage in

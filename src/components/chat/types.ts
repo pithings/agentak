@@ -23,7 +23,7 @@ export interface ChatProvider {
   note?: string;
 }
 
-/** What the context meter shows. Produced by `agent/transcript.ts`. */
+/** What the context meter shows. Produced by `pi/transcript.ts`. */
 export interface ChatUsage {
   usedTokens: number;
   maxTokens: number;

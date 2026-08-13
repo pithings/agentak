@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 
-import { cachedCatalog, loadCatalog } from "@/agent/catalog";
-import type { AnyModel } from "@/agent/providers";
+import { cachedCatalog, loadCatalog } from "@/pi/catalog";
+import type { AnyModel } from "@/pi/providers";
 
 export interface CatalogState {
   models: AnyModel[];

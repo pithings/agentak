@@ -1,7 +1,7 @@
 import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import { Type } from "typebox";
 
-import type { PageBridge } from "@/agent/page-bridge";
+import type { PageBridge } from "@/pi/page-bridge";
 
 /** Enough of a page for a summary, and short enough to stay affordable. */
 const READ_MAX = 8000;

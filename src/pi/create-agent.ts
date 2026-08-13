@@ -5,11 +5,11 @@ import {
   type ThinkingLevel,
 } from "@earendil-works/pi-agent-core";
 
-import { type ApprovalGate, type ApprovalPolicy, createApprovalGate } from "@/agent/approvals";
-import { DEFAULT_MODEL } from "@/agent/models";
-import { documentBridge, type PageBridge } from "@/agent/page-bridge";
-import { type AnyModel, findProvider, streamFor } from "@/agent/providers";
-import { createPageTools } from "@/agent/tools";
+import { type ApprovalGate, type ApprovalPolicy, createApprovalGate } from "@/pi/approvals";
+import { DEFAULT_MODEL } from "@/pi/models";
+import { documentBridge, type PageBridge } from "@/pi/page-bridge";
+import { type AnyModel, findProvider, streamFor } from "@/pi/providers";
+import { createPageTools } from "@/pi/tools";
 
 export const AGENT_NAME = "Assistant";
 

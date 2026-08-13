@@ -52,20 +52,34 @@ pnpm fmt               # oxfmt
 
 ## Exports
 
-Three entries, one bundle each; `build.config.ts` lists them. `.d.mts` is emitted
-beside every bundle. Nothing in the package has a side effect — `sideEffects: false`.
+Six entries, one bundle each; `build.config.ts` lists them. `.d.mts` is emitted
+beside every bundle, and the shared code lands in `dist/_chunks`. Nothing in the
+package has a side effect — `sideEffects: false`.
 
-| Subpath              | Entry                     | What                                         |
-| -------------------- | ------------------------- | -------------------------------------------- |
-| `agentak`            | `src/index.ts`            | `Chat`, `AgentChat`, `ChatSession`, `tokens` |
-| `agentak/components` | `src/components/index.ts` | every built-in component, named              |
-| `agentak/pi`         | `src/agent/index.ts`      | the loop — `createPiSession()` and its parts |
+| Subpath              | Entry                     | What                                          |
+| -------------------- | ------------------------- | --------------------------------------------- |
+| `agentak`            | `src/index.ts`            | `Chat`, `AgentChat`, `ChatSession`, `tokens`  |
+| `agentak/components` | `src/components/index.ts` | every built-in component, named               |
+| `agentak/pi`         | `src/pi/index.ts`         | the loop — `createPiSession()` and its parts  |
+| `agentak/preact`     | `src/preact/index.tsx`    | `AgentakChat` — the chat, as a preact element |
+| `agentak/react`      | `src/react/index.ts`      | the same, in react                            |
+| `agentak/vue`        | `src/vue/index.ts`        | the same, in vue                              |
 
-**The root entry loads no loop.** `AgentChat` takes a `ChatSession`, and `agentak/pi` is
-the only entry that pulls pi in — so a host with its own harness gets the surface and
-none of the runtime. The two meet where a host mounts them — `render()` of `AgentChat`
-over `createPiSession()`, which is all `extension/panel.tsx` is. See
+**`agentak/pi` is the only entry that loads a loop.** Every other one — the root, the
+components, and all three framework wrappers — takes a `ChatSession` as a prop, so a
+host names its harness itself and pi is in a bundle because somebody imported it. See
 [`.agents/session.md`](.agents/session.md) for the interface and the guard test.
+
+**The framework entries are the surface, mounted the host's way.** `AgentakChat` is
+`AgentChat` plus two things a host would otherwise write itself: one element to size
+with `class`/`style`, and `injectTokens()` on mount. `session` is required on it, as it
+is on `AgentChat`, and no wrapper disposes one — it never made the object.
+`src/wrap.ts` is the shared half: the props, `chatProps()` and `mountChat()`. Preact
+renders `AgentChat` directly; react and vue own one div that preact fills, and neither
+patches the other's nodes. `actions` and `emptyActions` stay **preact** children in all
+three: the surface is preact wherever it is mounted, so a react or vue host builds them
+with `h()`. `react` and `vue` are optional peers, so neither has to be installed, and
+the import graph test keeps each one inside its own wrapper.
 
 `AgentChat` takes `actions` and `emptyActions` beside the `session` that runs it.
 `actions` lands at the end of the chat header, so a host puts its own chrome —
@@ -79,7 +93,7 @@ The header names the conversation after the first message. `generateTitle` asks 
 model for the name instead, once, after the first answer lands; it is one extra request,
 so it is off unless a host opts in, and a failure leaves the first-message title
 standing. It reaches the session through `setOptions()`, so changing the prop keeps the
-transcript. `Chat` takes the finished string as `title`. See `src/agent/title.ts`.
+transcript. `Chat` takes the finished string as `title`. See `src/pi/title.ts`.
 
 **There is no shadow root.** The surface renders into whatever element the host gives
 it, so a host page's stylesheet reaches it. Inline styles outrank every rule, which is
@@ -91,8 +105,9 @@ inline — inherited text, and a caller's own children.
 no filtering.
 
 Build notes: rolldown reads `tsconfig.json`, so `jsxImportSource: "preact"` and the
-`@/*` paths apply with no build config; a stray `react` import fails to resolve. Every
-dependency is external, so the bundles carry source alone and the lazy `import()`s
+`@/*` paths apply with no build config — the react wrapper therefore writes no JSX and
+calls `createElement` itself, and no react runtime can reach any other bundle. Every
+dependency and optional peer is external, so the bundles carry source alone and the lazy `import()`s
 (`md4x/standalone`, `pi-ai/api/*`, `pi-ai/providers/*.models`) stay lazy for the
 consumer's bundler. `platform: "browser"` is the one hand-set option.
 
@@ -102,6 +117,8 @@ consumer's bundler. `platform: "browser"` is the one hand-set option.
 src/
   index.ts / agent-chat.tsx     package entry, and the container a host mounts
   session.ts                    `ChatSession` — what the surface asks of a harness
+  wrap.ts                       what the three framework wrappers share
+  preact/ react/ vue/           `AgentakChat` — the surface, as a host's element
   components/ui/                shadcn primitives, in preact
   components/ai-elements/       AI SDK Elements, in preact
   components/chat.tsx           the chat surface — transcript in, callbacks out
@@ -109,9 +126,10 @@ src/
   components/elements.tsx       name -> renderer registry for `{ kind: "element" }` parts
   components/markdown.tsx       md4x AST -> preact
   styles/base.ts                `tokens`, `reset` presets, `u`, keyframe/option pairs
+  styles/inject.ts              `injectTokens()` — the tokens, declared once
   styles/sx.ts                  `Sx`, `WithSx`, `sx()` — merges caller-last
   lib/                          icons, markdown loader, hooks (interaction, animation, …)
-  agent/                        the pi loop — see .agents/pi.md
+  pi/                           the pi loop — see .agents/pi.md
   types.ts                      UI types, inlined from the `ai` package
 test/                           library tests, importing source through `@/`
 playground/                     vue host app, `@agentak/playground`
@@ -141,8 +159,8 @@ Next:
 2. Extension key storage: `chrome.storage` instead of `localStorage`, passed as `apiKey`
    to the same call.
 3. Verify the surface in a host page, and the loop against a real key. The playground
-   chatbox mounts it the way a host page would, so the page is the host to check —
-   including what the page's tailwind preflight now reaches, with no shadow root in
-   between.
+   chatbox is `agentak/vue`, which is what a consumer writes, so the page checks the
+   wrapper and the surface at once — including what the page's tailwind preflight now
+   reaches, with no shadow root in between.
 4. Compaction. pi exports `compact()`, but it needs a `Models` store, so a long
    conversation still runs into the window.

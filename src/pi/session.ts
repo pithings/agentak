@@ -1,7 +1,7 @@
-import { cachedCatalog, loadCatalog } from "@/agent/catalog";
-import { type AgentOptions, createAgent, SYSTEM_PROMPT } from "@/agent/create-agent";
-import { findModel } from "@/agent/models";
-import { type AnyModel, availableProviders, findProvider, type Provider } from "@/agent/providers";
+import { cachedCatalog, loadCatalog } from "@/pi/catalog";
+import { type AgentOptions, createAgent, SYSTEM_PROMPT } from "@/pi/create-agent";
+import { findModel } from "@/pi/models";
+import { type AnyModel, availableProviders, findProvider, type Provider } from "@/pi/providers";
 import {
   storeApiKey,
   storedApiKey,
@@ -9,9 +9,9 @@ import {
   storedProviderId,
   storeModelId,
   storeProviderId,
-} from "@/agent/storage";
-import { createAgentStore } from "@/agent/store";
-import { generateTitle, titleRequest } from "@/agent/title";
+} from "@/pi/storage";
+import { createAgentStore } from "@/pi/store";
+import { generateTitle, titleRequest } from "@/pi/title";
 import type { ChatAgent, ChatProvider } from "@/components/chat/types";
 import type { ChatSession, ChatSessionOptions, ChatSnapshot } from "@/session";
 

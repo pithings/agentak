@@ -1,6 +1,6 @@
 # The agent loop
 
-`src/agent/` — pi-agent-core, and everything that feeds the chat. `createAgent()`
+`src/pi/` — pi-agent-core, and everything that feeds the chat. `createAgent()`
 builds a pi `Agent`; `createAgentStore()` turns its events into a snapshot; and
 `createPiSession()` puts the provider picker around that and answers `ChatSession`,
 which is all the surface asks for. Nothing outside this directory imports pi — see
@@ -64,7 +64,7 @@ so `streamFor()` picks the module per turn and a gateway model costs no extra co
 
 `SUPPORTED_APIS` is `anthropic-messages`, `openai-completions`, `openai-responses`; a
 catalog entry outside them is filtered out of the picker. Adding a provider is an entry
-plus its `defaultModelId`. `test/agent/providers.test.ts` loads every catalog and fails
+plus its `defaultModelId`. `test/pi/providers.test.ts` loads every catalog and fails
 if a default no longer exists, or if a listed model needs an api this build lacks.
 
 Left out on purpose: providers that need an account id in the url (Cloudflare), an

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { catalogModels, DEFAULT_MODEL, DEFAULT_PROVIDER_ID, findModel } from "@/agent/models";
+import { catalogModels, DEFAULT_MODEL, DEFAULT_PROVIDER_ID, findModel } from "@/pi/models";
 import {
   type AnyModel,
   availableProviders,
@@ -8,7 +8,7 @@ import {
   PROVIDERS,
   streamFor,
   SUPPORTED_APIS,
-} from "@/agent/providers";
+} from "@/pi/providers";
 
 const model = (over: Partial<AnyModel>): AnyModel =>
   ({

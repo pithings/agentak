@@ -1,8 +1,8 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { ImageContent, TextContent, Usage } from "@earendil-works/pi-ai";
 
-import type { ApprovalRequest } from "@/agent/approvals";
-import type { AnyModel } from "@/agent/providers";
+import type { ApprovalRequest } from "@/pi/approvals";
+import type { AnyModel } from "@/pi/providers";
 import type { ContextCosts } from "@/components/ai-elements/context";
 import type {
   LanguageModelUsage,

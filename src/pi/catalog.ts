@@ -1,5 +1,5 @@
-import { catalogModels } from "@/agent/models";
-import { type AnyModel, findProvider } from "@/agent/providers";
+import { catalogModels } from "@/pi/models";
+import { type AnyModel, findProvider } from "@/pi/providers";
 
 /** One chunk per provider, fetched once for the life of the page. */
 const cache = new Map<string, AnyModel[]>();

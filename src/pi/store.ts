@@ -1,8 +1,8 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 
-import type { AgentRuntime } from "@/agent/create-agent";
-import type { AnyModel } from "@/agent/providers";
-import { type ContextUsageView, toContextUsage, toViewMessages } from "@/agent/transcript";
+import type { AgentRuntime } from "@/pi/create-agent";
+import type { AnyModel } from "@/pi/providers";
+import { type ContextUsageView, toContextUsage, toViewMessages } from "@/pi/transcript";
 import type { ViewMessage } from "@/types";
 
 /** A message typed while the agent was busy. pi holds it; this holds its text. */

@@ -44,22 +44,25 @@ than a rewrite.
 
 ## Who chooses the harness
 
-| Entry        | Harness                                        |
-| ------------ | ---------------------------------------------- |
-| `agentak`    | none — `AgentChat` takes the session as a prop |
-| `agentak/pi` | `createPiSession()`                            |
+| Entry                                            | Harness                                        |
+| ------------------------------------------------ | ---------------------------------------------- |
+| `agentak`                                        | none — `AgentChat` takes the session as a prop |
+| `agentak/preact`, `agentak/react`, `agentak/vue` | none either — same prop, same rule             |
+| `agentak/pi`                                     | `createPiSession()`                            |
 
 The choice is the host's, and it is made at the mount: nothing in the library picks a
-loop, and nothing registers anything as a side effect. A host that imports the root and
-its own session never resolves pi.
+loop, and nothing registers anything as a side effect. A host that imports a surface
+entry and its own session never resolves pi.
 
-**The session is required**, and required by the type: `AgentChatProps.session` has no
-default, so a mount without one does not compile.
+**The session is required**, and required by the type: `session` has no default on
+`AgentChat` or on any wrapper, so a mount without one does not compile. A wrapper that
+made one from options beside it would put pi in every bundle that renders a chat —
+which is the seam, spent for one saved import.
 
-**Whoever made the session disposes it.** The surface calls nothing on unmount — it
-never made the object, so it does not end it. `extension/panel.tsx` keeps one for the
-life of the document; `playground/src/components/chat-widget.vue` makes one on the first
-live mount and disposes it when the island goes away.
+**Whoever made the session disposes it.** Nothing in the library calls `dispose()` on
+unmount — it never made the object, so it does not end it. `extension/panel.tsx` keeps
+one for the life of the document; `playground/src/components/chat-widget.vue` makes one
+on the first live mount and ends it when the mode changes or the widget goes away.
 
 Host-declared preferences travel as props rather than session options, so one can change
 without a new session and a lost transcript: `generateTitle` on `AgentChat` is forwarded
@@ -82,19 +85,28 @@ render(<AgentChat session={session} />, target);
 ```
 
 `ViewPart` was inlined from AI SDK v7 UI types, so an `ai` `useChat` session is mostly a
-rename. `agent/store.ts` is the worked example: a mutating event source, one cached
+rename. `pi/store.ts` is the worked example: a mutating event source, one cached
 snapshot, one `notify()`.
 
 ## What holds the seam shut
 
 `test/harness.test.tsx` walks the source import graph from each entry and asserts that
-`index.ts`, `components/index.ts` and `agent-chat.tsx` reach no `@earendil-works/*`
-package — and that `agent/index.ts` still does. A split that holds only by accident is
+`index.ts`, `components/index.ts`, `agent-chat.tsx` and the three wrappers reach no
+`@earendil-works/*` package — and that `pi/index.ts` still does. The same walk
+polices the host frameworks: `react` is named in `react/index.ts` alone, `vue` in
+`vue/index.ts` alone, and an optional peer that leaked into a shared module would be a
+peer nobody opted into. A split that holds only by accident is
 one an import puts back. The same file renders `AgentChat` over a fake session, which is
 the other half of the claim: the surface runs with no loop behind it.
+
+`test/wrapper.test.tsx` does the same for the wrappers, over the same fake session: the
+preact one, and the vue one mounted for real — a preact island inside vue, which no
+other test reaches. It pins that neither ends a session it did not make, and the two
+things the vue props declaration decides at runtime: `class` falls through to the div,
+and an absent `tokens` stays absent rather than becoming `false`.
 
 The manifest is the honest part: pi stays in `dependencies`, because `agentak/pi` needs
 it and an optional peer would break the CDN one-liner. The decoupling is in the module
 graph, not the install — a bundler user who imports the root and their own session never
 resolves pi. `dist/index.mjs` and `dist/components/index.mjs` list only preact and rangi;
-pi is `dist/agent/index.mjs` alone.
+pi is `dist/pi/index.mjs` alone.

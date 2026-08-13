@@ -5,7 +5,7 @@ import { cleanup, render, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { AgentChat } from "@/agent-chat";
-import { createPiSession } from "@/agent/session";
+import { createPiSession } from "@/pi/session";
 
 const turn = (content: AssistantMessage["content"], stopReason: StopReason): AssistantMessage => ({
   role: "assistant",

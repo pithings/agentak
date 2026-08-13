@@ -1,8 +1,8 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import { useEffect, useRef, useState } from "preact/hooks";
 
-import type { AnyModel } from "@/agent/providers";
-import { streamFor } from "@/agent/providers";
+import type { AnyModel } from "@/pi/providers";
+import { streamFor } from "@/pi/providers";
 import type { ViewMessage } from "@/types";
 
 /** How long a title runs before it is cut. */

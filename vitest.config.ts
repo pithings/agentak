@@ -1,6 +1,8 @@
 import { fileURLToPath } from "node:url";
 // Aliases are off: the source is native preact, so a stray `react` import
-// must fail loudly instead of silently resolving to preact/compat.
+// must not silently resolve to preact/compat. React itself is installed — it is
+// an optional peer of `agentak/react` — and `test/eject.test.ts` is what holds
+// the name to that one file.
 import preact from "@preact/preset-vite";
 import { defineConfig } from "vitest/config";
 

@@ -128,6 +128,9 @@ function packagesFrom(entry: string): Set<string> {
 const pi = (packages: Set<string>) =>
   [...packages].filter((name) => name.startsWith("@earendil-works/"));
 
+/** The three framework wrappers. Surface entries, like the root. */
+const WRAPPERS = ["preact/index.tsx", "react/index.ts", "vue/index.ts"];
+
 /**
  * What the seam is for. The surface must not reach the loop, and the loop must
  * stay reachable from the entry that promises it — a split that only holds by
@@ -135,12 +138,33 @@ const pi = (packages: Set<string>) =>
  */
 describe("the pi seam", () => {
   it("keeps pi out of the surface entries", () => {
-    expect(pi(packagesFrom("index.ts"))).toEqual([]);
-    expect(pi(packagesFrom("components/index.ts"))).toEqual([]);
-    expect(pi(packagesFrom("agent-chat.tsx"))).toEqual([]);
+    // The wrappers included: `session` is required on every one of them, so a
+    // host names its own harness and `agentak/pi` stays the one import that
+    // puts the loop in a bundle.
+    for (const entry of ["index.ts", "components/index.ts", "agent-chat.tsx", ...WRAPPERS]) {
+      expect(pi(packagesFrom(entry))).toEqual([]);
+    }
   });
 
   it("keeps pi in the entry that promises it", () => {
-    expect(pi(packagesFrom("agent/index.ts")).length).toBeGreaterThan(0);
+    expect(pi(packagesFrom("pi/index.ts")).length).toBeGreaterThan(0);
+  });
+});
+
+const hosts = (packages: Set<string>) =>
+  [...packages].filter((name) => name === "react" || name === "vue");
+
+/**
+ * The other seam. A wrapper names one host framework; every other entry names
+ * none — an optional peer that leaks into the shared modules is a peer nobody
+ * opted into.
+ */
+describe("the host frameworks", () => {
+  it("keeps each one inside its own wrapper", () => {
+    expect(hosts(packagesFrom("index.ts"))).toEqual([]);
+    expect(hosts(packagesFrom("pi/index.ts"))).toEqual([]);
+    expect(hosts(packagesFrom("preact/index.tsx"))).toEqual([]);
+    expect(hosts(packagesFrom("react/index.ts"))).toEqual(["react"]);
+    expect(hosts(packagesFrom("vue/index.ts"))).toEqual(["vue"]);
   });
 });

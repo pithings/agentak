@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import type { AgentRuntime } from "@/agent/create-agent";
-import { type AgentSnapshot, type AgentStore, createAgentStore } from "@/agent/store";
-import type { AnyModel } from "@/agent/providers";
+import type { AgentRuntime } from "@/pi/create-agent";
+import { type AgentSnapshot, type AgentStore, createAgentStore } from "@/pi/store";
+import type { AnyModel } from "@/pi/providers";
 
-export type { QueuedMessage } from "@/agent/store";
+export type { QueuedMessage } from "@/pi/store";
 
 export interface ChatState extends AgentSnapshot {
   /** Sends, or queues when the agent is already working. */
