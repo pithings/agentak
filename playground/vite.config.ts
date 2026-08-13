@@ -18,8 +18,9 @@ export default defineConfig({
   server: {
     port: 4050,
   },
+  // The demo is not shipped — it builds inside its own package, so the root
+  // `dist/` stays the published library alone.
   build: {
-    outDir: fileURLToPath(new URL("../dist/playground", import.meta.url)),
     emptyOutDir: true,
   },
 });

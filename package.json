@@ -9,15 +9,27 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./dist/lib/web-agent.js",
-    "./element": "./dist/lib/element.js",
-    "./components": "./dist/lib/components.js",
-    "./pi": "./dist/lib/pi.js"
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./element": {
+      "types": "./dist/element.d.mts",
+      "default": "./dist/element.mjs"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.mts",
+      "default": "./dist/components/index.mjs"
+    },
+    "./pi": {
+      "types": "./dist/agent/index.d.mts",
+      "default": "./dist/agent/index.mjs"
+    }
   },
   "scripts": {
     "dev": "pnpm --filter @web-agent/playground dev",
-    "build": "vite build --config vite.config.lib.ts && pnpm --filter @web-agent/playground build",
-    "build:lib": "vite build --config vite.config.lib.ts",
+    "build": "obuild && pnpm --filter @web-agent/playground build",
+    "build:lib": "obuild",
     "build:extension": "pnpm --filter @web-agent/extension build",
     "preview": "pnpm --filter @web-agent/playground preview",
     "typecheck": "tsc --noEmit && tsc --noEmit -p playground && tsc --noEmit -p extension",
@@ -39,6 +51,7 @@
     "@testing-library/preact": "^3.2.4",
     "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^30.0.1",
+    "obuild": "^0.4.38",
     "oxfmt": "^0.63.0",
     "oxlint": "^1.78.0",
     "typescript": "^7.0.2",

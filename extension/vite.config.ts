@@ -5,7 +5,9 @@ import { defineConfig, type Plugin } from "vite";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 
-const outDir = fileURLToPath(new URL("../dist/extension", import.meta.url));
+// The panel is not shipped in the package — it builds inside its own package,
+// so the root `dist/` stays the published library alone.
+const outDir = fileURLToPath(new URL("./dist", import.meta.url));
 
 /**
  * WIP MV3 build. `@` points at the library source, as in the playground — the

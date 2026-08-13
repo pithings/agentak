@@ -9,7 +9,7 @@ for the agent loop.
 
 ## stack
 
-- vite
+- obuild (the library) / vite (the playground and the extension)
 - preact (native — no react, no `preact/compat` aliasing)
 - shadcn + ai-elements, ejected to preact
 - styles written in typescript — inline style objects; no tailwind, no stylesheet at all
@@ -52,9 +52,9 @@ packages.
 
 ```sh
 pnpm dev               # playground on http://localhost:4050
-pnpm build             # dist/lib + dist/playground
-pnpm build:lib         # dist/lib alone
-pnpm build:extension   # dist/extension (load unpacked)
+pnpm build             # dist/ (obuild) + playground/dist
+pnpm build:lib         # dist/ alone — obuild
+pnpm build:extension   # extension/dist (load unpacked)
 pnpm typecheck         # tsc --noEmit, all three packages
 pnpm vitest run        # both projects: `lib` and `playground`
 pnpm lint              # oxlint
@@ -63,18 +63,43 @@ pnpm fmt               # oxfmt
 
 ## Exports
 
-Four entries, one bundle each in `dist/lib` (`vite.config.lib.ts` lists them).
+Four entries, one bundle each (`build.config.ts` lists them). The dist name comes
+from the path under `src/`, and `.d.mts` is emitted beside every bundle.
 
-| Subpath                | Entry                     | What                                                      |
-| ---------------------- | ------------------------- | --------------------------------------------------------- |
-| `web-agent`            | `src/index.ts`            | `AgentChat`, `WebAgent`, `defineWebAgent`, `tokens`, loop |
-| `web-agent/element`    | `src/element.tsx`         | side effect — defines `<web-agent>`                       |
-| `web-agent/components` | `src/components/index.ts` | every built-in component, named                           |
-| `web-agent/pi`         | `src/agent/index.ts`      | the loop alone; the root re-exports this same set         |
+| Subpath                | Entry                     | Output                      | What                                                      |
+| ---------------------- | ------------------------- | --------------------------- | --------------------------------------------------------- |
+| `web-agent`            | `src/index.ts`            | `dist/index.mjs`            | `AgentChat`, `WebAgent`, `defineWebAgent`, `tokens`, loop |
+| `web-agent/element`    | `src/element.tsx`         | `dist/element.mjs`          | side effect — defines `<web-agent>`                       |
+| `web-agent/components` | `src/components/index.ts` | `dist/components/index.mjs` | every built-in component, named                           |
+| `web-agent/pi`         | `src/agent/index.ts`      | `dist/agent/index.mjs`      | the loop alone; the root re-exports this same set         |
 
 `/components` and `/pi` have no user yet — the playground and the extension
 import the source through `@`. They exist so a host can take a piece without the
 assembled chat.
+
+**`dist/` is the published library and nothing else.** The playground builds into
+`playground/dist` and the extension into `extension/dist`, so `files: ["dist"]`
+needs no filtering.
+
+### The library build
+
+[`obuild`](https://github.com/unjs/obuild) — rolldown, zero config — builds the
+library; vite is only the playground's and the extension's bundler now. There is no
+`vite.config.lib.ts` any more. `build.config.ts` is the whole configuration:
+
+- **Nothing configures JSX or `@/*`.** rolldown reads `tsconfig.json`, so
+  `jsxImportSource: "preact"` and the `paths` mapping already apply. The output
+  imports `preact/jsx-runtime`; a react import would fail to resolve, as with the
+  vite build's `reactAliasesEnabled: false`.
+- **Every dependency is external.** obuild externalizes `dependencies` and
+  `peerDependencies`, so the bundles carry the source alone — preact, pi, `md4x` and
+  `rangi` are bare imports a consumer's bundler resolves. The vite build inlined
+  them. The lazy `import()`s stay lazy: `md4x/standalone` and every
+  `pi-ai/api/*` and `pi-ai/providers/*.models` are still dynamic, and now the
+  consumer's bundler is the one that splits them.
+- **`.d.mts` beside each bundle**, from `rolldown-plugin-dts`. The vite build emitted
+  no types at all, so `exports` carries a `types` condition now.
+- `platform: "browser"` is the one thing set by hand — obuild defaults to `node`.
 
 ## Layout
 
@@ -142,7 +167,7 @@ extension/                 WIP MV3 side panel — its own package, `@web-agent/e
   sidepanel.html           the panel document; hosts `<web-agent>`
   panel.ts                 declares the tokens, then `defineWebAgent()`
   background.ts            the service worker — opens the panel on the action click
-  vite.config.ts           two inputs, flat `[name].js`, out to `../dist/extension`
+  vite.config.ts           two inputs, flat `[name].js`, out to `extension/dist`
 ```
 
 The playground and the extension both import the library **source** through `@`
