@@ -1,9 +1,14 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
 
-import CatalogView from "./views/catalog-view.vue";
+import HomeView from "./views/home-view.vue";
 
 export const routes: RouteRecordRaw[] = [
-  { path: "/", name: "catalog", component: CatalogView },
+  { path: "/", name: "home", component: HomeView },
+  {
+    path: "/components",
+    name: "catalog",
+    component: () => import("./views/catalog-view.vue"),
+  },
   {
     path: "/c/:name",
     name: "component",

@@ -18,9 +18,13 @@ watch(query, (value) => {
 
 const search = useTemplateRef<HTMLInputElement>("search");
 
+// Filtering from the readme means the catalog — that is the page the query paints.
 function onInput(event: Event) {
   draft.value = (event.target as HTMLInputElement).value;
-  router.replace({ query: { ...route.query, q: draft.value || undefined } });
+  router.replace({
+    path: route.path === "/" ? "/components" : route.path,
+    query: { ...route.query, q: draft.value || undefined },
+  });
 }
 
 const groups = computed(() =>
@@ -92,7 +96,15 @@ onBeforeUnmount(() => globalThis.removeEventListener("keydown", onKey));
       <RouterLink
         to="/"
         exact-active-class="bg-fill text-ink"
-        class="flex items-center justify-between rounded-md px-2 py-1.5 text-soft hover:bg-fill hover:text-ink"
+        class="block rounded-md px-2 py-1.5 text-soft hover:bg-fill hover:text-ink"
+      >
+        Readme
+      </RouterLink>
+
+      <RouterLink
+        to="/components"
+        exact-active-class="bg-fill text-ink"
+        class="mt-0.5 flex items-center justify-between rounded-md px-2 py-1.5 text-soft hover:bg-fill hover:text-ink"
       >
         <span>All components</span>
         <span class="font-mono text-[0.6875rem]">{{ ENTRIES.length }}</span>

@@ -42,17 +42,28 @@ export function useAnimation<T extends Element = HTMLElement>(
   frames: Keyframe[],
   options: number | KeyframeAnimationOptions,
 ): RefCallback<T> {
-  return useMemo<RefCallback<T>>(
-    () => (node) => {
-      if (!node) return;
-      if (typeof node.animate !== "function") return; // jsdom, or an engine without WAAPI
-      if (prefersReducedMotion()) return; // static is the accessible resting state
+  return useMemo<RefCallback<T>>(() => animateOnMount<T>(frames, options), [frames, options]);
+}
 
-      const animation = node.animate(frames, options);
-      return () => animation.cancel();
-    },
-    [frames, options],
-  );
+/**
+ * The same ref callback, built outside a component. A renderer that emits an
+ * unknown number of animated elements — `components/markdown.tsx` fading in
+ * each word as it streams — cannot call a hook per element, so it holds one
+ * module-scope callback made here instead. Every rule in `useAnimation()`
+ * above applies unchanged.
+ */
+export function animateOnMount<T extends Element = HTMLElement>(
+  frames: Keyframe[],
+  options: number | KeyframeAnimationOptions,
+): RefCallback<T> {
+  return (node) => {
+    if (!node) return;
+    if (typeof node.animate !== "function") return; // jsdom, or an engine without WAAPI
+    if (prefersReducedMotion()) return; // static is the accessible resting state
+
+    const animation = node.animate(frames, options);
+    return () => animation.cancel();
+  };
 }
 
 /** Mirrors the `globalThis.matchMedia?.(...).matches ?? false` idiom already used in `catalog.tsx`. */

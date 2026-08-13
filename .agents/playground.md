@@ -18,12 +18,12 @@ page a consumer would drop the element into.
 | ------------------- | --------------------------------------------------------------------- |
 | `main.ts`           | declares the `tokens` in a `<style>`, then mounts the app on `#app`   |
 | `app.vue`           | the shell: topbar, sidebar, `<RouterView>`, chatbox                   |
-| `router.ts`         | `/` the catalog, `/c/:name` one component                             |
+| `router.ts`         | `/` the readme, `/components` the catalog, `/c/:name` one component   |
 | `styles.css`        | `@import "tailwindcss"`, and the `@theme` that reads the `--*` names  |
 | `theme.ts`          | `.dark` on the root — the whole theme switch, page and widget         |
 | `chat-store.ts`     | the widget state the topbar and the catalog both reach for            |
 | `components/*.vue`  | topbar, sidebar, chatbox, preview card, and the preact bridge         |
-| `views/*.vue`       | the catalog grid, and the single-component page                       |
+| `views/*.vue`       | the readme home, the catalog grid, and the single-component page      |
 | `catalog.tsx`       | every component with fixture data, plus the lookups the routes use    |
 | `demo-chat.ts`      | the canned turns and the catalog fixtures; `autoStart` streams them   |
 | `demo-agent.tsx`    | `Chat` over the canned turns — no loop, no key                        |
@@ -81,6 +81,22 @@ own, so this is the host page's call and lives in the widget alone.
 
 `vite.config.ts` tells the vue compiler that `agent-chat` is a custom element, else
 the template resolves it as a component and warns.
+
+### The readme page
+
+`/` is the repo `README.md`. The `markdown()` plugin in `vite.config.ts` renders any
+imported `.md` with md4x **at build time** and exports the HTML string, so the page
+ships no parser and the file is one static chunk of the entry — the runtime md4x the
+chat loads is a separate, lazy import. `views/home-view.vue` puts that string in a
+`v-html` and paints it in scoped `:deep()` rules: tailwind preflight strips the
+element styles, and the readme has no classes to hook. `src/markdown.d.ts` declares
+the `*.md` module for `vue-tsc`.
+
+Fences go through rangi in the same plugin — a span per token carrying the `--shj-*`
+the page repoints on `.dark`, so the readme and a chat code block colour alike. Every
+grammar is imported, as none of it ships. **The md4x `highlighter` replaces the whole
+block**, not the text inside `<code>`: the callback writes its own `<pre><code>`
+wrapper, and returning the tokens alone renders the code as running text.
 
 ### Tokens and the tailwind theme
 

@@ -14,9 +14,12 @@ const around = computed(() => neighbours(props.name));
   <div v-if="entry" class="flex max-w-5xl flex-col gap-6">
     <header class="flex flex-col gap-2">
       <nav class="flex items-center gap-1.5 text-xs text-soft">
-        <RouterLink to="/" class="hover:text-ink hover:underline">Components</RouterLink>
+        <RouterLink to="/components" class="hover:text-ink hover:underline">Components</RouterLink>
         <span>/</span>
-        <RouterLink :to="`/?q=${entry.section.title}`" class="hover:text-ink hover:underline">
+        <RouterLink
+          :to="`/components?q=${entry.section.title}`"
+          class="hover:text-ink hover:underline"
+        >
           {{ entry.section.title }}
         </RouterLink>
       </nav>
@@ -60,7 +63,10 @@ const around = computed(() => neighbours(props.name));
       No component called <code class="font-mono">{{ name }}</code
       >.
     </p>
-    <RouterLink to="/" class="mt-3 inline-block text-xs text-soft hover:text-ink hover:underline">
+    <RouterLink
+      to="/components"
+      class="mt-3 inline-block text-xs text-soft hover:text-ink hover:underline"
+    >
       Back to the catalog
     </RouterLink>
   </div>
