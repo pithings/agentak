@@ -36,13 +36,6 @@ export {
 } from "@/pi/providers";
 export { type CatalogState, useCatalog } from "@/pi/use-catalog";
 export {
-  documentBridge,
-  type PageBridge,
-  type PageElement,
-  type PageSnapshot,
-} from "@/pi/page-bridge";
-export { createPageTools } from "@/pi/tools";
-export {
   generateTitle,
   type GenerateTitleOptions,
   titleRequest,

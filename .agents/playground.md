@@ -186,9 +186,8 @@ WIP MV3 side panel. `pnpm build:extension` writes `extension/dist`; load it unpa
 | `background.ts`  | the service worker — opens the panel on the action click      |
 | `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`         |
 
-Not built yet: a `PageBridge` over `chrome.scripting.executeScript` against the active
-tab (`documentBridge()` reads the panel's own empty document today), and key storage in
-`chrome.storage` instead of `localStorage`.
+Not built yet: key storage in `chrome.storage` instead of `localStorage`. The agent
+carries no tools, so the panel reads nothing from the active tab yet.
 
 The manifest asks for `sidePanel`, `activeTab`, `scripting` and `storage`. The CSP
 blocks third-party requests, which is one reason no component fetches a remote asset.

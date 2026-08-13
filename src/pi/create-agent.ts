@@ -7,18 +7,14 @@ import {
 
 import { type ApprovalGate, type ApprovalPolicy, createApprovalGate } from "@/pi/approvals";
 import { DEFAULT_MODEL } from "@/pi/models";
-import { documentBridge, type PageBridge } from "@/pi/page-bridge";
 import { type AnyModel, findProvider, streamFor } from "@/pi/providers";
-import { createPageTools } from "@/pi/tools";
 
 export const AGENT_NAME = "Assistant";
 
 export const SYSTEM_PROMPT = [
-  "You are a browsing assistant embedded in a web page.",
+  "You are an assistant embedded in a web page.",
   "",
-  "Answer from the page in front of you. Call `read_page` before you answer a question",
-  "about it, and `find_elements` when you need a specific part of the DOM.",
-  "Say so plainly when the page does not carry the answer — do not guess it.",
+  "Say so plainly when you do not have the answer — do not guess it.",
   "Keep answers short. Markdown is rendered, so use it for lists and code.",
 ].join("\n");
 
@@ -33,9 +29,7 @@ export interface AgentOptions {
   model?: AnyModel;
   thinkingLevel?: ThinkingLevel;
   systemPrompt?: string;
-  /** Defaults to the document this script runs in. */
-  page?: PageBridge;
-  /** Defaults to the page tools. */
+  /** The agent tools. None are included, so the loop answers from the chat alone. */
   tools?: AgentTool<any>[];
   /** How often a tool call is confirmed. Default: once per tool. */
   approvals?: ApprovalPolicy;
@@ -47,7 +41,6 @@ export interface AgentOptions {
 export interface AgentRuntime {
   agent: Agent;
   approvals: ApprovalGate;
-  page: PageBridge;
   name: string;
 }
 
@@ -63,8 +56,7 @@ export function createAgent({
   model = DEFAULT_MODEL,
   thinkingLevel = "off",
   systemPrompt = SYSTEM_PROMPT,
-  page = documentBridge(),
-  tools,
+  tools = [],
   approvals = "once",
   streamFn = streamFor,
 }: AgentOptions): AgentRuntime {
@@ -75,7 +67,7 @@ export function createAgent({
       systemPrompt,
       model,
       thinkingLevel,
-      tools: tools ?? createPageTools(page),
+      tools,
     },
     streamFn,
     // A free provider needs no key, but the openai client wants a string.
@@ -86,5 +78,5 @@ export function createAgent({
     beforeToolCall: (context, signal) => gate.beforeToolCall(context, signal),
   });
 
-  return { agent, approvals: gate, name: AGENT_NAME, page };
+  return { agent, approvals: gate, name: AGENT_NAME };
 }

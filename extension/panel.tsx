@@ -6,10 +6,9 @@
  * else has to. It carries no loop: `createPiSession()` is the import that brings
  * one, and this is the only line here that knows about pi.
  *
- * Next step: build a `PageBridge` that proxies `readPage`/`findElements` into the
- * active tab with `chrome.scripting.executeScript`, and pass it as `page` below —
- * the session is where the panel differs from a page, and the only place it does.
- * Keys from `chrome.storage` arrive the same way, as `apiKey`.
+ * Next step: keys from `chrome.storage` rather than `localStorage`, passed as
+ * `apiKey` — the session is where the panel differs from a page, and the only
+ * place it does.
  */
 import { render } from "preact";
 

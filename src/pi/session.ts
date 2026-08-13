@@ -81,7 +81,7 @@ const openingProvider = (
 };
 
 /**
- * The built-in session: pi's `Agent` over the page tools, with the provider,
+ * The built-in session: pi's `Agent` over the host's tools, with the provider,
  * model and key picker in front of it.
  *
  * This is the whole of what `agentak` knows about providers — the surface itself

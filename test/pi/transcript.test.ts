@@ -40,7 +40,7 @@ describe("toViewMessages", () => {
       assistant([
         { type: "thinking", thinking: "read it first" },
         { type: "text", text: "One moment." },
-        { type: "toolCall", id: "call-1", name: "read_page", arguments: { maxChars: 100 } },
+        { type: "toolCall", id: "call-1", name: "lookup", arguments: { maxChars: 100 } },
       ]),
     ]);
 
@@ -50,11 +50,11 @@ describe("toViewMessages", () => {
 
   it("fills the call a tool result answers, rather than adding a part", () => {
     const part = toolPart([
-      assistant([{ type: "toolCall", id: "call-1", name: "read_page", arguments: {} }]),
+      assistant([{ type: "toolCall", id: "call-1", name: "lookup", arguments: {} }]),
       {
         role: "toolResult",
         toolCallId: "call-1",
-        toolName: "read_page",
+        toolName: "lookup",
         content: [{ type: "text", text: "the page" }],
         isError: false,
         timestamp: 0,
@@ -67,11 +67,11 @@ describe("toViewMessages", () => {
 
   it("separates a denied call from a failed one", () => {
     const messages: AgentMessage[] = [
-      assistant([{ type: "toolCall", id: "call-1", name: "read_page", arguments: {} }]),
+      assistant([{ type: "toolCall", id: "call-1", name: "lookup", arguments: {} }]),
       {
         role: "toolResult",
         toolCallId: "call-1",
-        toolName: "read_page",
+        toolName: "lookup",
         content: [{ type: "text", text: "The user denied this call." }],
         isError: true,
         timestamp: 0,
@@ -90,9 +90,9 @@ describe("toViewMessages", () => {
 
   it("marks a call that is waiting for an answer", () => {
     const view = toViewMessages(
-      [assistant([{ type: "toolCall", id: "call-1", name: "read_page", arguments: {} }])],
+      [assistant([{ type: "toolCall", id: "call-1", name: "lookup", arguments: {} }])],
       undefined,
-      { pending: [{ id: "call-1", toolName: "read_page", args: {} }], answers: {} },
+      { pending: [{ id: "call-1", toolName: "lookup", args: {} }], answers: {} },
     );
 
     expect((view[0].parts[0] as ViewToolPart).status).toBe("pending");

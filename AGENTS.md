@@ -160,7 +160,8 @@ extension/                      MV3 side panel, package name `@agentak/extension
 
 ## Current status
 
-The agent works end to end with 9 providers and the page tools. Four providers are free
+The agent works end to end with 9 providers. It carries no tools of its own — a host
+passes its own through the `tools` option. Four providers are free
 and do not need an API key. A new chat starts without a provider. The first message opens
 the picker, and a free provider can be selected with one click.
 
@@ -175,18 +176,13 @@ available through `agentak/pi`, and a host can provide a different session. See
 
 ### Next tasks
 
-1. **Read the active tab from the extension.** Add a `PageBridge` that uses
-   `chrome.scripting.executeScript`. `documentBridge()` currently reads the side panel's
-   empty document. Pass the new bridge through the `page` option of `createPiSession()` in
-   `extension/panel.tsx`. This session option should be the only difference between the
-   extension and a regular page.
-2. **Store extension keys with Chrome storage.** Replace `localStorage` with
+1. **Store extension keys with Chrome storage.** Replace `localStorage` with
    `chrome.storage`, then pass the stored keys through the same `apiKey` option.
-3. **Test the UI in a real browser.** Test the chat inside a host page and test the agent
+2. **Test the UI in a real browser.** Test the chat inside a host page and test the agent
    with a real API key. The playground uses `agentak/vue`, just like a consumer would. It
    tests the Vue wrapper and chat UI together, including how Tailwind's preflight styles
    reach the chat without a shadow root.
-4. **Add conversation compaction.** Pi exports `compact()`, but it needs a `Models` store
+3. **Add conversation compaction.** Pi exports `compact()`, but it needs a `Models` store
    and the session's own `Entry[]`. Long conversations can still reach the context limit.
    The warning is already implemented: the context meter turns amber when
    `shouldCompact()` returns true. This helper needs neither dependency. See

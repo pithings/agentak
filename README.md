@@ -20,8 +20,8 @@
   LLM7, OVHcloud, Kilo, and OpenCode Zen.
 - 🚀 **Start chatting right away.** The message box includes the provider, model, and API
   key settings. If you have not chosen a provider, your first message opens the picker.
-- 👀 **Ask questions about the current page.** The included `read_page` and
-  `find_elements` tools let the agent inspect what the user is viewing.
+- 🧰 **Add your own tools.** The agent ships with none. Pass `tools` to give it the
+  actions your app needs.
 - 💬 **Includes streaming, tool approvals, Markdown, code blocks, and queued messages.**
 - 🔒 **Your API keys are stored locally.** They are saved in `localStorage` and sent
   directly to the provider. You do not need your own server.
@@ -189,7 +189,7 @@ If you use `AgentChat` directly, call `injectTokens()` from `agentak` yourself.
 ## 🤖 Pi agent
 
 `agentak/pi` provides the included agent. It combines
-[pi-agent-core](https://www.npmjs.com/package/@earendil-works/pi-agent-core), page tools,
+[pi-agent-core](https://www.npmjs.com/package/@earendil-works/pi-agent-core), your tools,
 and the provider picker. This is the only Agentak import that includes an agent loop.
 
 ```ts
@@ -209,7 +209,7 @@ in `localStorage`. You can also choose the provider and key in code:
 const session = createPiSession({
   provider: "openai",
   apiKey: "sk-…",
-  systemPrompt: "You are a support agent for example.com. Answer from the page.",
+  systemPrompt: "You are a support agent for example.com. Keep answers short.",
   approvals: "never",
 });
 ```
@@ -223,8 +223,7 @@ const session = createPiSession({
 | `generateTitle` | `boolean`                                                 | Lets the model name the conversation instead of using the first message |
 | `thinkingLevel` | `off \| minimal \| low \| medium \| high \| xhigh \| max` | Starting thinking level. Defaults to `off`                              |
 | `systemPrompt`  | `string`                                                  | Instructions for the agent. Defaults to a short browsing prompt         |
-| `page`          | `PageBridge`                                              | Tells the tools which page to read. Defaults to the current document    |
-| `tools`         | `AgentTool[]`                                             | Agent tools. Defaults to `read_page` and `find_elements`                |
+| `tools`         | `AgentTool[]`                                             | Agent tools. Empty by default                                           |
 | `approvals`     | `"always" \| "once" \| "never"`                           | When to confirm tool calls. Defaults to once for each tool              |
 | `streamFn`      | `StreamFn`                                                | Custom streaming function, mainly useful in tests                       |
 
@@ -250,22 +249,33 @@ pages can use 7 providers, while the Chrome side panel can use all 9. Agentak on
 provider's model list after the user chooses that provider. It also waits until the first
 request to load the provider's API code.
 
-### Page tools
+### Tools
 
-`read_page` returns visible text, the page title, and the URL. `find_elements` runs a CSS
-selector and returns the matching elements. Both tools use this small `PageBridge`
-interface:
+Agentak includes no tools. The agent answers from the conversation alone until you pass
+some. A tool is a pi `AgentTool`: a name, a description, a TypeBox schema, and an
+`execute()`.
 
 ```ts
-interface PageBridge {
-  read(maxChars: number): Promise<PageSnapshot>;
-  find(selector: string, limit: number): Promise<PageElement[]>;
-}
+import { Type } from "typebox";
+
+const session = createPiSession({
+  tools: [
+    {
+      name: "read_page",
+      label: "Read the page",
+      description: "Read the visible text of the current page.",
+      parameters: Type.Object({}, { additionalProperties: false }),
+      execute: () => {
+        const text = document.body.innerText;
+        return Promise.resolve({ content: [{ type: "text", text }], details: undefined });
+      },
+    },
+  ],
+});
 ```
 
-By default, the tools read the document where Agentak is running. Pass a custom `page` to
-read somewhere else, such as an iframe or a browser tab through `chrome.scripting`. Pass
-`tools` if you want to replace the two included tools.
+The chat confirms every tool call. Use the `approvals` option to change how often it
+asks.
 
 ### Lower-level APIs
 

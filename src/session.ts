@@ -76,8 +76,8 @@ export type ChatSessionOptionsListed = Exhausted<
 /**
  * A live chat, whatever runs it.
  *
- * `createPiSession` from `agentak/pi` is the built-in one — the pi loop over the
- * page tools, with the provider picker in front of it. A host with its own
+ * `createPiSession` from `agentak/pi` is the built-in one — the pi loop with the
+ * provider picker in front of it. A host with its own
  * harness implements this instead and keeps the whole surface.
  *
  * One conversation: a host switches conversations by switching sessions, which

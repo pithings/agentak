@@ -13,9 +13,8 @@ import type { Sx } from "@/styles/sx";
 export interface AgentChatProps extends ChatSessionOptions {
   /**
    * What runs the chat. `createPiSession()` from `agentak/pi` is the built-in
-   * one — the pi loop over the page tools, with the provider picker in front of
-   * it. A host with its own harness implements `ChatSession` instead, and no pi
-   * module is loaded.
+   * one — the pi loop with the provider picker in front of it. A host with its
+   * own harness implements `ChatSession` instead, and no pi module is loaded.
    */
   session: ChatSession;
   className?: string;

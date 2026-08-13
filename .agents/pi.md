@@ -8,7 +8,7 @@ which is all the surface asks for. Nothing outside this directory imports pi —
 
 ```
 prompt -> Agent -> streamFor(model.api) -> streamSimple -> AgentEvent
-                -> beforeToolCall -> ApprovalGate -> AgentTool -> PageBridge
+                -> beforeToolCall -> ApprovalGate -> AgentTool (the host's)
 store:   every event -> toViewMessages(agent.state) -> AgentSnapshot
 session: AgentSnapshot + providers + models + title -> ChatSnapshot -> Chat
 ```
@@ -22,9 +22,7 @@ session: AgentSnapshot + providers + models + title -> ChatSnapshot -> Chat
 | `providers.ts`    | the provider list, the api modules, `streamFor()`         |
 | `catalog.ts`      | one provider's models, fetched once per page              |
 | `use-catalog.ts`  | the same, as a hook, for a host driving `Chat` itself     |
-| `page-bridge.ts`  | how tools reach the page — document-backed today          |
 | `storage.ts`      | `localStorage` for the keys, the provider and the model   |
-| `tools.ts`        | `read_page`, `find_elements`                              |
 | `transcript.ts`   | `AgentMessage[]` -> renderable parts, and the usage panel |
 | `store.ts`        | a subscribable view of `Agent` events                     |
 | `use-agent.ts`    | the store as a hook — `ChatState`, unchanged              |

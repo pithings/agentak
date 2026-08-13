@@ -1,11 +1,11 @@
-import type { StreamFn } from "@earendil-works/pi-agent-core";
+import type { AgentTool, StreamFn } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, StopReason } from "@earendil-works/pi-ai";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { act, renderHook, waitFor } from "@testing-library/preact";
+import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
 
 import { createAgent } from "@/pi/create-agent";
-import { documentBridge, type PageBridge } from "@/pi/page-bridge";
 import type { AnyModel } from "@/pi/providers";
 import { useAgent } from "@/pi/use-agent";
 import type { ViewToolPart } from "@/types";
@@ -46,19 +46,18 @@ const scripted = (script: AssistantMessage[]): StreamFn => {
   };
 };
 
-const page: PageBridge = {
-  read: () =>
-    Promise.resolve({
-      url: "https://example.test/",
-      title: "Example",
-      text: "two plans",
-      truncated: false,
-    }),
-  find: () => Promise.resolve([]),
+/** A host tool, because the loop ships with none. */
+const lookup: AgentTool<ReturnType<typeof Type.Object>> = {
+  name: "lookup",
+  label: "Look up",
+  description: "Answers with a fixed line, so a turn can run a tool.",
+  parameters: Type.Object({}, { additionalProperties: false }),
+  execute: () =>
+    Promise.resolve({ content: [{ type: "text", text: "two plans" }], details: undefined }),
 };
 
-const readPageTurn = turn(
-  [{ type: "toolCall", id: "call-1", name: "read_page", arguments: {} }],
+const lookupTurn = turn(
+  [{ type: "toolCall", id: "call-1", name: "lookup", arguments: {} }],
   "toolUse",
 );
 
@@ -70,7 +69,7 @@ const setup = (script: AssistantMessage[], approvals: "once" | "never" = "once")
   const runtime = createAgent({
     apiKey: "test-key",
     approvals,
-    page,
+    tools: [lookup],
     streamFn: scripted(script),
   });
   return renderHook(() => useAgent(runtime));
@@ -93,7 +92,7 @@ describe("the wired agent", () => {
   });
 
   it("holds a tool call until it is allowed, then runs it", async () => {
-    const { result } = setup([readPageTurn, answerTurn]);
+    const { result } = setup([lookupTurn, answerTurn]);
 
     act(() => result.current.send("read it"));
     await waitFor(() =>
@@ -109,7 +108,7 @@ describe("the wired agent", () => {
   });
 
   it("blocks a denied tool call and says so in the result", async () => {
-    const { result } = setup([readPageTurn, answerTurn]);
+    const { result } = setup([lookupTurn, answerTurn]);
 
     act(() => result.current.send("read it"));
     await waitFor(() =>
@@ -124,7 +123,7 @@ describe("the wired agent", () => {
   });
 
   it("tells the model why a call was denied, when the reader says", async () => {
-    const { result } = setup([readPageTurn, answerTurn]);
+    const { result } = setup([lookupTurn, answerTurn]);
 
     act(() => result.current.send("read it"));
     await waitFor(() =>
@@ -150,7 +149,7 @@ describe("the wired agent", () => {
       throw new Error("Provider is down.");
     };
 
-    const runtime = createAgent({ apiKey: "test-key", approvals: "never", page, streamFn: flaky });
+    const runtime = createAgent({ apiKey: "test-key", approvals: "never", streamFn: flaky });
     const { result } = renderHook(() => useAgent(runtime));
 
     act(() => result.current.send("what is this page?"));
@@ -177,7 +176,6 @@ describe("the wired agent", () => {
     const runtime = createAgent({
       apiKey: "test-key",
       approvals: "never",
-      page,
       streamFn: recording,
     });
     const { result } = renderHook(() => useAgent(runtime));
@@ -209,7 +207,7 @@ describe("the wired agent", () => {
   });
 
   it("asks nothing when the policy is never", async () => {
-    const { result } = setup([readPageTurn, answerTurn], "never");
+    const { result } = setup([lookupTurn, answerTurn], "never");
 
     act(() => result.current.send("read it"));
     await waitFor(() =>
@@ -218,7 +216,7 @@ describe("the wired agent", () => {
   });
 
   it("queues a message typed mid-turn, and drops it once the loop takes it", async () => {
-    const { result } = setup([readPageTurn, answerTurn]);
+    const { result } = setup([lookupTurn, answerTurn]);
 
     act(() => result.current.send("read it"));
     await waitFor(() =>
@@ -249,7 +247,6 @@ describe("the wired agent", () => {
     const runtime = createAgent({
       apiKey: (provider) => (provider === "openrouter" ? "sk-or-test" : undefined),
       model: gateway,
-      page,
       streamFn: scripted([
         {
           ...answerTurn,
@@ -278,30 +275,5 @@ describe("the wired agent", () => {
     act(() => result.current.reset());
     expect(result.current.messages).toEqual([]);
     expect(result.current.usage).toBeUndefined();
-  });
-});
-
-describe("documentBridge", () => {
-  it("reads the page it runs in, and truncates", async () => {
-    document.title = "Fixture";
-    document.body.innerHTML = "<h1>Plans</h1><p>Pro and Team</p>";
-
-    const bridge = documentBridge(document);
-    expect(await bridge.read(8000)).toMatchObject({ title: "Fixture", truncated: false });
-    expect((await bridge.read(4)).truncated).toBe(true);
-  });
-
-  it("returns a selector that finds each element again", async () => {
-    document.body.innerHTML = "<main><p>one</p><p id='two'>two</p></main>";
-
-    const found = await documentBridge(document).find("p", 10);
-    expect(found).toHaveLength(2);
-    expect(found[1].selector).toBe("#two");
-    expect(document.querySelector(found[0].selector)?.textContent).toBe("one");
-  });
-
-  it("caps the number of elements it returns", async () => {
-    document.body.innerHTML = "<p>a</p><p>b</p><p>c</p>";
-    expect(await documentBridge(document).find("p", 2)).toHaveLength(2);
   });
 });
