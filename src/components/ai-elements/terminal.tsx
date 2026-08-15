@@ -2,13 +2,13 @@ import type { ComponentProps } from "preact";
 import { createContext } from "preact";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import { Button, type ButtonProps } from "@/components/ui/button";
-import { type AnsiStyle, ansiCss, parseAnsi } from "@/lib/ansi";
-import { CheckIcon, CopyIcon, TerminalIcon, TrashIcon } from "@/lib/icons";
-import { useAnimation } from "@/lib/use-animation";
-import { useInteraction } from "@/lib/use-interaction";
-import { pulseKeyframes, pulseOptions, reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Button, type ButtonProps } from "../ui/button.tsx";
+import { type AnsiStyle, ansiCss, parseAnsi } from "../../lib/ansi.ts";
+import { CheckIcon, CopyIcon, TerminalIcon, TrashIcon } from "../../lib/icons.tsx";
+import { useAnimation } from "../../lib/use-animation.ts";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { pulseKeyframes, pulseOptions, reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   terminal: {

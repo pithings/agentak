@@ -3,11 +3,11 @@ import { createContext } from "preact";
 import { memo } from "preact/compat";
 import { useContext } from "preact/hooks";
 
-import { Markdown } from "@/components/markdown";
-import { Button, type ButtonProps } from "@/components/ui/button";
-import type { MessageRole } from "@/types";
-import { u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Markdown } from "../markdown.tsx";
+import { Button, type ButtonProps } from "../ui/button.tsx";
+import type { MessageRole } from "../../types.ts";
+import { u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const MessageContext = createContext<MessageRole>("user");
 

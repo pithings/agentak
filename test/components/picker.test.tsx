@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ChatPicker } from "@/components/chat/picker";
+import { ChatPicker } from "../../src/components/chat/picker.tsx";
 
 afterEach(cleanup);
 

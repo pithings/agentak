@@ -2,10 +2,10 @@ import type { ComponentChildren, ComponentProps } from "preact";
 import { createContext } from "preact";
 import { useContext, useMemo } from "preact/hooks";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button, type ButtonProps } from "@/components/ui/button";
-import type { ToolApproval, ToolState } from "@/types";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Alert, AlertDescription } from "../ui/alert.tsx";
+import { Button, type ButtonProps } from "../ui/button.tsx";
+import type { ToolApproval, ToolState } from "../../types.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   confirmation: {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { chat, toggleChat } from "../chat-store";
-import { theme, toggleTheme } from "../theme";
+import { chat, toggleChat } from "../chat-store.ts";
+import { theme, toggleTheme } from "../theme.ts";
 
 const emit = defineEmits<{ (event: "toggle-nav"): void }>();
 </script>

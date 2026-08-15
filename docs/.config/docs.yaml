@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=https://unpkg.com/undocs/schema/config.json
+
+name: "Agentak"
+shortDescription: "Add an AI chat to any web page."
+description: "A complete AI chat UI for React, Vue, Preact, and plain JavaScript."
+github: "pithings/agentak"
+themeColor: cyan
+url: "https://agentak.dev"

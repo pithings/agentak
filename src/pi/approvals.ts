@@ -1,6 +1,6 @@
 import type { BeforeToolCallContext, BeforeToolCallResult } from "@earendil-works/pi-agent-core";
 
-import type { ToolApproval } from "@/types";
+import type { ToolApproval } from "../types.ts";
 
 /**
  * How often the user is asked before a tool runs.

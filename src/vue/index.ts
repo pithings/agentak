@@ -8,9 +8,9 @@ import {
   watch,
 } from "vue";
 
-import { AgentChat } from "@/agent-chat";
-import { Chat } from "@/components/chat";
-import { injectTokens } from "@/styles/inject";
+import { AgentChat } from "../agent-chat.tsx";
+import { Chat } from "../components/chat.tsx";
+import { injectTokens } from "../styles/inject.ts";
 import {
   type ChatHostProps,
   type ChatMount,
@@ -21,9 +21,9 @@ import {
   type Surface,
   type SurfaceProps,
   surfaceProps,
-} from "@/wrap";
+} from "../wrap.ts";
 
-export type { ChatPanelProps, ChatViewProps } from "@/wrap";
+export type { ChatPanelProps, ChatViewProps } from "../wrap.ts";
 
 /**
  * Every prop, declared: what is not declared here falls through to the div as

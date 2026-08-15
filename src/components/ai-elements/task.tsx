@@ -5,11 +5,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   useCollapsible,
-} from "@/components/ui/collapsible";
-import { Chevron, SearchIcon } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+} from "../ui/collapsible.tsx";
+import { Chevron, SearchIcon } from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   taskTrigger: {

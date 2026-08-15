@@ -2,13 +2,13 @@ import type { ComponentChild, ComponentChildren, ComponentProps, VNode } from "p
 import { cloneElement, createContext, isValidElement, toChildArray } from "preact";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon } from "@/lib/icons";
-import { useControllableState } from "@/lib/use-controllable-state";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Badge } from "../ui/badge.tsx";
+import { Button } from "../ui/button.tsx";
+import { Switch } from "../ui/switch.tsx";
+import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon } from "../../lib/icons.tsx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 /** A line between rows — a flex `gap` cannot draw one. */
 const DIVIDER: Sx = { borderTop: "1px solid var(--border)" };

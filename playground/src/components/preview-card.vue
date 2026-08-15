@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CatalogEntry } from "../catalog";
+import type { CatalogEntry } from "../catalog.tsx";
 import PreactHost from "./preact-host.vue";
 
 defineProps<{

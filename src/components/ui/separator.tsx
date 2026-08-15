@@ -1,6 +1,6 @@
 import type { ComponentProps } from "preact";
 
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   // `flexShrink` is a resting value a caller may replace. It is written before

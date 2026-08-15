@@ -1,7 +1,7 @@
 import type { ComponentProps } from "preact";
 
-import { sx, type Sx, type WithSx } from "@/styles/sx";
-import type { GeneratedImage } from "@/types";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
+import type { GeneratedImage } from "../../types.ts";
 
 const S = {
   image: {

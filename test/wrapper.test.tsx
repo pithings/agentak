@@ -2,10 +2,14 @@ import { cleanup, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 import { createApp, h, nextTick, ref } from "vue";
 
-import { mountChat } from "@/index";
-import { ChatPanel, ChatView } from "@/preact";
-import type { ChatSession, ChatSnapshot } from "@/session";
-import { type ChatPanelProps, ChatPanel as VueChatPanel, ChatView as VueChatView } from "@/vue";
+import { mountChat } from "../src/index.ts";
+import { ChatPanel, ChatView } from "../src/preact/index.tsx";
+import type { ChatSession, ChatSnapshot } from "../src/session.ts";
+import {
+  type ChatPanelProps,
+  ChatPanel as VueChatPanel,
+  ChatView as VueChatView,
+} from "../src/vue/index.ts";
 
 afterEach(() => {
   cleanup();

@@ -1,8 +1,8 @@
 import type { ComponentProps } from "preact";
 
-import { useInteraction } from "@/lib/use-interaction";
-import { reset } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 /**
  * `::placeholder` and `::selection` were the last two rules in this project. A

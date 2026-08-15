@@ -1,7 +1,7 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { Api, AssistantMessageEventStream, Model } from "@earendil-works/pi-ai";
 
-import { KILO_MODELS, LLM7_MODELS, OPENCODE_ZEN_MODELS, OVHCLOUD_MODELS } from "@/pi/free-models";
+import { KILO_MODELS, LLM7_MODELS, OPENCODE_ZEN_MODELS, OVHCLOUD_MODELS } from "./free-models.ts";
 
 /** A model from any provider. The api it speaks is on the model itself. */
 export type AnyModel = Model<Api>;

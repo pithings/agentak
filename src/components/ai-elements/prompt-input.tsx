@@ -1,17 +1,17 @@
 import type { ComponentProps, JSX } from "preact";
 import { useCallback, useState } from "preact/hooks";
 
-import type { ChatStatus } from "@/types";
+import type { ChatStatus } from "../../types.ts";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupTextarea,
-} from "@/components/ui/input-group";
-import type { ButtonProps } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { CornerDownLeftIcon, SquareIcon, XIcon } from "@/lib/icons";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+} from "../ui/input-group.tsx";
+import type { ButtonProps } from "../ui/button.tsx";
+import { Spinner } from "../ui/spinner.tsx";
+import { CornerDownLeftIcon, SquareIcon, XIcon } from "../../lib/icons.tsx";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   prompt: {

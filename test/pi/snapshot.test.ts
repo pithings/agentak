@@ -4,14 +4,14 @@ import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { createPiSession } from "@/pi/session";
+import { createPiSession } from "../../src/pi/session.ts";
 import {
   PI_SNAPSHOT_FIELDS,
   PI_SNAPSHOT_VERSION,
   type PiSnapshot,
   readPiSnapshot,
   usablePiMessages,
-} from "@/pi/snapshot";
+} from "../../src/pi/snapshot.ts";
 
 const turn = (content: AssistantMessage["content"], stopReason: StopReason): AssistantMessage => ({
   role: "assistant",

@@ -1,9 +1,9 @@
 import { type Attributes, type ComponentType, h, render } from "preact";
 
-import { AgentChat, type AgentChatProps } from "@/agent-chat";
-import type { ChatProps } from "@/components/chat";
-import { injectTokens } from "@/styles/inject";
-import type { Sx } from "@/styles/sx";
+import { AgentChat, type AgentChatProps } from "./agent-chat.tsx";
+import type { ChatProps } from "./components/chat.tsx";
+import { injectTokens } from "./styles/inject.ts";
+import type { Sx } from "./styles/sx.ts";
 
 /**
  * What the three framework wrappers share — `agentak/preact`, `agentak/react`

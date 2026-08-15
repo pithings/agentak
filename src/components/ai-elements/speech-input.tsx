@@ -1,12 +1,12 @@
 import type { ComponentProps } from "preact";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { MicIcon, SquareIcon } from "@/lib/icons";
-import { useAnimation } from "@/lib/use-animation";
-import { useInteraction } from "@/lib/use-interaction";
-import { sx, type Sx } from "@/styles/sx";
+import { Button } from "../ui/button.tsx";
+import { Spinner } from "../ui/spinner.tsx";
+import { MicIcon, SquareIcon } from "../../lib/icons.tsx";
+import { useAnimation } from "../../lib/use-animation.ts";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { sx, type Sx } from "../../styles/sx.ts";
 
 // The pulse ring used to need its own keyframes — `ping`, not the shared
 // `u.pulse` — because the three rings stagger with their own `animation-delay`.

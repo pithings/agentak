@@ -9,7 +9,7 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@/components/ui/carousel";
+} from "../ui/carousel.tsx";
 import {
   HoverCard,
   HoverCardContent,
@@ -17,10 +17,10 @@ import {
   type HoverCardContentProps,
   type HoverCardProps,
   type HoverCardTriggerProps,
-} from "@/components/ui/hover-card";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+} from "../ui/hover-card.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 /**
  * True while the pointer is over the citation.

@@ -2,9 +2,9 @@ import type { ComponentChildren, ComponentProps } from "preact";
 import { cloneElement, toChildArray } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button, type ButtonProps } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Avatar, AvatarFallback } from "../ui/avatar.tsx";
+import { Button, type ButtonProps } from "../ui/button.tsx";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible.tsx";
 import {
   CheckIcon,
   CopyIcon,
@@ -13,9 +13,9 @@ import {
   isIconChild,
   MinusIcon,
   PlusIcon,
-} from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+} from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   commit: {

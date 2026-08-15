@@ -1,8 +1,8 @@
 import type { ComponentProps } from "preact";
 import { cloneElement, toChildArray } from "preact";
 
-import { isIconChild } from "@/lib/icons";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { isIconChild } from "../../lib/icons.tsx";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   badge: {

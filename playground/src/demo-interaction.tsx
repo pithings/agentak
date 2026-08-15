@@ -31,7 +31,7 @@ import {
   CommitMetadata,
   CommitSeparator,
   CommitTimestamp,
-} from "@/components/ai-elements/commit";
+} from "@/components/ai-elements/commit.tsx";
 import {
   Confirmation,
   ConfirmationAccepted,
@@ -40,7 +40,7 @@ import {
   ConfirmationRejected,
   ConfirmationRequest,
   ConfirmationTitle,
-} from "@/components/ai-elements/confirmation";
+} from "@/components/ai-elements/confirmation.tsx";
 import {
   Queue,
   QueueItem,
@@ -54,10 +54,10 @@ import {
   QueueSectionContent,
   QueueSectionLabel,
   QueueSectionTrigger,
-} from "@/components/ai-elements/queue";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
-import { XIcon } from "@/lib/icons";
-import type { ToolApproval, ToolState } from "@/types";
+} from "@/components/ai-elements/queue.tsx";
+import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion.tsx";
+import { XIcon } from "@/lib/icons.tsx";
+import type { ToolApproval, ToolState } from "@/types.ts";
 
 export interface ConfirmationDemoProps {
   title: string;

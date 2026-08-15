@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ChatComposer } from "@/components/chat/composer";
+import { ChatComposer } from "../../src/components/chat/composer.tsx";
 
 afterEach(cleanup);
 

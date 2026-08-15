@@ -28,9 +28,9 @@ a descendant another component stretches gets its `style` passed down
 ## Writing a component
 
 ```tsx
-import { reset } from "@/styles/base";
-import { useInteraction } from "@/lib/use-interaction";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { reset } from "../../styles/base.ts";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   body: { overflowX: "auto", borderRadius: "var(--radius-md)" },

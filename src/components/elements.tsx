@@ -1,14 +1,14 @@
 import type { ComponentChildren } from "preact";
 
-import { Checkpoint, CheckpointIcon, CheckpointTrigger } from "@/components/ai-elements/checkpoint";
-import { EnvironmentVariables } from "@/components/ai-elements/environment-variables";
-import { Image } from "@/components/ai-elements/image";
-import { PackageInfo } from "@/components/ai-elements/package-info";
-import { SchemaDisplay } from "@/components/ai-elements/schema-display";
-import { SpeechInput } from "@/components/ai-elements/speech-input";
-import { StackTrace } from "@/components/ai-elements/stack-trace";
-import { TestResults } from "@/components/ai-elements/test-results";
-import { Transcription } from "@/components/ai-elements/transcription";
+import { Checkpoint, CheckpointIcon, CheckpointTrigger } from "./ai-elements/checkpoint.tsx";
+import { EnvironmentVariables } from "./ai-elements/environment-variables.tsx";
+import { Image } from "./ai-elements/image.tsx";
+import { PackageInfo } from "./ai-elements/package-info.tsx";
+import { SchemaDisplay } from "./ai-elements/schema-display.tsx";
+import { SpeechInput } from "./ai-elements/speech-input.tsx";
+import { StackTrace } from "./ai-elements/stack-trace.tsx";
+import { TestResults } from "./ai-elements/test-results.tsx";
+import { Transcription } from "./ai-elements/transcription.tsx";
 
 /**
  * Renderers for `{ kind: "element" }` transcript parts, by name.

@@ -1,9 +1,9 @@
 import type { ComponentChildren } from "preact";
 
-import { Button } from "@/components/ui/button";
-import { PlusIcon } from "@/lib/icons";
-import { reset } from "@/styles/base";
-import { sx, type Sx } from "@/styles/sx";
+import { Button } from "../ui/button.tsx";
+import { PlusIcon } from "../../lib/icons.tsx";
+import { reset } from "../../styles/base.ts";
+import { sx, type Sx } from "../../styles/sx.ts";
 
 const S = {
   header: {

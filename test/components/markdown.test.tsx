@@ -1,8 +1,8 @@
 import { cleanup, render, screen } from "@testing-library/preact";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { Markdown } from "@/components/markdown";
-import { loadMarkdown } from "@/lib/markdown";
+import { Markdown } from "../../src/components/markdown.tsx";
+import { loadMarkdown } from "../../src/lib/markdown.ts";
 
 // The wasm is instantiated once for the whole file, so every render below
 // takes the parsed path rather than the plain-text fallback.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ansiCss, parseAnsi } from "@/lib/ansi";
+import { ansiCss, parseAnsi } from "../../src/lib/ansi.ts";
 
 /** Spans as `[text, style]` pairs — shorter to assert than the full objects. */
 const parse = (input: string) => parseAnsi(input).map((span) => [span.text, span.style] as const);

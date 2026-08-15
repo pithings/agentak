@@ -8,9 +8,9 @@ import {
   InputGroupButton,
   InputGroupInput,
   InputGroupText,
-} from "@/components/ui/input-group";
-import { CheckIcon, CopyIcon } from "@/lib/icons";
-import { sx, type Sx } from "@/styles/sx";
+} from "../ui/input-group.tsx";
+import { CheckIcon, CopyIcon } from "../../lib/icons.tsx";
+import { sx, type Sx } from "../../styles/sx.ts";
 
 const S = {
   snippet: {

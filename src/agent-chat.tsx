@@ -1,14 +1,14 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 
-import { Chat } from "@/components/chat";
+import { Chat } from "./components/chat.tsx";
 import {
   CHAT_SESSION_OPTIONS,
   type ChatSession,
   type ChatSessionOptions,
   useSession,
-} from "@/session";
-import type { Sx } from "@/styles/sx";
+} from "./session.ts";
+import type { Sx } from "./styles/sx.ts";
 
 export interface AgentChatProps extends ChatSessionOptions {
   /**

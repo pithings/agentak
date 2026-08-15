@@ -11,11 +11,11 @@ import {
   CodeBlockFilename,
   CodeBlockHeader,
   CodeBlockTitle,
-} from "@/components/ai-elements/code-block";
-import { parseMarkdown, useMarkdown } from "@/lib/markdown";
-import { animateOnMount, isLowPowerDevice, prefersReducedMotion } from "@/lib/use-animation";
-import { fadeInKeyframes, fadeInOptions, reset } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+} from "./ai-elements/code-block.tsx";
+import { parseMarkdown, useMarkdown } from "../lib/markdown.ts";
+import { animateOnMount, isLowPowerDevice, prefersReducedMotion } from "../lib/use-animation.ts";
+import { fadeInKeyframes, fadeInOptions, reset } from "../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../styles/sx.ts";
 
 const S = {
   md: {

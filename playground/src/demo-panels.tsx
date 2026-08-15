@@ -5,7 +5,7 @@
  *
  * Demo only. Nothing here is part of the library surface.
  */
-import { u } from "@/styles/base";
+import { u } from "@/styles/base.ts";
 import {
   Artifact,
   ArtifactAction,
@@ -14,8 +14,8 @@ import {
   ArtifactDescription,
   ArtifactHeader,
   ArtifactTitle,
-} from "@/components/ai-elements/artifact";
-import { CodeBlock, type CodeLanguage } from "@/components/ai-elements/code-block";
+} from "@/components/ai-elements/artifact.tsx";
+import { CodeBlock, type CodeLanguage } from "@/components/ai-elements/code-block.tsx";
 import {
   Sandbox,
   SandboxContent,
@@ -25,7 +25,7 @@ import {
   SandboxTabsBar,
   SandboxTabsList,
   SandboxTabsTrigger,
-} from "@/components/ai-elements/sandbox";
+} from "@/components/ai-elements/sandbox.tsx";
 import {
   WebPreview,
   WebPreviewBody,
@@ -33,9 +33,9 @@ import {
   WebPreviewNavigation,
   WebPreviewNavigationButton,
   WebPreviewUrl,
-} from "@/components/ai-elements/web-preview";
-import { CopyIcon, DownloadIcon, RotateCcwIcon } from "@/lib/icons";
-import type { ToolState } from "@/types";
+} from "@/components/ai-elements/web-preview.tsx";
+import { CopyIcon, DownloadIcon, RotateCcwIcon } from "@/lib/icons.tsx";
+import type { ToolState } from "@/types.ts";
 
 export interface SandboxDemoProps {
   title: string;

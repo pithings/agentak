@@ -1,16 +1,16 @@
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 
-import { cachedCatalog, loadCatalog } from "@/pi/catalog";
-import { type AgentOptions, createAgent, SYSTEM_PROMPT } from "@/pi/create-agent";
-import { findModel } from "@/pi/models";
-import { type AnyModel, availableProviders, findProvider, type Provider } from "@/pi/providers";
+import { cachedCatalog, loadCatalog } from "./catalog.ts";
+import { type AgentOptions, createAgent, SYSTEM_PROMPT } from "./create-agent.ts";
+import { findModel } from "./models.ts";
+import { type AnyModel, availableProviders, findProvider, type Provider } from "./providers.ts";
 import {
   PI_SNAPSHOT_VERSION,
   type PiSnapshot,
   usablePiMessages,
   type WholePiSnapshot,
-} from "@/pi/snapshot";
+} from "./snapshot.ts";
 import {
   storeApiKey,
   storedApiKey,
@@ -20,11 +20,11 @@ import {
   storeModelId,
   storeProviderId,
   storeThinkingLevel,
-} from "@/pi/storage";
-import { createAgentStore } from "@/pi/store";
-import { generateTitle, titleRequest } from "@/pi/title";
-import type { ChatAgent, ChatProvider } from "@/components/chat/types";
-import type { ChatSession, ChatSessionOptions, ChatSnapshot } from "@/session";
+} from "./storage.ts";
+import { createAgentStore } from "./store.ts";
+import { generateTitle, titleRequest } from "./title.ts";
+import type { ChatAgent, ChatProvider } from "../components/chat/types.ts";
+import type { ChatSession, ChatSessionOptions, ChatSnapshot } from "../session.ts";
 
 /** `AgentOptions`, minus what the picker and the snapshot decide for themselves. */
 export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "messages" | "model"> {

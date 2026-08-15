@@ -11,9 +11,9 @@ import {
   ContextOutputUsage,
   ContextReasoningUsage,
   ContextTrigger,
-} from "@/components/ai-elements/context";
-import { ChatPicker, type ChatPickerProps } from "@/components/chat/picker";
-import type { ChatUsage } from "@/components/chat/types";
+} from "../ai-elements/context.tsx";
+import { ChatPicker, type ChatPickerProps } from "./picker.tsx";
+import type { ChatUsage } from "./types.ts";
 import {
   PromptInput,
   PromptInputBody,
@@ -21,10 +21,10 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
-} from "@/components/ai-elements/prompt-input";
-import { isTouch } from "@/lib/utils";
-import { u } from "@/styles/base";
-import { sx, type Sx } from "@/styles/sx";
+} from "../ai-elements/prompt-input.tsx";
+import { isTouch } from "../../lib/utils.ts";
+import { u } from "../../styles/base.ts";
+import { sx, type Sx } from "../../styles/sx.ts";
 
 const S = {
   // Tight, because the surface is a side panel or a corner box: every row the
@@ -76,17 +76,28 @@ export interface ChatComposerProps extends ChatPickerProps {
 export function ChatComposer({ isStreaming, onSend, onStop, usage, ...picker }: ChatComposerProps) {
   const ref = useRef<HTMLDivElement>(null);
 
+  // The textarea is uncontrolled and preact forwards no ref through a component,
+  // so it is read from the DOM by the name the form submits it under.
+  const input = () => ref.current?.querySelector<HTMLTextAreaElement>('textarea[name="message"]');
+
   // A chosen model closes the panel, which hands the focus back to the trigger —
   // but the reason to pick one is to then say something. Taken here, while the
   // panel still stands, so its own restore sees the focus already gone and
-  // leaves it. The textarea is uncontrolled and preact forwards no ref through a
-  // component, so it is read from the DOM by the name the form submits it under.
-  const focusInput = () =>
-    ref.current?.querySelector<HTMLTextAreaElement>('textarea[name="message"]')?.focus();
+  // leaves it.
+  const focusInput = () => input()?.focus();
+
+  const handleSubmit = (text: string) => {
+    if (!text.trim()) return;
+    // A sent message is the end of typing, so the keyboard has no more to do —
+    // and on a phone it covers the answer it was asked for. Blur drops it. A
+    // hardware keyboard keeps the focus, where the next message costs no click.
+    if (isTouch()) input()?.blur();
+    onSend(text);
+  };
 
   return (
     <div ref={ref} style={S.composer}>
-      <PromptInput onSubmit={(message) => message.text.trim() && onSend(message.text)}>
+      <PromptInput onSubmit={(message) => handleSubmit(message.text)}>
         <PromptInputBody>
           <PromptInputTextarea
             placeholder={isStreaming ? "Queue a message…" : "Ask about this page…"}

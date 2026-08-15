@@ -1,8 +1,8 @@
 import { type CSSProperties, createElement, type ReactElement, useEffect, useRef } from "react";
 
-import { AgentChat } from "@/agent-chat";
-import { Chat } from "@/components/chat";
-import { injectTokens } from "@/styles/inject";
+import { AgentChat } from "../agent-chat.tsx";
+import { Chat } from "../components/chat.tsx";
+import { injectTokens } from "../styles/inject.ts";
 import {
   type ChatHostProps,
   type ChatMount,
@@ -13,7 +13,7 @@ import {
   type Surface,
   type SurfaceProps,
   surfaceProps,
-} from "@/wrap";
+} from "../wrap.ts";
 
 /** The box around the surface — `className` and `style` are where a size goes. */
 interface ReactHost {

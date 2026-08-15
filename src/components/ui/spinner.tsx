@@ -1,7 +1,7 @@
-import { LoaderIcon, type IconProps } from "@/lib/icons";
-import { useAnimation } from "@/lib/use-animation";
-import { spinKeyframes, spinOptions, u } from "@/styles/base";
-import { sx, type Sx } from "@/styles/sx";
+import { LoaderIcon, type IconProps } from "../../lib/icons.tsx";
+import { useAnimation } from "../../lib/use-animation.ts";
+import { spinKeyframes, spinOptions, u } from "../../styles/base.ts";
+import { sx, type Sx } from "../../styles/sx.ts";
 
 const S = {
   // The animation and its ref live on this wrapper, not on `LoaderIcon`

@@ -1,14 +1,14 @@
 import type { ComponentChildren, ComponentProps } from "preact";
 import { isValidElement } from "preact";
 
-import type { DynamicToolUIPart, ToolUIPart } from "@/types";
-import { Badge } from "@/components/ui/badge";
+import type { DynamicToolUIPart, ToolUIPart } from "../../types.ts";
+import { Badge } from "../ui/badge.tsx";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   useCollapsible,
-} from "@/components/ui/collapsible";
+} from "../ui/collapsible.tsx";
 import {
   CheckCircleIcon,
   Chevron,
@@ -16,12 +16,12 @@ import {
   ClockIcon,
   WrenchIcon,
   XCircleIcon,
-} from "@/lib/icons";
-import { useAnimation } from "@/lib/use-animation";
-import { pulseKeyframes, pulseOptions, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+} from "../../lib/icons.tsx";
+import { useAnimation } from "../../lib/use-animation.ts";
+import { pulseKeyframes, pulseOptions, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
-import { CodeBlock } from "./code-block";
+import { CodeBlock } from "./code-block.tsx";
 
 /**
  * The input/output box. Exported so other files that render the same surface

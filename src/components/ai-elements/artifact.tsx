@@ -1,11 +1,11 @@
 import type { ComponentProps, ComponentType } from "preact";
 
-import { Button, type ButtonProps } from "@/components/ui/button";
-import type { IconProps } from "@/lib/icons";
-import { XIcon } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Button, type ButtonProps } from "../ui/button.tsx";
+import type { IconProps } from "../../lib/icons.tsx";
+import { XIcon } from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   artifact: {

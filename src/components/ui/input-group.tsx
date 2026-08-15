@@ -2,12 +2,12 @@ import type { ComponentChild, ComponentProps, Context, VNode } from "preact";
 import { cloneElement, createContext, toChildArray } from "preact";
 import { useCallback, useContext, useLayoutEffect, useState } from "preact/hooks";
 
-import { isIconChild } from "@/lib/icons";
-import { useInteraction, type InteractionProps } from "@/lib/use-interaction";
-import { Button, type ButtonProps } from "@/components/ui/button";
-import { Input, isInvalid } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { isIconChild } from "../../lib/icons.tsx";
+import { useInteraction, type InteractionProps } from "../../lib/use-interaction.ts";
+import { Button, type ButtonProps } from "./button.tsx";
+import { Input, isInvalid } from "./input.tsx";
+import { Textarea } from "./textarea.tsx";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 /**
  * What the group does to a control it wraps travels as `style`, and what the

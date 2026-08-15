@@ -1,9 +1,9 @@
 import type { ComponentProps } from "preact";
 
-import { controlSx, isInvalid } from "@/components/ui/input";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { controlSx, isInvalid } from "./input.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   textarea: {

@@ -1,11 +1,11 @@
 import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
 
-import type { AgentRuntime } from "@/pi/create-agent";
-import { describeFailure } from "@/pi/errors";
-import type { AnyModel } from "@/pi/providers";
-import { isFailedTurn } from "@/pi/snapshot";
-import { type ContextUsageView, toContextUsage, toViewMessages } from "@/pi/transcript";
-import type { ViewMessage } from "@/types";
+import type { AgentRuntime } from "./create-agent.ts";
+import { describeFailure } from "./errors.ts";
+import type { AnyModel } from "./providers.ts";
+import { isFailedTurn } from "./snapshot.ts";
+import { type ContextUsageView, toContextUsage, toViewMessages } from "./transcript.ts";
+import type { ViewMessage } from "../types.ts";
 
 /** A message typed while the agent was busy. pi holds it; this holds its text. */
 export interface QueuedMessage {

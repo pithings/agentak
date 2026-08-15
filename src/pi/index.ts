@@ -1,14 +1,14 @@
 // The pi-agent-core loop, under the `agentak/pi` subpath — the one entry that
 // pulls pi in. `createPiSession` is what `AgentChat` runs on; the rest is for a
 // host that wants the loop under a surface of its own.
-export { createPiSession, type PiSession, type PiSessionOptions } from "@/pi/session";
+export { createPiSession, type PiSession, type PiSessionOptions } from "./session.ts";
 export {
   AGENT_NAME,
   createAgent,
   SYSTEM_PROMPT,
   type AgentOptions,
   type AgentRuntime,
-} from "@/pi/create-agent";
+} from "./create-agent.ts";
 export {
   PI_SNAPSHOT_FIELDS,
   PI_SNAPSHOT_VERSION,
@@ -16,13 +16,13 @@ export {
   readPiSnapshot,
   usablePiMessages,
   type WholePiSnapshot,
-} from "@/pi/snapshot";
+} from "./snapshot.ts";
 export {
   type ApprovalGate,
   type ApprovalPolicy,
   type ApprovalRequest,
   createApprovalGate,
-} from "@/pi/approvals";
+} from "./approvals.ts";
 export {
   catalogModels,
   DEFAULT_MODEL,
@@ -30,9 +30,9 @@ export {
   DEFAULT_MODELS,
   DEFAULT_PROVIDER_ID,
   findModel,
-} from "@/pi/models";
-export { cachedCatalog, loadCatalog } from "@/pi/catalog";
-export { describeFailure } from "@/pi/errors";
+} from "./models.ts";
+export { cachedCatalog, loadCatalog } from "./catalog.ts";
+export { describeFailure } from "./errors.ts";
 export {
   type AnyModel,
   availableProviders,
@@ -42,8 +42,8 @@ export {
   PROVIDERS,
   streamFor,
   SUPPORTED_APIS,
-} from "@/pi/providers";
-export { type CatalogState, useCatalog } from "@/pi/use-catalog";
+} from "./providers.ts";
+export { type CatalogState, useCatalog } from "./use-catalog.ts";
 export {
   generateTitle,
   type GenerateTitleOptions,
@@ -52,12 +52,12 @@ export {
   type TitleRequest,
   toTitle,
   useTitle,
-} from "@/pi/title";
-export { type ContextUsageView, toContextUsage, toViewMessages } from "@/pi/transcript";
+} from "./title.ts";
+export { type ContextUsageView, toContextUsage, toViewMessages } from "./transcript.ts";
 export {
   type AgentSnapshot,
   type AgentStore,
   createAgentStore,
   type QueuedMessage,
-} from "@/pi/store";
-export { type ChatState, useAgent } from "@/pi/use-agent";
+} from "./store.ts";
+export { type ChatState, useAgent } from "./use-agent.ts";

@@ -7,7 +7,7 @@ import {
   SnippetCopyButton,
   SnippetInput,
   SnippetText,
-} from "@/components/ai-elements/snippet";
+} from "../../src/components/ai-elements/snippet.tsx";
 
 afterEach(cleanup);
 

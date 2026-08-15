@@ -3,13 +3,13 @@ import { createContext } from "preact";
 import { useContext, useMemo } from "preact/hooks";
 import { memo } from "preact/compat";
 
-import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { BrainIcon, Chevron, DotIcon, type IconProps } from "@/lib/icons";
-import { useControllableState } from "@/lib/use-controllable-state";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Badge } from "../ui/badge.tsx";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible.tsx";
+import { BrainIcon, Chevron, DotIcon, type IconProps } from "../../lib/icons.tsx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   cot: {

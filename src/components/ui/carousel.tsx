@@ -2,10 +2,10 @@ import type { ComponentProps, RefObject } from "preact";
 import { createContext } from "preact";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import { ArrowLeftIcon, ArrowRightIcon } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { ArrowLeftIcon, ArrowRightIcon } from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 /**
  * Replaces `embla-carousel-react`. The browser does the paging: one scroll-snap

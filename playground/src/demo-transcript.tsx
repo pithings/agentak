@@ -1,12 +1,12 @@
 import { useState } from "preact/hooks";
 
-import { ChatMessage } from "@/components/chat/message";
-import type { ViewMessage } from "@/types";
-import type { Sx } from "@/styles/sx";
+import { ChatMessage } from "@/components/chat/message.tsx";
+import type { ViewMessage } from "@/types.ts";
+import type { Sx } from "@/styles/sx.ts";
 
-import { answerApproval, promptParts, turns } from "./demo-chat";
+import { answerApproval, promptParts, turns } from "./demo-chat.ts";
 // Registers the demo renderers the turns reach for. Side effect.
-import "./demo-elements";
+import "./demo-elements.tsx";
 
 const S = {
   // The rows carry no surface of their own, so the base the chat sets goes here.

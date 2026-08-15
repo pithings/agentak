@@ -1,6 +1,6 @@
 import type { ComponentProps } from "preact";
 
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 /**
  * Radix ships an overlay scrollbar with its own thumb geometry. This is the

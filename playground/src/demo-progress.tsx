@@ -13,7 +13,7 @@ import {
   AgentOutput,
   AgentTool,
   AgentTools,
-} from "@/components/ai-elements/agent";
+} from "@/components/ai-elements/agent.tsx";
 import {
   ChainOfThought,
   ChainOfThoughtContent,
@@ -21,7 +21,7 @@ import {
   ChainOfThoughtSearchResult,
   ChainOfThoughtSearchResults,
   ChainOfThoughtStep,
-} from "@/components/ai-elements/chain-of-thought";
+} from "@/components/ai-elements/chain-of-thought.tsx";
 import {
   Plan,
   PlanAction,
@@ -31,15 +31,15 @@ import {
   PlanSteps,
   PlanTitle,
   PlanTrigger,
-} from "@/components/ai-elements/plan";
+} from "@/components/ai-elements/plan.tsx";
 import {
   Task,
   TaskContent,
   TaskItem,
   TaskItemFile,
   TaskTrigger,
-} from "@/components/ai-elements/task";
-import type { ToolDefinition } from "@/types";
+} from "@/components/ai-elements/task.tsx";
+import type { ToolDefinition } from "@/types.ts";
 
 export interface ChainOfThoughtDemoProps {
   title?: string;

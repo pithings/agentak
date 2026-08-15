@@ -12,16 +12,17 @@ import {
   ModelSelectorShortcut,
   ModelSelectorTrigger,
   ModelSelectorValue,
-} from "@/components/ai-elements/model-selector";
-import type { ChatModel, ChatProvider, ChatThinkingLevel } from "@/components/chat/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
-import { useControllableState } from "@/lib/use-controllable-state";
-import { isTouch } from "@/lib/utils";
-import { ArrowLeftIcon, BrainIcon, ExternalLinkIcon, PlugIcon } from "@/lib/icons";
-import { u } from "@/styles/base";
-import { sx, type Sx } from "@/styles/sx";
+} from "../ai-elements/model-selector.tsx";
+import type { ChatModel, ChatProvider, ChatThinkingLevel } from "./types.ts";
+import { Button } from "../ui/button.tsx";
+import { Input } from "../ui/input.tsx";
+import { Spinner } from "../ui/spinner.tsx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { useKeyboardInset } from "../../lib/use-keyboard-inset.ts";
+import { isTouch } from "../../lib/utils.ts";
+import { ArrowLeftIcon, BrainIcon, ExternalLinkIcon, PlugIcon } from "../../lib/icons.tsx";
+import { u } from "../../styles/base.ts";
+import { sx, type Sx } from "../../styles/sx.ts";
 
 const S = {
   // Spans the composer row, so the panel — clamped to this box by `S.content`
@@ -125,6 +126,18 @@ const noZoom = touch ? u.noZoom : undefined;
 // one per row wherever the field sits.
 const listFirst = touch ? { borderBottom: "1px solid var(--border)", order: "-1" } : undefined;
 
+/**
+ * With a keyboard up, every row the list can hold is one it should take.
+ *
+ * `ModelSelectorList` stops at `18rem` — a panel is a box beside its trigger,
+ * not the whole surface. A keyboard turns that around: the room left over the
+ * keyboard is already less than the panel wants, and a list that stops short of
+ * it leaves the only rows there are unread. The cap comes off, and the height
+ * the panel measured — `--popover-available` on the content — is then the only
+ * one left. Nothing changes where the room is smaller than the cap anyway.
+ */
+const listRoom: Sx = { maxHeight: "none" };
+
 /** Which of the four lists the panel is showing. */
 type Level = "providers" | "models" | "key" | "thinking";
 
@@ -204,6 +217,13 @@ export function ChatPicker({
   const [keying, setKeying] = useState<ChatProvider | null>(null);
   const [draft, setDraft] = useState("");
   const [search, setSearch] = useState("");
+  // Touch only, and 0 wherever the browser shrinks the layout viewport itself.
+  const inset = useKeyboardInset();
+  // Which is why the focus counts too: where the layout viewport shrinks there
+  // is no inset to read, and on a phone the only thing that raises a keyboard
+  // over this panel is a field inside it taking the focus.
+  const [typing, setTyping] = useState(false);
+  const keyboard = inset > 0 || (touch && typing);
 
   const model = models?.find((entry) => entry.id === modelId);
   const provider = providers?.find((entry) => entry.id === providerId);
@@ -276,6 +296,7 @@ export function ChatPicker({
     <ModelSelector
       onOpenChange={(next) => {
         setOpen(next);
+        setTyping(false);
         go(null);
       }}
       onValueChange={onModelChange}
@@ -302,6 +323,7 @@ export function ChatPicker({
         fill={touch}
         onFocusIn={(event) => {
           panelRef.current = event.currentTarget;
+          setTyping((event.target as HTMLElement).tagName === "INPUT");
         }}
         onSearchChange={setSearch}
         search={search}
@@ -352,7 +374,7 @@ export function ChatPicker({
             </p> */}
           </div>
         ) : (
-          <ModelSelectorList style={listFirst}>
+          <ModelSelectorList style={sx(listFirst, keyboard && listRoom)}>
             {shown === "models" && modelsLoading && (
               <div style={S.loading}>
                 <Spinner />

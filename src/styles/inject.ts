@@ -1,4 +1,4 @@
-import { tokens } from "@/styles/base";
+import { tokens } from "./base.ts";
 
 const MARK = "data-agentak-tokens";
 

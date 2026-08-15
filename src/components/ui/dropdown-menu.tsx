@@ -2,9 +2,9 @@ import type { ComponentProps, RefObject } from "preact";
 import { createContext } from "preact";
 import { useContext, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import { useInteraction } from "@/lib/use-interaction";
-import { reset } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 import {
   Popover,
   PopoverContent,
@@ -13,7 +13,7 @@ import {
   type PopoverContentProps,
   type PopoverProps,
   type PopoverTriggerProps,
-} from "@/components/ui/popover";
+} from "./popover.tsx";
 
 /**
  * Replaces `@radix-ui/react-dropdown-menu`, on top of `popover.tsx`.

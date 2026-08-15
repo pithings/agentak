@@ -2,8 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import { CATALOG, ENTRIES, matches } from "../catalog";
-import { turns } from "../demo-chat";
+import { CATALOG, ENTRIES, matches } from "../catalog.tsx";
+import { turns } from "../demo-chat.ts";
 
 defineProps<{ open: boolean }>();
 

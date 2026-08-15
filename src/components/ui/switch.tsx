@@ -1,9 +1,9 @@
 import type { ComponentProps } from "preact";
 
-import { useControllableState } from "@/lib/use-controllable-state";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset } from "@/styles/base";
-import { sx, type Sx } from "@/styles/sx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset } from "../../styles/base.ts";
+import { sx, type Sx } from "../../styles/sx.ts";
 
 /**
  * Hand-rolled from radix `Switch`: a button with `role="switch"`, so the state

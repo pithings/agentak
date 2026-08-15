@@ -2,9 +2,9 @@ import type { ComponentProps } from "preact";
 import { createContext } from "preact";
 import { useContext, useId, useMemo } from "preact/hooks";
 
-import { useControllableState } from "@/lib/use-controllable-state";
-import { reset } from "@/styles/base";
-import { sx, type WithSx } from "@/styles/sx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { reset } from "../../styles/base.ts";
+import { sx, type WithSx } from "../../styles/sx.ts";
 
 export interface CollapsibleContextValue {
   open: boolean;

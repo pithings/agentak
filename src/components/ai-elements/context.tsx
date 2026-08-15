@@ -2,12 +2,12 @@ import type { ComponentChild, ComponentChildren, ComponentProps, VNode } from "p
 import { cloneElement, createContext, isValidElement, toChildArray } from "preact";
 import { useContext, useMemo } from "preact/hooks";
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { buttonSx } from "@/components/ui/button";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
-import type { LanguageModelUsage } from "@/types";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible.tsx";
+import { buttonSx } from "../ui/button.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
+import type { LanguageModelUsage } from "../../types.ts";
 
 /** A line between children — a flex `gap` cannot draw one. */
 const DIVIDER: Sx = { borderTop: "1px solid var(--border)" };

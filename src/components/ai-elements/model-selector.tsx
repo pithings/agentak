@@ -13,7 +13,7 @@ import {
   CommandShortcut,
   type CommandFilter,
   type CommandItemProps,
-} from "@/components/ui/command";
+} from "../ui/command.tsx";
 import {
   Popover,
   PopoverContent,
@@ -22,12 +22,12 @@ import {
   type PopoverContentProps,
   type PopoverProps,
   type PopoverTriggerProps,
-} from "@/components/ui/popover";
-import { buttonSx, type ButtonSize, type ButtonVariant } from "@/components/ui/button";
-import { useControllableState } from "@/lib/use-controllable-state";
-import { useInteraction } from "@/lib/use-interaction";
-import { CheckIcon, ChevronsUpDownIcon, SearchIcon } from "@/lib/icons";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+} from "../ui/popover.tsx";
+import { buttonSx, type ButtonSize, type ButtonVariant } from "../ui/button.tsx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { CheckIcon, ChevronsUpDownIcon, SearchIcon } from "../../lib/icons.tsx";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 /**
  * Pick a model from a filtered list.

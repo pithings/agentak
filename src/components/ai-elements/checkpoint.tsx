@@ -1,10 +1,10 @@
 import type { ComponentProps } from "preact";
 
-import { Button, type ButtonProps } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { BookmarkIcon, type IconProps } from "@/lib/icons";
-import { u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Button, type ButtonProps } from "../ui/button.tsx";
+import { Separator } from "../ui/separator.tsx";
+import { BookmarkIcon, type IconProps } from "../../lib/icons.tsx";
+import { u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   // Stretches the separator this component renders. `sx()` in separator.tsx

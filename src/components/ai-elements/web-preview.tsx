@@ -2,13 +2,13 @@ import type { ComponentChildren, ComponentProps } from "preact";
 import { createContext } from "preact";
 import { useCallback, useContext, useMemo, useState } from "preact/hooks";
 
-import { Button, type ButtonProps } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { Chevron } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Button, type ButtonProps } from "../ui/button.tsx";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible.tsx";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group.tsx";
+import { Chevron } from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 /** Same specificity as the base color; only the level actually shown matters. */
 const LOG_COLOR = {

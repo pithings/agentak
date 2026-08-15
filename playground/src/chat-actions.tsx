@@ -1,24 +1,24 @@
 import type { ComponentChildren } from "preact";
 
-import { Button, buttonSx } from "@/components/ui/button";
+import { Button, buttonSx } from "@/components/ui/button.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ChevronDownIcon, ClockIcon, XIcon } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { u } from "@/styles/base";
-import { sx, type Sx } from "@/styles/sx";
+} from "@/components/ui/dropdown-menu.tsx";
+import { ChevronDownIcon, ClockIcon, XIcon } from "@/lib/icons.tsx";
+import { useInteraction } from "@/lib/use-interaction.ts";
+import { u } from "@/styles/base.ts";
+import { sx, type Sx } from "@/styles/sx.ts";
 import {
   type ChatEntry,
   conversations,
   forgetConversation,
   openConversation,
   useConversations,
-} from "./chat-history";
+} from "./chat-history.ts";
 
 const S = {
   row: { display: "flex", alignItems: "center", gap: "0.125rem" },

@@ -6,9 +6,9 @@ import {
   type ThinkingLevel,
 } from "@earendil-works/pi-agent-core";
 
-import { type ApprovalGate, type ApprovalPolicy, createApprovalGate } from "@/pi/approvals";
-import { DEFAULT_MODEL } from "@/pi/models";
-import { type AnyModel, findProvider, streamFor } from "@/pi/providers";
+import { type ApprovalGate, type ApprovalPolicy, createApprovalGate } from "./approvals.ts";
+import { DEFAULT_MODEL } from "./models.ts";
+import { type AnyModel, findProvider, streamFor } from "./providers.ts";
 
 export const AGENT_NAME = "Assistant";
 

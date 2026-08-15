@@ -2,11 +2,11 @@ import type { ComponentChild, ComponentProps, VNode } from "preact";
 import { cloneElement, createContext, isValidElement, toChildArray } from "preact";
 import { useContext, useId, useMemo } from "preact/hooks";
 
-import { Chevron } from "@/lib/icons";
-import { useControllableState } from "@/lib/use-controllable-state";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Chevron } from "../../lib/icons.tsx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 /**
  * The separating border is cloned, not selected. `:last-child` used to drop it

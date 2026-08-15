@@ -5,14 +5,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   useCollapsible,
-} from "@/components/ui/collapsible";
-import { Tabs, TabsContent, TabsList, TabsTrigger, useTabs } from "@/components/ui/tabs";
-import { Chevron, CodeIcon } from "@/lib/icons";
-import { u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
-import type { ToolState } from "@/types";
+} from "../ui/collapsible.tsx";
+import { Tabs, TabsContent, TabsList, TabsTrigger, useTabs } from "../ui/tabs.tsx";
+import { Chevron, CodeIcon } from "../../lib/icons.tsx";
+import { u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
+import type { ToolState } from "../../types.ts";
 
-import { getStatusBadge } from "./tool";
+import { getStatusBadge } from "./tool.tsx";
 
 // The list and tab overrides are `style` props, passed to TabsList/TabsTrigger,
 // which merge them in caller-last.

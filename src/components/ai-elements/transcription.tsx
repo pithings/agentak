@@ -2,12 +2,12 @@ import type { ComponentChildren, ComponentProps, JSX } from "preact";
 import { createContext } from "preact";
 import { useCallback, useContext, useMemo } from "preact/hooks";
 
-import { useControllableState } from "@/lib/use-controllable-state";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 // Aliased — the component below has the same name as the type.
-import type { TranscriptionSegment as Segment } from "@/types";
+import type { TranscriptionSegment as Segment } from "../../types.ts";
 
 /** `data-past` and `data-active` carry the segment state for anything reading it. */
 const S = {

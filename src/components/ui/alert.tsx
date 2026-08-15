@@ -2,8 +2,8 @@ import type { ComponentProps } from "preact";
 import { cloneElement, createContext, toChildArray } from "preact";
 import { useContext } from "preact/hooks";
 
-import { isIconChild } from "@/lib/icons";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { isIconChild } from "../../lib/icons.tsx";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   alert: {

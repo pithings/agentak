@@ -10,10 +10,10 @@ import {
   useState,
 } from "preact/hooks";
 
-import { isIconChild, SearchIcon } from "@/lib/icons";
-import { useControllableState } from "@/lib/use-controllable-state";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { isIconChild, SearchIcon } from "../../lib/icons.tsx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 /**
  * Replaces `cmdk`. A filter input over a `listbox`, with a roving highlight.

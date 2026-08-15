@@ -20,8 +20,11 @@ to `../src`, so they import the library source instead of `dist`.
 
 ## Conventions
 
-- Use standard TypeScript with explicit `.ts` and `.tsx` import extensions.
-- Use `@/` for paths inside `src/`.
+- Use standard TypeScript with explicit `.ts` and `.tsx` import extensions. A folder is
+  named through its file: `./components/index.ts`, never `./components`. The root
+  `tsconfig.json` sets `allowImportingTsExtensions`.
+- Use relative paths inside `src/` and `test/`. The `@/` alias is only for `playground/`
+  and `extension/`, where it points at the library source.
 - Write in Simplified Technical English.
 - Keep the design simple and minimal.
 - Only add comments when they explain something important. Keep them short.
@@ -124,8 +127,9 @@ Only the published library goes into `dist/`. The playground builds to `playgrou
 and the extension builds to `extension/dist`. Because of this layout, `files: ["dist"]`
 does not need extra filtering.
 
-Rolldown reads `tsconfig.json`, so `jsxImportSource: "preact"` and the `@/*` paths work
-without duplicate build settings. The React wrapper does not use JSX. It calls
+Rolldown reads `tsconfig.json`, so `jsxImportSource: "preact"` works without duplicate
+build settings. The library source uses relative imports and needs no path alias. The
+React wrapper does not use JSX. It calls
 `createElement()` so the React runtime cannot enter another bundle.
 
 All dependencies and optional peer dependencies are external. The bundles contain the
@@ -153,7 +157,7 @@ src/
   lib/                          Icons, Markdown loader, and interaction hooks
   pi/                           Included Pi agent; see `.agents/pi.md`
   types.ts                      UI types copied from the `ai` package
-test/                           Library tests that import source through `@/`
+test/                           Library tests that import source through `../src/`
 playground/                     Vue host app, package name `@agentak/playground`
 extension/                      MV3 side panel, package name `@agentak/extension`
 ```

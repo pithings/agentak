@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { AgentChat } from "@/agent-chat";
-import type { ChatSession, ChatSnapshot } from "@/session";
+import { AgentChat } from "../src/agent-chat.tsx";
+import type { ChatSession, ChatSnapshot } from "../src/session.ts";
 
 afterEach(cleanup);
 
@@ -89,7 +89,7 @@ function importsOf(file: string): string[] {
   return found;
 }
 
-/** Every package an entry reaches through the source, following `@/` and `./`. */
+/** Every package an entry reaches through the source, following relative paths. */
 function packagesFrom(entry: string): Set<string> {
   const packages = new Set<string>();
   const seen = new Set<string>();
@@ -101,11 +101,7 @@ function packagesFrom(entry: string): Set<string> {
     seen.add(file);
 
     for (const spec of importsOf(file)) {
-      const local = spec.startsWith("@/")
-        ? resolve(SRC, spec.slice(2))
-        : spec.startsWith(".")
-          ? resolve(dirname(file), spec)
-          : undefined;
+      const local = spec.startsWith(".") ? resolve(dirname(file), spec) : undefined;
       if (!local) {
         packages.add(spec);
         continue;

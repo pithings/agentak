@@ -1,7 +1,7 @@
 import type { ComponentChild, JSX, VNode } from "preact";
-import { cn } from "@/lib/utils";
-import { u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { cn } from "./utils.ts";
+import { u } from "../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../styles/sx.ts";
 
 // Icon geometry traced from lucide (ISC). Inlined so the bundle carries no
 // React icon package.

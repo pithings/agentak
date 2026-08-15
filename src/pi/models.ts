@@ -1,5 +1,5 @@
-import { LLM7_MODELS } from "@/pi/free-models";
-import { type AnyModel, SUPPORTED_APIS } from "@/pi/providers";
+import { LLM7_MODELS } from "./free-models.ts";
+import { type AnyModel, SUPPORTED_APIS } from "./providers.ts";
 
 /** A keyless provider, so a fresh page can answer before anyone is asked for a key. */
 export const DEFAULT_PROVIDER_ID = "llm7";

@@ -5,11 +5,11 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonSx } from "@/components/ui/button";
+} from "@/components/ui/accordion.tsx";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
+import { Button, buttonSx } from "@/components/ui/button.tsx";
 import {
   Card,
   CardAction,
@@ -18,7 +18,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/card.tsx";
 import {
   Carousel,
   CarouselContent,
@@ -26,8 +26,12 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@/components/ui/carousel";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+} from "@/components/ui/carousel.tsx";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible.tsx";
 import {
   Command,
   CommandEmpty,
@@ -36,7 +40,7 @@ import {
   CommandItem,
   CommandList,
   CommandShortcut,
-} from "@/components/ui/command";
+} from "@/components/ui/command.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,39 +49,39 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Input } from "@/components/ui/input";
+} from "@/components/ui/dropdown-menu.tsx";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card.tsx";
+import { Input } from "@/components/ui/input.tsx";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
   InputGroupText,
-} from "@/components/ui/input-group";
+} from "@/components/ui/input-group.tsx";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
   type PopoverTriggerProps,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Spinner } from "@/components/ui/spinner";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
+} from "@/components/ui/popover.tsx";
+import { ScrollArea } from "@/components/ui/scroll-area.tsx";
+import { Separator } from "@/components/ui/separator.tsx";
+import { Spinner } from "@/components/ui/spinner.tsx";
+import { Switch } from "@/components/ui/switch.tsx";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
+import { Textarea } from "@/components/ui/textarea.tsx";
 
 import {
   CodeBlock,
   CodeBlockCopyButton,
   CodeBlockHeader,
-} from "@/components/ai-elements/code-block";
+} from "@/components/ai-elements/code-block.tsx";
 import {
   Conversation,
   ConversationContent,
   ConversationEmptyState,
-} from "@/components/ai-elements/conversation";
+} from "@/components/ai-elements/conversation.tsx";
 import {
   Message,
   MessageAction,
@@ -85,7 +89,7 @@ import {
   MessageContent,
   MessageResponse,
   MessageToolbar,
-} from "@/components/ai-elements/message";
+} from "@/components/ai-elements/message.tsx";
 import {
   PromptInput,
   PromptInputBody,
@@ -93,11 +97,15 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
-} from "@/components/ai-elements/prompt-input";
-import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
-import { Shimmer } from "@/components/ai-elements/shimmer";
-import { Context } from "@/components/ai-elements/context";
-import { Terminal } from "@/components/ai-elements/terminal";
+} from "@/components/ai-elements/prompt-input.tsx";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "@/components/ai-elements/reasoning.tsx";
+import { Shimmer } from "@/components/ai-elements/shimmer.tsx";
+import { Context } from "@/components/ai-elements/context.tsx";
+import { Terminal } from "@/components/ai-elements/terminal.tsx";
 import {
   InlineCitation,
   InlineCitationCard,
@@ -113,7 +121,7 @@ import {
   InlineCitationQuote,
   InlineCitationSource,
   InlineCitationText,
-} from "@/components/ai-elements/inline-citation";
+} from "@/components/ai-elements/inline-citation.tsx";
 import {
   ModelSelector,
   ModelSelectorContent,
@@ -125,7 +133,7 @@ import {
   ModelSelectorName,
   ModelSelectorShortcut,
   ModelSelectorTrigger,
-} from "@/components/ai-elements/model-selector";
+} from "@/components/ai-elements/model-selector.tsx";
 import {
   OpenIn,
   OpenInChatGPT,
@@ -137,23 +145,23 @@ import {
   OpenInT3,
   OpenInTrigger,
   OpenInv0,
-} from "@/components/ai-elements/open-in-chat";
+} from "@/components/ai-elements/open-in-chat.tsx";
 import {
   Tool,
   ToolContent,
   ToolHeader,
   ToolInput,
   ToolOutput,
-} from "@/components/ai-elements/tool";
-import { Markdown } from "@/components/markdown";
-import { Element } from "@/components/elements";
+} from "@/components/ai-elements/tool.tsx";
+import { Markdown } from "@/components/markdown.tsx";
+import { Element } from "@/components/elements.tsx";
 // Registers the demo renderers `Element` looks up. Side effect: import it.
-import "./demo-elements";
-import { turns } from "./demo-chat";
-import { BotIcon, CopyIcon, RotateCcwIcon, SearchIcon } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { u } from "@/styles/base";
-import type { Sx } from "@/styles/sx";
+import "./demo-elements.tsx";
+import { turns } from "./demo-chat.ts";
+import { BotIcon, CopyIcon, RotateCcwIcon, SearchIcon } from "@/lib/icons.tsx";
+import { useInteraction } from "@/lib/use-interaction.ts";
+import { u } from "@/styles/base.ts";
+import type { Sx } from "@/styles/sx.ts";
 
 /**
  * The fixtures alone. Every entry is a preact island the vue page mounts

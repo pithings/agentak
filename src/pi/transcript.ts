@@ -2,17 +2,17 @@ import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { DEFAULT_COMPACTION_SETTINGS, shouldCompact } from "@earendil-works/pi-agent-core";
 import type { ImageContent, TextContent, Usage } from "@earendil-works/pi-ai";
 
-import type { ApprovalRequest } from "@/pi/approvals";
-import { describeFailure } from "@/pi/errors";
-import type { AnyModel } from "@/pi/providers";
-import type { ContextCosts } from "@/components/ai-elements/context";
+import type { ApprovalRequest } from "./approvals.ts";
+import { describeFailure } from "./errors.ts";
+import type { AnyModel } from "./providers.ts";
+import type { ContextCosts } from "../components/ai-elements/context.tsx";
 import type {
   LanguageModelUsage,
   ToolApproval,
   ViewMessage,
   ViewPart,
   ViewToolPart,
-} from "@/types";
+} from "../types.ts";
 
 /** Thinking the provider withheld. The signature travels; the text does not. */
 const REDACTED = "_Thinking was redacted by the provider._";

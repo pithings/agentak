@@ -1,12 +1,12 @@
 import type { ComponentChildren } from "preact";
 
-import { toTitle } from "@/pi/title";
-import { Chat } from "@/components/chat";
-import type { Sx } from "@/styles/sx";
+import { toTitle } from "@/pi/title.ts";
+import { Chat } from "@/components/chat.tsx";
+import type { Sx } from "@/styles/sx.ts";
 
-import { useDemoChat } from "./demo-chat";
+import { useDemoChat } from "./demo-chat.ts";
 // Registers the demo renderers the canned turns reach for. Side effect.
-import "./demo-elements";
+import "./demo-elements.tsx";
 
 /**
  * `<AgentChat>` without the loop: the canned turns, replayed. It lived in

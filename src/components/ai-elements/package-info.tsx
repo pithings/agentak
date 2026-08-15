@@ -2,10 +2,10 @@ import type { ComponentChildren, ComponentProps } from "preact";
 import { createContext } from "preact";
 import { useContext, useMemo } from "preact/hooks";
 
-import { Badge } from "@/components/ui/badge";
-import { ArrowRightIcon, MinusIcon, PackageIcon, PlusIcon } from "@/lib/icons";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Badge } from "../ui/badge.tsx";
+import { ArrowRightIcon, MinusIcon, PackageIcon, PlusIcon } from "../../lib/icons.tsx";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   pkg: {

@@ -10,10 +10,10 @@ import {
   QueueSectionContent,
   QueueSectionLabel,
   QueueSectionTrigger,
-} from "@/components/ai-elements/queue";
-import type { ChatQueueItem } from "@/components/chat/types";
-import { XIcon } from "@/lib/icons";
-import type { Sx } from "@/styles/sx";
+} from "../ai-elements/queue.tsx";
+import type { ChatQueueItem } from "./types.ts";
+import { XIcon } from "../../lib/icons.tsx";
+import type { Sx } from "../../styles/sx.ts";
 
 const S = {
   queue: {

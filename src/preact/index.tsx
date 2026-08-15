@@ -1,15 +1,15 @@
 import { useLayoutEffect } from "preact/hooks";
 
-import { AgentChat } from "@/agent-chat";
-import { Chat } from "@/components/chat";
-import { injectTokens } from "@/styles/inject";
-import { sx, type Sx } from "@/styles/sx";
+import { AgentChat } from "../agent-chat.tsx";
+import { Chat } from "../components/chat.tsx";
+import { injectTokens } from "../styles/inject.ts";
+import { sx, type Sx } from "../styles/sx.ts";
 import {
   type ChatPanelProps as BasePanelProps,
   type ChatViewProps as BaseViewProps,
   HOST,
   surfaceProps,
-} from "@/wrap";
+} from "../wrap.ts";
 
 /** The box around the surface — `className` and `style` are where a size goes. */
 interface PreactHost {

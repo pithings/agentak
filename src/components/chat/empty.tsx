@@ -7,12 +7,12 @@ import {
   AgentInstructions,
   AgentTool,
   AgentTools,
-} from "@/components/ai-elements/agent";
-import { ConversationEmptyState } from "@/components/ai-elements/conversation";
-import type { ChatAgent } from "@/components/chat/types";
-import { BotIcon } from "@/lib/icons";
-import { u } from "@/styles/base";
-import type { Sx } from "@/styles/sx";
+} from "../ai-elements/agent.tsx";
+import { ConversationEmptyState } from "../ai-elements/conversation.tsx";
+import type { ChatAgent } from "./types.ts";
+import { BotIcon } from "../../lib/icons.tsx";
+import { u } from "../../styles/base.ts";
+import type { Sx } from "../../styles/sx.ts";
 
 const S = {
   empty: {

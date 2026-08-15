@@ -2,9 +2,9 @@ import type { ComponentProps, RefObject } from "preact";
 import { createContext } from "preact";
 import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "preact/hooks";
 
-import { useControllableState } from "@/lib/use-controllable-state";
-import { reset } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { reset } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 /**
  * Replaces `@radix-ui/react-popover`, and is the base `hover-card.tsx` builds on.

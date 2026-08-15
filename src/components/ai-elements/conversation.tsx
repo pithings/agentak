@@ -2,12 +2,12 @@ import type { ComponentChildren, ComponentProps } from "preact";
 import { createContext } from "preact";
 import { useContext, useEffect } from "preact/hooks";
 
-import { Button, type ButtonProps } from "@/components/ui/button";
-import { ArrowDownIcon } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
-import { useStickToBottom } from "@/lib/use-stick-to-bottom";
+import { Button, type ButtonProps } from "../ui/button.tsx";
+import { ArrowDownIcon } from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
+import { useStickToBottom } from "../../lib/use-stick-to-bottom.ts";
 
 const S = {
   conversation: {

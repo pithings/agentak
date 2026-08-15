@@ -1,11 +1,11 @@
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import type { AgentRuntime } from "@/pi/create-agent";
-import { type AgentSnapshot, type AgentStore, createAgentStore } from "@/pi/store";
-import type { AnyModel } from "@/pi/providers";
+import type { AgentRuntime } from "./create-agent.ts";
+import { type AgentSnapshot, type AgentStore, createAgentStore } from "./store.ts";
+import type { AnyModel } from "./providers.ts";
 
-export type { QueuedMessage } from "@/pi/store";
+export type { QueuedMessage } from "./store.ts";
 
 export interface ChatState extends AgentSnapshot {
   /** Sends, or queues when the agent is already working. */

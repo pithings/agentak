@@ -2,18 +2,18 @@
 import { h } from "preact";
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from "vue";
 
-import { createPiSession, type PiSession } from "@/pi/session";
-import { u } from "@/styles/base";
-import { ChatPanel } from "@/vue";
-import { ChatActions, StartDemo } from "../chat-actions";
+import { createPiSession, type PiSession } from "@/pi/session.ts";
+import { u } from "@/styles/base.ts";
+import { ChatPanel } from "@/vue/index.ts";
+import { ChatActions, StartDemo } from "../chat-actions.tsx";
 import {
   conversations,
   keepConversation,
   newConversation,
   storedConversation,
-} from "../chat-history";
-import { chat, closeChat, openChat, setChatMode } from "../chat-store";
-import { DemoAgent } from "../demo-agent";
+} from "../chat-history.ts";
+import { chat, closeChat, openChat, setChatMode } from "../chat-store.ts";
+import { DemoAgent } from "../demo-agent.tsx";
 import PreactHost from "./preact-host.vue";
 
 /**

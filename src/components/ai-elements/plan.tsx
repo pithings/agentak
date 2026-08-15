@@ -9,20 +9,20 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "../ui/card.tsx";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   useCollapsible,
-} from "@/components/ui/collapsible";
-import { buttonSx } from "@/components/ui/button";
-import { ChevronsUpDownIcon } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+} from "../ui/collapsible.tsx";
+import { buttonSx } from "../ui/button.tsx";
+import { ChevronsUpDownIcon } from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
-import { Shimmer } from "./shimmer";
+import { Shimmer } from "./shimmer.tsx";
 
 const S = {
   // Collapsible renders the div in place of `Card`, so the card's own box is

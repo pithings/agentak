@@ -17,12 +17,12 @@ import {
   type DropdownMenuProps,
   type DropdownMenuSeparatorProps,
   type DropdownMenuTriggerProps,
-} from "@/components/ui/dropdown-menu";
-import { buttonSx } from "@/components/ui/button";
-import { ChevronDownIcon, ExternalLinkIcon, MessageCircleIcon } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx } from "@/styles/sx";
+} from "../ui/dropdown-menu.tsx";
+import { buttonSx } from "../ui/button.tsx";
+import { ChevronDownIcon, ExternalLinkIcon, MessageCircleIcon } from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx } from "../../styles/sx.ts";
 
 // The panel is a popover first, so this width has to reach PopoverContent as
 // `style` — a class of its own would lose to the popover's inline width.

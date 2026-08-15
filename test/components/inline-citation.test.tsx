@@ -16,7 +16,7 @@ import {
   InlineCitationQuote,
   InlineCitationSource,
   InlineCitationText,
-} from "@/components/ai-elements/inline-citation";
+} from "../../src/components/ai-elements/inline-citation.tsx";
 
 afterEach(cleanup);
 

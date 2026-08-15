@@ -1,9 +1,9 @@
 import type { JSX } from "preact";
 import { useMemo } from "preact/hooks";
 
-import { useAnimation } from "@/lib/use-animation";
-import { reset } from "@/styles/base";
-import { sx, type Sx } from "@/styles/sx";
+import { useAnimation } from "../../lib/use-animation.ts";
+import { reset } from "../../styles/base.ts";
+import { sx, type Sx } from "../../styles/sx.ts";
 
 // A gradient swept across clipped text — what `motion` animated before, then
 // `@keyframes shimmer`. Both `background-position` stops were already

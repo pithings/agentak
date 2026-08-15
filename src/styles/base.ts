@@ -1,4 +1,4 @@
-import type { Sx } from "@/styles/sx";
+import type { Sx } from "./sx.ts";
 
 /**
  * The tokens, and nothing else. This library injects no stylesheet of its own —

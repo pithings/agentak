@@ -1,10 +1,10 @@
 import type { ComponentProps } from "preact";
 import { cloneElement, toChildArray } from "preact";
 
-import { isIconChild } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { isIconChild } from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 /**
  * The states are `useInteraction` and the `disabled` / `aria-invalid` props, and

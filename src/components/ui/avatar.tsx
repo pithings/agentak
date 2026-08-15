@@ -2,7 +2,7 @@ import type { ComponentProps } from "preact";
 import { createContext } from "preact";
 import { useContext, useState } from "preact/hooks";
 
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   avatar: {

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { catalogModels, DEFAULT_MODEL, DEFAULT_PROVIDER_ID, findModel } from "@/pi/models";
+import {
+  catalogModels,
+  DEFAULT_MODEL,
+  DEFAULT_PROVIDER_ID,
+  findModel,
+} from "../../src/pi/models.ts";
 import {
   type AnyModel,
   availableProviders,
@@ -8,7 +13,7 @@ import {
   PROVIDERS,
   streamFor,
   SUPPORTED_APIS,
-} from "@/pi/providers";
+} from "../../src/pi/providers.ts";
 
 const model = (over: Partial<AnyModel>): AnyModel =>
   ({

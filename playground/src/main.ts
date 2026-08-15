@@ -1,13 +1,13 @@
 import { createApp } from "vue";
 
-import { tokens } from "@/styles/base";
+import { tokens } from "@/styles/base.ts";
 import App from "./app.vue";
 // Registers the demo renderers the catalog and the canned turns reach for.
 // Side effect: import it once.
-import "./demo-elements";
-import { router } from "./router";
+import "./demo-elements.tsx";
+import { router } from "./router.ts";
 import "./styles.css";
-import { paint } from "./theme";
+import { paint } from "./theme.ts";
 
 /**
  * Playground entry: a vue SPA that hosts the library.

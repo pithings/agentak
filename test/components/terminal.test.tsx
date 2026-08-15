@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { Terminal } from "@/components/ai-elements/terminal";
+import { Terminal } from "../../src/components/ai-elements/terminal.tsx";
 
 afterEach(cleanup);
 

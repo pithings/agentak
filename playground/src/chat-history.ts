@@ -1,9 +1,9 @@
 import { useEffect, useState } from "preact/hooks";
 import { reactive, watch } from "vue";
 
-import { type PiSnapshot, readPiSnapshot } from "@/pi/snapshot";
-import { toTitle } from "@/pi/title";
-import { toViewMessages } from "@/pi/transcript";
+import { type PiSnapshot, readPiSnapshot } from "@/pi/snapshot.ts";
+import { toTitle } from "@/pi/title.ts";
+import { toViewMessages } from "@/pi/transcript.ts";
 
 /**
  * The conversations this browser has had, kept in `localStorage`.

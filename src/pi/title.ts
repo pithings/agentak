@@ -1,9 +1,9 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import { useEffect, useRef, useState } from "preact/hooks";
 
-import type { AnyModel } from "@/pi/providers";
-import { streamFor } from "@/pi/providers";
-import type { ViewMessage } from "@/types";
+import type { AnyModel } from "./providers.ts";
+import { streamFor } from "./providers.ts";
+import type { ViewMessage } from "../types.ts";
 
 /** How long a title runs before it is cut. */
 const MAX_CHARS = 48;

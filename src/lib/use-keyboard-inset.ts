@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 
-import { isTouch } from "@/lib/utils";
+import { isTouch } from "./utils.ts";
 
 /** Below this, the difference is browser chrome or rounding, not a keyboard. */
 const FLOOR = 24;

@@ -3,13 +3,13 @@ import { createContext } from "preact";
 import { memo } from "preact/compat";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { AlertTriangleIcon, CheckIcon, Chevron, CopyIcon } from "@/lib/icons";
-import { useControllableState } from "@/lib/use-controllable-state";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Button } from "../ui/button.tsx";
+import { Collapsible, CollapsibleContent } from "../ui/collapsible.tsx";
+import { AlertTriangleIcon, CheckIcon, Chevron, CopyIcon } from "../../lib/icons.tsx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   stack: {

@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ChatMessage } from "@/components/chat/message";
-import type { ViewMessage, ViewToolPart } from "@/types";
+import { ChatMessage } from "../../src/components/chat/message.tsx";
+import type { ViewMessage, ViewToolPart } from "../../src/types.ts";
 
 afterEach(cleanup);
 

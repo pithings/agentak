@@ -1,8 +1,8 @@
 import { createContext } from "preact";
 import { useCallback, useContext, useEffect, useMemo, useRef } from "preact/hooks";
 
-import { useControllableState } from "@/lib/use-controllable-state";
-import { sx, type Sx } from "@/styles/sx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { sx, type Sx } from "../../styles/sx.ts";
 import {
   Popover,
   PopoverContent,
@@ -10,7 +10,7 @@ import {
   type PopoverContentProps,
   type PopoverProps,
   type PopoverTriggerProps,
-} from "@/components/ui/popover";
+} from "./popover.tsx";
 
 /**
  * Replaces `@radix-ui/react-hover-card`. A thin layer over `popover.tsx`: the

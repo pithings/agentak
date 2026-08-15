@@ -1,6 +1,6 @@
-import { Button, type ButtonProps } from "@/components/ui/button";
-import { ScrollArea, type ScrollAreaProps } from "@/components/ui/scroll-area";
-import { sx, type Sx } from "@/styles/sx";
+import { Button, type ButtonProps } from "../ui/button.tsx";
+import { ScrollArea, type ScrollAreaProps } from "../ui/scroll-area.tsx";
+import { sx, type Sx } from "../../styles/sx.ts";
 
 const S = {
   suggestions: {

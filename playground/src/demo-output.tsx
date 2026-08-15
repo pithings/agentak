@@ -1,12 +1,17 @@
-import { FileTree, FileTreeFile, FileTreeFolder } from "@/components/ai-elements/file-tree";
+import { FileTree, FileTreeFile, FileTreeFolder } from "@/components/ai-elements/file-tree.tsx";
 import {
   Snippet,
   SnippetAddon,
   SnippetCopyButton,
   SnippetInput,
   SnippetText,
-} from "@/components/ai-elements/snippet";
-import { Source, Sources, SourcesContent, SourcesTrigger } from "@/components/ai-elements/sources";
+} from "@/components/ai-elements/snippet.tsx";
+import {
+  Source,
+  Sources,
+  SourcesContent,
+  SourcesTrigger,
+} from "@/components/ai-elements/sources.tsx";
 
 /**
  * Data-driven wrappers for the tool-output elements, matching

@@ -1,0 +1,12 @@
+{
+  "name": "docs",
+  "private": true,
+  "scripts": {
+    "dev": "undocs dev",
+    "build": "undocs build"
+  },
+  "devDependencies": {
+    "agentak": "link:..",
+    "undocs": "npm:undocs-nightly@0.10.1-20260815-193141-9780297"
+  }
+}

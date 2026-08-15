@@ -2,11 +2,11 @@ import type { ComponentProps } from "preact";
 import { cloneElement, createContext, toChildArray } from "preact";
 import { useContext, useId, useMemo } from "preact/hooks";
 
-import { isIconChild } from "@/lib/icons";
-import { useControllableState } from "@/lib/use-controllable-state";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { isIconChild } from "../../lib/icons.tsx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 // Sandbox re-skins the list and the tab through `style` props, which merge
 // caller-last.

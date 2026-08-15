@@ -8,10 +8,10 @@ import {
   ConfirmationRejected,
   ConfirmationRequest,
   ConfirmationTitle,
-} from "@/components/ai-elements/confirmation";
-import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
-import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
-import { Task, TaskContent, TaskTrigger } from "@/components/ai-elements/task";
+} from "../ai-elements/confirmation.tsx";
+import { Message, MessageContent, MessageResponse } from "../ai-elements/message.tsx";
+import { Reasoning, ReasoningContent, ReasoningTrigger } from "../ai-elements/reasoning.tsx";
+import { Task, TaskContent, TaskTrigger } from "../ai-elements/task.tsx";
 import {
   getStatusBadge,
   Tool,
@@ -19,14 +19,14 @@ import {
   ToolHeader,
   ToolInput,
   ToolOutput,
-} from "@/components/ai-elements/tool";
-import { useCollapsible } from "@/components/ui/collapsible";
-import { Input } from "@/components/ui/input";
-import { Element } from "@/components/elements";
-import { Chevron, WrenchIcon } from "@/lib/icons";
-import type { ToolState, ViewMessage, ViewPart, ViewToolPart } from "@/types";
-import { u } from "@/styles/base";
-import { sx, type Sx } from "@/styles/sx";
+} from "../ai-elements/tool.tsx";
+import { useCollapsible } from "../ui/collapsible.tsx";
+import { Input } from "../ui/input.tsx";
+import { Element } from "../elements.tsx";
+import { Chevron, WrenchIcon } from "../../lib/icons.tsx";
+import type { ToolState, ViewMessage, ViewPart, ViewToolPart } from "../../types.ts";
+import { u } from "../../styles/base.ts";
+import { sx, type Sx } from "../../styles/sx.ts";
 
 const S = {
   error: {

@@ -2,20 +2,26 @@ import type { ComponentChild, ComponentChildren, ComponentProps, VNode } from "p
 import { cloneElement, createContext, isValidElement, toChildArray } from "preact";
 import { useContext, useMemo } from "preact/hooks";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "../ui/badge.tsx";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   useCollapsible,
-} from "@/components/ui/collapsible";
-import { CheckCircleIcon, Chevron, CircleDotIcon, CircleIcon, XCircleIcon } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { useAnimation } from "@/lib/use-animation";
-import { pulseKeyframes, pulseOptions, reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+} from "../ui/collapsible.tsx";
+import {
+  CheckCircleIcon,
+  Chevron,
+  CircleDotIcon,
+  CircleIcon,
+  XCircleIcon,
+} from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { useAnimation } from "../../lib/use-animation.ts";
+import { pulseKeyframes, pulseOptions, reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
-import { toolBodyErrorSx, toolBodySx } from "./tool";
+import { toolBodyErrorSx, toolBodySx } from "./tool.tsx";
 
 /** A line between tests — a flex `gap` cannot draw one. */
 const DIVIDER: Sx = { borderTop: "1px solid var(--border)" };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { describeFailure } from "@/pi/errors";
+import { describeFailure } from "../../src/pi/errors.ts";
 
 describe("describeFailure", () => {
   it("names what a bodiless status means", () => {

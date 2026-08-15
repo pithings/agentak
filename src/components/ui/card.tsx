@@ -1,7 +1,7 @@
 import type { ComponentProps } from "preact";
 import { isValidElement, toChildArray } from "preact";
 
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   card: {

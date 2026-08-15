@@ -5,10 +5,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   useCollapsible,
-} from "@/components/ui/collapsible";
-import { BookIcon, Chevron } from "@/lib/icons";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+} from "../ui/collapsible.tsx";
+import { BookIcon, Chevron } from "../../lib/icons.tsx";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   sources: {

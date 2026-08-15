@@ -1,5 +1,5 @@
-import type { ContextCosts } from "@/components/ai-elements/context";
-import type { LanguageModelUsage, ToolDefinition } from "@/types";
+import type { ContextCosts } from "../ai-elements/context.tsx";
+import type { LanguageModelUsage, ToolDefinition } from "../../types.ts";
 
 /** One entry of the model picker. */
 export interface ChatModel {

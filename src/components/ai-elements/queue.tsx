@@ -2,18 +2,18 @@ import type { ComponentChildren, ComponentProps } from "preact";
 import { createContext } from "preact";
 import { useContext } from "preact/hooks";
 
-import { Button, type ButtonProps } from "@/components/ui/button";
+import { Button, type ButtonProps } from "../ui/button.tsx";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   useCollapsible,
-} from "@/components/ui/collapsible";
-import { ScrollArea, type ScrollAreaProps } from "@/components/ui/scroll-area";
-import { Chevron, PaperclipIcon } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+} from "../ui/collapsible.tsx";
+import { ScrollArea, type ScrollAreaProps } from "../ui/scroll-area.tsx";
+import { Chevron, PaperclipIcon } from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   queue: {

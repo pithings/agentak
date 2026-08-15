@@ -6,10 +6,10 @@ import type { ShjToken } from "rangi/core";
 import { tokenize } from "rangi/core";
 import { bash, diff, json, ts, tsx } from "rangi/languages";
 
-import { Button, type ButtonProps } from "@/components/ui/button";
-import { CheckIcon, CopyIcon } from "@/lib/icons";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Button, type ButtonProps } from "../ui/button.tsx";
+import { CheckIcon, CopyIcon } from "../../lib/icons.tsx";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 // Only the grammars listed here are bundled. Everything else falls back to
 // plain text, which rangi returns as a single untyped token.

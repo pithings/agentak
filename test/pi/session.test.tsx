@@ -4,8 +4,8 @@ import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { cleanup, render, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { AgentChat } from "@/agent-chat";
-import { createPiSession } from "@/pi/session";
+import { AgentChat } from "../../src/agent-chat.tsx";
+import { createPiSession } from "../../src/pi/session.ts";
 
 const turn = (content: AssistantMessage["content"], stopReason: StopReason): AssistantMessage => ({
   role: "assistant",

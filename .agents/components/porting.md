@@ -9,8 +9,8 @@ index endpoint: the component list comes from
    say what it wants from npm and from the registry.
 2. **Retarget the imports.** `react`/`react-dom` become `preact` and `preact/hooks`;
    `memo` and `forwardRef` come from `preact/compat`. `lucide-react` icons become
-   `@/lib/icons` — add the icon there if it is missing, with the geometry from lucide.
-   Radix `use-controllable-state` becomes `@/lib/use-controllable-state`. A radix
+   `lib/icons` — add the icon there if it is missing, with the geometry from lucide.
+   Radix `use-controllable-state` becomes `lib/use-controllable-state`. A radix
    primitive with no `components/ui/` twin is a blocker: hand-roll it first, and read
    [primitives.md](primitives.md) for what the existing ones do and do not carry.
 3. **Cut the `ai` dependency.** Copy only the fields the component reads into

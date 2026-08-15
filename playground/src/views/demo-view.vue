@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { h } from "preact";
 
-import { openChat } from "../chat-store";
+import { openChat } from "../chat-store.ts";
 import PreactHost from "../components/preact-host.vue";
-import { turns } from "../demo-chat";
-import { DemoTranscript } from "../demo-transcript";
+import { turns } from "../demo-chat.ts";
+import { DemoTranscript } from "../demo-transcript.tsx";
 
 /**
  * The whole scripted conversation, settled — every part at the state the replay

@@ -12,9 +12,9 @@
  */
 import { render } from "preact";
 
-import { createPiSession } from "@/pi/session";
-import { ChatPanel } from "@/preact";
-import { u } from "@/styles/base";
+import { createPiSession } from "@/pi/session.ts";
+import { ChatPanel } from "@/preact/index.tsx";
+import { u } from "@/styles/base.ts";
 
 // One session for the life of the panel, which is the life of the document.
 render(<ChatPanel session={createPiSession()} style={u.fill} />, document.querySelector("#root")!);

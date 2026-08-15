@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 
-import type { ChatProps, ChatThinkingLevel } from "@/components/chat";
+import type { ChatProps, ChatThinkingLevel } from "./components/chat.tsx";
 
 /**
  * What a harness owns of the chat surface.

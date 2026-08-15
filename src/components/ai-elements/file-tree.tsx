@@ -2,11 +2,11 @@ import type { ComponentChildren, ComponentProps, JSX } from "preact";
 import { createContext } from "preact";
 import { useCallback, useContext, useMemo, useState } from "preact/hooks";
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Chevron, FileIcon, FolderIcon, FolderOpenIcon } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible.tsx";
+import { Chevron, FileIcon, FolderIcon, FolderOpenIcon } from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 const S = {
   tree: {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import type { ViewMessage, ViewPart } from "@/types";
+import type { ViewMessage, ViewPart } from "@/types.ts";
 
 /** Stands in for a screenshot, so no binary blob sits in the source. */
 const shot = btoa(

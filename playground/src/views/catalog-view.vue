@@ -2,8 +2,8 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 
-import { CATALOG, ENTRIES, matches } from "../catalog";
-import { openChat } from "../chat-store";
+import { CATALOG, ENTRIES, matches } from "../catalog.tsx";
+import { openChat } from "../chat-store.ts";
 import PreviewCard from "../components/preview-card.vue";
 
 const route = useRoute();

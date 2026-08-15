@@ -5,20 +5,20 @@ import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-} from "@/components/ai-elements/conversation";
-import { Shimmer } from "@/components/ai-elements/shimmer";
-import { ChatComposer, type ChatComposerProps } from "@/components/chat/composer";
-import { ChatEmpty } from "@/components/chat/empty";
-import { ChatHeader } from "@/components/chat/header";
-import { ChatMessage, type ChatRespond } from "@/components/chat/message";
-import { ChatQueue } from "@/components/chat/queue";
-import type { ChatAgent, ChatQueueItem } from "@/components/chat/types";
-import { Button } from "@/components/ui/button";
-import type { ViewMessage } from "@/types";
-import { RotateCcwIcon, XIcon } from "@/lib/icons";
-import { useKeyboardInset } from "@/lib/use-keyboard-inset";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx } from "@/styles/sx";
+} from "./ai-elements/conversation.tsx";
+import { Shimmer } from "./ai-elements/shimmer.tsx";
+import { ChatComposer, type ChatComposerProps } from "./chat/composer.tsx";
+import { ChatEmpty } from "./chat/empty.tsx";
+import { ChatHeader } from "./chat/header.tsx";
+import { ChatMessage, type ChatRespond } from "./chat/message.tsx";
+import { ChatQueue } from "./chat/queue.tsx";
+import type { ChatAgent, ChatQueueItem } from "./chat/types.ts";
+import { Button } from "./ui/button.tsx";
+import type { ViewMessage } from "../types.ts";
+import { RotateCcwIcon, XIcon } from "../lib/icons.tsx";
+import { useKeyboardInset } from "../lib/use-keyboard-inset.ts";
+import { reset, u } from "../styles/base.ts";
+import { sx, type Sx } from "../styles/sx.ts";
 
 export type {
   ChatAgent,
@@ -27,7 +27,7 @@ export type {
   ChatQueueItem,
   ChatThinkingLevel,
   ChatUsage,
-} from "@/components/chat/types";
+} from "./chat/types.ts";
 
 const S = {
   // `minWidth` and `overflow` hold the surface to the box the host gives it —

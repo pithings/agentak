@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import { findEntry, neighbours, sourcePath } from "../catalog";
+import { findEntry, neighbours, sourcePath } from "../catalog.tsx";
 import PreviewCard from "../components/preview-card.vue";
 
 const props = defineProps<{ name: string }>();

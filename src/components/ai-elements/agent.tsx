@@ -1,27 +1,22 @@
 import type { ComponentProps } from "preact";
 import { memo } from "preact/compat";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion.tsx";
+import { Badge } from "../ui/badge.tsx";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   useCollapsible,
-} from "@/components/ui/collapsible";
-import { BotIcon, Chevron } from "@/lib/icons";
-import { useInteraction } from "@/lib/use-interaction";
-import { reset, u } from "@/styles/base";
-import { sx, type Sx, type WithSx } from "@/styles/sx";
-import type { ToolDefinition } from "@/types";
+} from "../ui/collapsible.tsx";
+import { BotIcon, Chevron } from "../../lib/icons.tsx";
+import { useInteraction } from "../../lib/use-interaction.ts";
+import { reset, u } from "../../styles/base.ts";
+import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
+import type { ToolDefinition } from "../../types.ts";
 
-import { CodeBlock } from "./code-block";
-import { toolBodySx, toolCodeSx } from "./tool";
+import { CodeBlock } from "./code-block.tsx";
+import { toolBodySx, toolCodeSx } from "./tool.tsx";
 
 const S = {
   agent: {
