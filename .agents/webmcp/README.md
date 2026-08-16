@@ -495,12 +495,12 @@ As the WebMCP proposal continues to evolve with community and stakeholder feedba
 
 > First published August 13, 2025
 >
-> Brandon Walderman <code>&lt;brwalder@microsoft.com>>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code><br>
-> Leo Lee <code>&lt;leo.lee@microsoft.com>>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code><br>
-> Andrew Nolan <code>&lt;annolan@microsoft.com>>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code><br>
-> David Bokan <code>&lt;bokan@google.com>>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code><br>
-> Khushal Sagar <code>&lt;khushalsagar@google.com>>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code><br>
-> Hannah Van Opstal <code>&lt;hvanopstal@google.com>>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code>
+> Brandon Walderman <code>&lt;brwalder@microsoft.com>>>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code><br>
+> Leo Lee <code>&lt;leo.lee@microsoft.com>>>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code><br>
+> Andrew Nolan <code>&lt;annolan@microsoft.com>>>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code><br>
+> David Bokan <code>&lt;bokan@google.com>>>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code><br>
+> Khushal Sagar <code>&lt;khushalsagar@google.com>>>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code><br>
+> Hannah Van Opstal <code>&lt;hvanopstal@google.com>>>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code>
 
 Since then, the specification draft has evolved significantly, primarily driven by [Dominic Farolino](https://github.com/domfarolino).
 
