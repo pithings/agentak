@@ -1,3 +1,4 @@
+import { memo } from "preact/compat";
 import { useEffect, useState } from "preact/hooks";
 
 import {
@@ -165,8 +166,59 @@ export interface ChatMessageProps {
   onRespond?: ChatRespond;
 }
 
+/** Two objects with the same keys and the same values under them. */
+function sameProps(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => Object.is(a[key], b[key]));
+}
+
+/**
+ * The same part, whatever object it arrives in. Only what the row renders is
+ * compared — `args` and an element's props are the session's own objects, so
+ * they are taken as they come.
+ */
+function samePart(a: ViewPart, b: ViewPart): boolean {
+  if (a === b) return true;
+  if (a.kind !== b.kind) return false;
+
+  switch (a.kind) {
+    case "text":
+    case "thinking":
+      return a.text === (b as Extract<ViewPart, { kind: "text" | "thinking" }>).text;
+
+    case "element": {
+      const other = b as Extract<ViewPart, { kind: "element" }>;
+      return a.name === other.name && sameProps(a.props, other.props);
+    }
+
+    default: {
+      const other = b as ViewToolPart;
+      return (
+        a.toolCallId === other.toolCallId &&
+        a.name === other.name &&
+        a.status === other.status &&
+        a.output === other.output &&
+        a.approval === other.approval &&
+        Object.is(a.args, other.args)
+      );
+    }
+  }
+}
+
+/** The same turn, part for part. */
+function sameMessage(a: ViewMessage, b: ViewMessage): boolean {
+  if (a === b) return true;
+  return (
+    a.id === b.id &&
+    a.role === b.role &&
+    a.error === b.error &&
+    a.parts.length === b.parts.length &&
+    a.parts.every((part, index) => samePart(part, b.parts[index]))
+  );
+}
+
 /** One turn of the transcript, part by part. */
-export function ChatMessage({ message, isStreaming, onRespond }: ChatMessageProps) {
+function ChatMessageView({ message, isStreaming, onRespond }: ChatMessageProps) {
   const lastPart = message.parts.length - 1;
 
   const isUser = message.role === "user";
@@ -196,6 +248,26 @@ export function ChatMessage({ message, isStreaming, onRespond }: ChatMessageProp
     </Message>
   );
 }
+
+/**
+ * A turn is redrawn when it changes, not when the surface around it does.
+ *
+ * A session rebuilds its whole transcript on every event — the pi one does, and
+ * the contract asks only that a snapshot hold still *between* events — so a new
+ * `ViewMessage` object is not a changed turn. Compared by what it holds instead,
+ * which keeps a token, a keyboard or a resize from redrawing every turn above
+ * the one that moved.
+ *
+ * `onRespond` is compared by presence alone: `AgentChat` builds a fresh closure
+ * on every render and each one calls the same session.
+ */
+export const ChatMessage = memo(
+  ChatMessageView,
+  (prev, next) =>
+    prev.isStreaming === next.isStreaming &&
+    Boolean(prev.onRespond) === Boolean(next.onRespond) &&
+    sameMessage(prev.message, next.message),
+);
 
 interface ChatPartProps {
   part: ViewPart;

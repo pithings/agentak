@@ -6,6 +6,7 @@ import {
   DEFAULT_PROVIDER_ID,
   findModel,
 } from "../../src/pi/models.ts";
+import { WLLAMA_PROVIDER_ID } from "../../src/pi/local.ts";
 import { ON_DEVICE_PROVIDER_ID } from "../../src/pi/on-device.ts";
 import {
   type AnyModel,
@@ -82,9 +83,11 @@ describe("PROVIDERS", () => {
     expect(ids).not.toContain("kilo");
     expect(ids).not.toContain("opencode-zen");
     expect(ids).toContain(DEFAULT_PROVIDER_ID);
-    // jsdom is not Chrome either, so the on-device provider goes with them.
+    // jsdom is not Chrome either, and carries no worker, so the two that run on
+    // the device go with them.
     expect(ids).not.toContain(ON_DEVICE_PROVIDER_ID);
-    expect(ids.length).toBe(PROVIDERS.length - blocked.length - 1);
+    expect(ids).not.toContain(WLLAMA_PROVIDER_ID);
+    expect(ids.length).toBe(PROVIDERS.length - blocked.length - 2);
   });
 
   it("lists the on-device provider only where the browser carries the api", () => {
@@ -94,6 +97,16 @@ describe("PROVIDERS", () => {
       expect(availableProviders().map((entry) => entry.id)).toContain(ON_DEVICE_PROVIDER_ID);
     } finally {
       delete global.LanguageModel;
+    }
+  });
+
+  it("lists the local provider only where the loop has a worker to run in", () => {
+    const global = globalThis as { Worker?: unknown };
+    global.Worker = class {};
+    try {
+      expect(availableProviders().map((entry) => entry.id)).toContain(WLLAMA_PROVIDER_ID);
+    } finally {
+      delete global.Worker;
     }
   });
 

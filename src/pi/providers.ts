@@ -2,6 +2,7 @@ import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { Api, AssistantMessageEventStream, Model } from "@earendil-works/pi-ai";
 
 import { KILO_MODELS, LLM7_MODELS, OPENCODE_ZEN_MODELS, OVHCLOUD_MODELS } from "./free-models.ts";
+import { WLLAMA_MODEL_ID, WLLAMA_MODELS, WLLAMA_PROVIDER_ID, wllamaSupported } from "./local.ts";
 import {
   ON_DEVICE_MODEL_ID,
   ON_DEVICE_MODELS,
@@ -39,9 +40,10 @@ export interface Provider {
    */
   cors?: boolean;
   /**
-   * Whether this browser carries the provider at all. Only the on-device one
-   * answers it: a Chrome without the Prompt API has nothing to offer, and the
-   * picker must not list a row that cannot answer.
+   * Whether this browser carries the provider at all. Only the two that run on
+   * the device answer it: a Chrome without the Prompt API has nothing to offer,
+   * and an extension page may import no module from a CDN. The picker must not
+   * list a row that cannot answer.
    */
   supported?: () => boolean;
   /** Where the key comes from. A free provider has none. */
@@ -62,6 +64,15 @@ export const PROVIDERS: Provider[] = [
     note: "Gemini Nano runs on this device. Chrome downloads it once, ~4 GB.",
     defaultModelId: ON_DEVICE_MODEL_ID,
     load: async () => ON_DEVICE_MODELS,
+  },
+  {
+    id: WLLAMA_PROVIDER_ID,
+    label: "Local (wllama)",
+    free: true,
+    supported: wllamaSupported,
+    note: "llama.cpp runs in this tab. The model is downloaded once, 0.2 to 1.9 GB.",
+    defaultModelId: WLLAMA_MODEL_ID,
+    load: async () => WLLAMA_MODELS,
   },
   {
     id: "llm7",
@@ -187,6 +198,8 @@ const APIS: Record<string, () => Promise<ApiModule>> = {
   "chrome-prompt": () => import("./chrome-prompt.ts"),
   "openai-completions": () => import("@earendil-works/pi-ai/api/openai-completions"),
   "openai-responses": () => import("@earendil-works/pi-ai/api/openai-responses"),
+  // Not one of pi's either: llama.cpp in this tab. See `wllama.ts`.
+  wllama: () => import("./wllama.ts"),
 };
 
 /** The apis this bundle can speak. A catalog entry outside them is not offered. */

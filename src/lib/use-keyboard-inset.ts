@@ -17,32 +17,56 @@ const FLOOR = 24;
  *
  * `offsetTop` counts too: iOS scrolls the visual viewport over the layout one
  * rather than resizing it, which hides just as much again at the bottom.
+ */
+function measureInset(viewport: VisualViewport): number {
+  const covered = globalThis.innerHeight - viewport.height - viewport.offsetTop;
+  return covered > FLOOR ? Math.round(covered) : 0;
+}
+
+/**
+ * Report the inset now, and again whenever it moves.
  *
  * Touch only. A desktop pinch shrinks the visual viewport the same way, and
- * there is no keyboard behind it to make room for.
+ * there is no keyboard behind it to make room for. A browser without the visual
+ * viewport reports nothing, and the caller keeps its 0.
+ *
+ * **Reported at most once a frame**, because on iOS this fires while the reader
+ * is typing: the visual viewport is scrolled to follow the caret, so every few
+ * characters move `offsetTop` by a pixel or two. Each reading also reads
+ * `innerHeight`, which is a layout read, so an unthrottled listener did one per
+ * keystroke. See `chat.tsx` for the other half of that — the surface takes this
+ * as a custom property rather than as state, so a moved caret redraws nothing.
  */
+export function watchKeyboardInset(report: (inset: number) => void): () => void {
+  const viewport = globalThis.visualViewport;
+  if (!viewport || !isTouch()) return () => {};
+
+  let frame = 0;
+  const read = () => {
+    frame = 0;
+    report(measureInset(viewport));
+  };
+  const later = () => {
+    frame ||= globalThis.requestAnimationFrame(read);
+  };
+
+  viewport.addEventListener("resize", later);
+  // The keyboard on iOS is a scroll, not a resize: the offset moves.
+  viewport.addEventListener("scroll", later);
+  read();
+
+  return () => {
+    globalThis.cancelAnimationFrame(frame);
+    viewport.removeEventListener("resize", later);
+    viewport.removeEventListener("scroll", later);
+  };
+}
+
+/** The same reading as state, for a caller that lays itself out in js. */
 export function useKeyboardInset(): number {
   const [inset, setInset] = useState(0);
 
-  useEffect(() => {
-    const viewport = globalThis.visualViewport;
-    if (!viewport || !isTouch()) return;
-
-    const measure = () => {
-      const covered = globalThis.innerHeight - viewport.height - viewport.offsetTop;
-      setInset(covered > FLOOR ? Math.round(covered) : 0);
-    };
-
-    viewport.addEventListener("resize", measure);
-    // The keyboard on iOS is a scroll, not a resize: the offset moves.
-    viewport.addEventListener("scroll", measure);
-    measure();
-
-    return () => {
-      viewport.removeEventListener("resize", measure);
-      viewport.removeEventListener("scroll", measure);
-    };
-  }, []);
+  useEffect(() => watchKeyboardInset(setInset), []);
 
   return inset;
 }

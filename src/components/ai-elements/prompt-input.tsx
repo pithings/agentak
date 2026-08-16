@@ -1,5 +1,5 @@
 import type { ComponentProps, JSX } from "preact";
-import { useCallback, useState } from "preact/hooks";
+import { useCallback, useRef } from "preact/hooks";
 
 import type { ChatStatus } from "../../types.ts";
 import {
@@ -103,7 +103,10 @@ export const PromptInputTextarea = ({
   placeholder = "What would you like to know?",
   ...props
 }: PromptInputTextareaProps) => {
-  const [isComposing, setIsComposing] = useState(false);
+  // A ref, not state: an android keyboard composes every word, so this changes
+  // as fast as the reader types — and nothing renders from it. Only the Enter
+  // below reads it, and it reads it at the moment of the key.
+  const composing = useRef(false);
 
   const handleKeyDown = useCallback(
     (event: JSX.TargetedKeyboardEvent<HTMLTextAreaElement>) => {
@@ -111,7 +114,7 @@ export const PromptInputTextarea = ({
       if (event.defaultPrevented) return;
       if (event.key !== "Enter" || event.shiftKey) return;
       // IME candidate selection also fires Enter.
-      if (isComposing || event.isComposing) return;
+      if (composing.current || event.isComposing) return;
 
       event.preventDefault();
 
@@ -121,15 +124,19 @@ export const PromptInputTextarea = ({
 
       form?.requestSubmit();
     },
-    [onKeyDown, isComposing],
+    [onKeyDown],
   );
 
   return (
     <InputGroupTextarea
       className={className}
       name="message"
-      onCompositionEnd={() => setIsComposing(false)}
-      onCompositionStart={() => setIsComposing(true)}
+      onCompositionEnd={() => {
+        composing.current = false;
+      }}
+      onCompositionStart={() => {
+        composing.current = true;
+      }}
       onKeyDown={handleKeyDown}
       placeholder={placeholder}
       style={sx(S.promptTextarea, style)}

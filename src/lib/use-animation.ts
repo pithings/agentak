@@ -1,6 +1,8 @@
 import type { RefCallback } from "preact";
 import { useMemo } from "preact/hooks";
 
+import { media } from "./utils.ts";
+
 /**
  * `@keyframes` has no inline form — see `styles/base.ts` — so this is its
  * pure-JS replacement: `element.animate()` instead of a class naming a rule
@@ -66,9 +68,9 @@ export function animateOnMount<T extends Element = HTMLElement>(
   };
 }
 
-/** Mirrors the `globalThis.matchMedia?.(...).matches ?? false` idiom already used in `catalog.tsx`. */
+/** Through `media()`, which keeps the one query list — this is read per word. */
 export function prefersReducedMotion(): boolean {
-  return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  return media("(prefers-reduced-motion: reduce)");
 }
 
 /**
@@ -86,6 +88,8 @@ export function prefersReducedMotion(): boolean {
  *
  * Deliberately not cached. Hardware does not change mid-session, but the two
  * property reads cost nothing next to a render, and a test can then stub them.
+ * `media()` keeps the query list rather than the answer, so the same holds for
+ * the last line.
  */
 export function isLowPowerDevice(): boolean {
   const agent = globalThis.navigator as (Navigator & { deviceMemory?: number }) | undefined;
@@ -93,5 +97,5 @@ export function isLowPowerDevice(): boolean {
 
   if (agent.deviceMemory !== undefined && agent.deviceMemory <= 4) return true;
   if (agent.hardwareConcurrency !== undefined && agent.hardwareConcurrency <= 4) return true;
-  return globalThis.matchMedia?.("(pointer: coarse) and (max-width: 820px)").matches ?? false;
+  return media("(pointer: coarse) and (max-width: 820px)");
 }

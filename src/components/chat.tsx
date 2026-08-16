@@ -1,5 +1,5 @@
-import type { ComponentChildren } from "preact";
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import type { ComponentChildren, RefObject } from "preact";
+import { useEffect, useMemo, useRef } from "preact/hooks";
 
 import {
   Conversation,
@@ -19,7 +19,7 @@ import { Button } from "./ui/button.tsx";
 import type { ViewMessage } from "../types.ts";
 import { RotateCcwIcon, XIcon } from "../lib/icons.tsx";
 import { useControllableState } from "../lib/use-controllable-state.ts";
-import { useKeyboardInset } from "../lib/use-keyboard-inset.ts";
+import { watchKeyboardInset } from "../lib/use-keyboard-inset.ts";
 import { reset, u } from "../styles/base.ts";
 import { sx, type Sx } from "../styles/sx.ts";
 
@@ -62,17 +62,15 @@ const S = {
   // under it. Opaque, because the transcript scrolls beneath — and lifted off
   // the bottom edge by whatever a virtual keyboard covers, so the keyboard
   // takes only this row up the screen and leaves the header and the transcript
-  // where they were.
+  // where they were. Both numbers reach it as custom properties on the surface —
+  // `--chat-foot` for its own height, `--chat-inset` for the lift — which
+  // `useFootHeight` and `useKeyboardLift` write. See there for why not as state.
   foot: {
     position: "absolute",
     right: "0",
-    bottom: "0",
+    bottom: "var(--chat-inset, 0px)",
     left: "0",
     background: "var(--background)",
-  },
-  // The keyboard is where the home bar was: the safe area is already clear.
-  footLifted: {
-    "--chat-safe-bottom": "0px",
   },
   error: {
     display: "flex",
@@ -106,6 +104,17 @@ const S = {
     color: "inherit",
   },
 } satisfies Record<string, Sx>;
+
+/**
+ * What the floating foot hides: its own height, plus the gap a keyboard opens
+ * under it. The transcript ends above it, and so does the scroll button, and so
+ * does either page standing where the transcript is.
+ *
+ * A string of `var()`, not a number: both readings are written on the surface by
+ * the two hooks at the foot of this file, so the foot can grow and the keyboard
+ * can move without this component rendering again.
+ */
+const CLEAR = "calc(1rem + var(--chat-foot, 0px) + var(--chat-inset, 0px))";
 
 // Said while the turn is still the user's and nothing has come back. One per
 // turn, so the same word does not sit there through a whole conversation.
@@ -220,14 +229,12 @@ export function Chat({
     setHistoryOpen(open);
   };
 
-  const inset = useKeyboardInset();
-  const [foot, footRef] = useFootHeight();
-  // What the floating foot hides: its own height, plus the gap a keyboard opens
-  // under it. The transcript ends above both, and so does the scroll button.
-  const clear = `${foot + inset}px`;
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const footRef = useFootHeight(surfaceRef);
+  useKeyboardLift(surfaceRef);
 
   return (
-    <div className={className} style={sx(S.chat, style)}>
+    <div className={className} ref={surfaceRef} style={sx(S.chat, style)}>
       <ChatHeader
         actions={actions}
         onBack={
@@ -263,7 +270,7 @@ export function Chat({
             onOpenConversation?.(id);
             setHistoryOpen(false);
           }}
-          style={{ paddingBottom: `calc(1rem + ${clear})` }}
+          style={{ paddingBottom: CLEAR }}
         />
       ) : settingsOpen ? (
         // The page ends above the floating foot, exactly as the transcript does.
@@ -277,11 +284,11 @@ export function Chat({
             composer.onModelChange?.(id);
             showSettings(false);
           }}
-          style={{ paddingBottom: `calc(1rem + ${clear})` }}
+          style={{ paddingBottom: CLEAR }}
         />
       ) : (
         <Conversation pin={last?.id}>
-          <ConversationContent style={{ paddingBottom: `calc(1rem + ${clear})` }}>
+          <ConversationContent style={{ paddingBottom: CLEAR }}>
             {messages.length === 0 ? (
               <ChatEmpty agent={agent}>{emptyActions}</ChatEmpty>
             ) : (
@@ -296,11 +303,11 @@ export function Chat({
             )}
             {waiting ? <Shimmer>{workingLabel}</Shimmer> : null}
           </ConversationContent>
-          <ConversationScrollButton style={{ bottom: `calc(1rem + ${clear})` }} />
+          <ConversationScrollButton style={{ bottom: CLEAR }} />
         </Conversation>
       )}
 
-      <div ref={footRef} style={sx(S.foot, inset > 0 && S.footLifted, { bottom: `${inset}px` })}>
+      <div ref={footRef} style={S.foot}>
         {error ? (
           <div style={S.error}>
             <p style={sx(reset.text, S.errorText)}>{error}</p>
@@ -345,18 +352,65 @@ export function Chat({
   );
 }
 
-/** The floating foot's height, so the transcript can end above it. */
-function useFootHeight() {
+/**
+ * Publishes the floating foot's height on the surface as `--chat-foot`, so the
+ * transcript can end above it.
+ *
+ * Written straight to the element, never held in state. The foot grows with
+ * every line the composer wraps, and it held state once: a render per wrapped
+ * line, which rebuilt the whole transcript while the reader was still typing —
+ * and on a phone, where the composer is narrow and a line is a few words, that
+ * was most keystrokes. The property carries the same number and preact never
+ * sees it change; the transcript reads it through `CLEAR`.
+ *
+ * The property is set on the surface rather than on each page under it because
+ * the three pages come and go, and only the surface is always there. Preact
+ * leaves it alone: its style diff writes the keys of the style object and no
+ * others.
+ */
+function useFootHeight(surface: RefObject<HTMLDivElement>) {
   const ref = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState(0);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => setHeight(el.offsetHeight));
+    const host = surface.current;
+    if (!el || !host) return;
+
+    const write = () => host.style.setProperty("--chat-foot", `${el.offsetHeight}px`);
+    write();
+
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(write);
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [surface]);
 
-  return [height, ref] as const;
+  return ref;
+}
+
+/**
+ * Lifts the foot over a virtual keyboard, as `--chat-inset` on the surface.
+ *
+ * The same trade as `useFootHeight`, and for a sharper reason: iOS scrolls the
+ * visual viewport to follow the caret, so this number moves by a pixel or two
+ * every few characters typed. As state that was a render of the whole surface
+ * per keystroke — the one thing the reader cannot afford to wait for while they
+ * are typing into it.
+ *
+ * `--chat-safe-bottom` rides along, because it is the same fact read the other
+ * way: a composer lifted over a keyboard is nowhere near the home bar, so the
+ * safe area it pads for is already clear. Removed rather than set to `0px` when
+ * the keyboard goes, which puts the composer back on its `env()` fallback.
+ */
+function useKeyboardLift(surface: RefObject<HTMLDivElement>) {
+  useEffect(() => {
+    const host = surface.current;
+    if (!host) return;
+
+    return watchKeyboardInset((inset) => {
+      host.style.setProperty("--chat-inset", `${inset}px`);
+      if (inset > 0) host.style.setProperty("--chat-safe-bottom", "0px");
+      else host.style.removeProperty("--chat-safe-bottom");
+    });
+  }, [surface]);
 }

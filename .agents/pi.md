@@ -32,6 +32,8 @@ session: AgentSnapshot + providers + models + title -> ChatSnapshot -> Chat
 | `title.ts`         | the conversation's name — derived, or asked of the model  |
 | `on-device.ts`     | Chrome's own model, and whether this browser carries it   |
 | `chrome-prompt.ts` | the Prompt API as an api pi can speak                     |
+| `local.ts`         | the wllama models, where the module comes from, the gate  |
+| `wllama.ts`        | llama.cpp in this tab as an api pi can speak              |
 
 ## Imports stay dynamic
 
@@ -43,11 +45,15 @@ for a value. Everything comes from a subpath:
 - `api/<name>` — `streamSimple`, fetched with the first turn that needs it. The
   anthropic and openai sdks are ~100 KB each and land in chunks of their own.
 
-Only `free-models.ts` and `on-device.ts` are imported statically — the first in
-`models.ts`, so `DEFAULT_MODEL` exists and an agent can be built before any chunk lands,
-the second in `providers.ts`, which has to know whether this browser carries Chrome's own
-model before it lists a row for it. Both are written by hand and weigh a couple of KB, so
-nothing is saved by fetching them.
+wllama goes one further: it is not a dependency of this package at all, so `local.ts`
+imports a CDN url at runtime. See **The sixth runs llama.cpp here** below.
+
+Only `free-models.ts`, `on-device.ts` and `local.ts` are imported statically — the first
+in `models.ts`, so `DEFAULT_MODEL` exists and an agent can be built before any chunk lands,
+the second and third in `providers.ts`, which has to know whether this browser carries
+Chrome's own model, and whether it can run one of its own, before it lists a row for
+either. All three are written by hand and weigh a couple of KB together, so nothing is
+saved by fetching them.
 
 The pi-ai root is browser-safe — `node:` imports live under its `./node` export, which
 nothing here touches. Every api module sets `dangerouslyAllowBrowser`: the key goes
@@ -62,13 +68,15 @@ so `streamFor()` picks the module per turn and a gateway model costs no extra co
 | Provider                                 | Api                                |
 | ---------------------------------------- | ---------------------------------- |
 | Chrome Built-in AI                       | chrome-prompt — on the device      |
+| Local (wllama)                           | wllama — on the device             |
 | LLM7, Kilo, OVHcloud, OpenCode Zen       | openai-completions — free, no key  |
 | Vercel AI Gateway, OpenRouter (gateways) | per model — any of the three below |
 | OpenAI                                   | openai-responses                   |
 | Groq, Cerebras                           | openai-completions                 |
 
-`SUPPORTED_APIS` is `anthropic-messages`, `chrome-prompt`, `openai-completions` and
-`openai-responses`; a catalog entry outside them is filtered out of the settings page.
+`SUPPORTED_APIS` is `anthropic-messages`, `chrome-prompt`, `openai-completions`,
+`openai-responses` and `wllama`; a catalog entry outside them is filtered out of the
+settings page.
 Adding a provider is an entry plus its `defaultModelId`. `test/pi/providers.test.ts`
 loads every catalog and fails if a default no longer exists, or if a listed model needs
 an api this build lacks.
@@ -84,17 +92,19 @@ preflight the `Authorization` header forces. `Access-Control-Allow-Origin` is th
 server's to send: a provider that sends none cannot be reached from a page, and no
 request header changes that.
 
-Seven of the nine send it. `cors: false` names the two that do not — **Kilo Gateway**
-and **OpenCode Zen** — and `availableProviders()` drops them from what a page offers,
-rather than letting the page take a click that ends in a console error.
-`createPiSession()` reads that list for its rows _and_ for the provider it opens on, so
-one stored in the panel is not restored on a page.
+Seven of the nine that answer over the network send it. `cors: false` names the two that
+do not — **Kilo Gateway** and **OpenCode Zen** — and `availableProviders()` drops them
+from what a page offers, rather than letting the page take a click that ends in a console
+error. `createPiSession()` reads that list for its rows _and_ for the provider it opens
+on, so one stored in the panel is not restored on a page.
 
 `corsFree()` is the exception, and the whole of the runtime check: a
 `chrome-extension:` document fetches through `host_permissions`, which the preflight
 never gates, so the panel lists all nine. Both blocked origins are in
 `extension/manifest.json`. The panel served by vite in dev is an ordinary page, so it
-sees the seven — load it unpacked to get the other two.
+sees the seven — load it unpacked to get the other two. It trades one row for two:
+`wllamaSupported()` is false in that same document, because an MV3 page may import no
+module it does not ship.
 
 A provider that starts to send the header is a `cors: false` line to delete. Check it
 with a preflight of your own:
@@ -182,17 +192,18 @@ a line to delete.
 endpoint, no key, no preflight, and no rate limit to write down. `free: true` for the
 same reason as the other four, and every rate is zero because nothing is billed.
 
-`chrome-prompt` is an api of this repo's own, the only entry in `APIS` that is not one
-of pi-ai's. It answers `streamSimple` and nothing else, which is all `streamFor()` asks
-for, and it is fetched with the first turn like every other api module.
+`chrome-prompt` is an api of this repo's own — one of the two entries in `APIS` that is
+not pi-ai's, `wllama` being the other. It answers `streamSimple` and nothing else, which
+is all `streamFor()` asks for, and it is fetched with the first turn like every other api
+module.
 
 | File               | What                                                                 |
 | ------------------ | -------------------------------------------------------------------- |
 | `on-device.ts`     | the api as typescript sees it, the one model, `promptApiSupported()` |
 | `chrome-prompt.ts` | pi's context in, pi's events out                                     |
 
-`on-device.ts` is the second module imported statically, next to `free-models.ts`, and
-for the same reason: `providers.ts` has to answer `supported()` before any chunk lands.
+`on-device.ts` is imported statically, next to `free-models.ts` and `local.ts`, and for
+the same reason: `providers.ts` has to answer `supported()` before any chunk lands.
 It is one model and a handful of interfaces.
 
 **The api is not the shape pi speaks.** It takes the history up front, through
@@ -220,6 +231,62 @@ event protocol has for work that is not the answer. Chrome reports it through a 
 callback, which cannot yield, so the percentage is read on a timer and the block closes
 as soon as `create()` settles. The mapping back to the api drops thinking, so the model
 never reads its own download log.
+
+### The sixth runs llama.cpp here
+
+**Local (wllama)** is [wllama](https://github.com/ngxson/wllama), which is llama.cpp
+compiled to WebAssembly. A GGUF model is downloaded once and answers in a worker in this
+tab, so the turn never leaves the device: no endpoint, no key, no preflight and no rate
+limit. `free: true` for the same reason as the rest, and every rate is zero because
+nothing is billed.
+
+| File        | What                                                               |
+| ----------- | ------------------------------------------------------------------ |
+| `local.ts`  | the models, the two urls, `wllamaSupported()`, `useWllamaModule()` |
+| `wllama.ts` | pi's context in, pi's events out                                   |
+
+**Nothing here depends on wllama.** The esm bundle is imported at a url, pinned to one
+version, and the wasm is fetched from the same place — `WLLAMA_MODULE_URL` and
+`WLLAMA_WASM_URL` in `local.ts`. The import is a variable rather than a literal, so no
+bundler follows it; the `@vite-ignore` comment says the same thing to vite. A host that
+ships wllama itself, or serves a page that allows no remote module, hands its own import
+to `useWllamaModule()` — which is also how the tests stand a model up.
+
+**The models are written by hand**, like the free catalogs, and each names a public GGUF
+on Hugging Face: LFM2.5 350M, Qwen3.5 0.8B, MiniCPM5 1B, Qwen3.5 2B and Qwen3.5 4B — five
+2026 models, all of which call tools, four of which reason. `baseUrl` is the file to load
+rather than an endpoint to post to, `size` is what the download weighs, and `tools` says
+whether the chat template of the model can call one: a turn that carries tools where it
+cannot is answered from the chat alone and says so in `diagnostics`, exactly as Gemini
+Nano does. `contextWindow` is the window the model is _loaded_ with, not the one it was
+trained for: it is `n_ctx`, and the KV cache for it sits in the tab's memory.
+
+**The quant is half the choice.** One file may not pass 2 GB — past that wllama wants the
+model split into chunks — and the weights share a 4 GiB wasm heap with the KV cache and
+everything else. That is the whole reason the list stops at 4B: the 2B is a Q6_K rather
+than the usual Q4_K_M, which is the same model with less of it thrown away, and the 4B is
+a dynamic Q2_K_XL, which spends its bits on the tensors that carry the reasoning. K-quants
+throughout — wllama's own guidance is that IQ quants answer slowly. A bigger model means
+splitting one and hosting the chunks, and a window paid for out of the same heap.
+
+**The api is OpenAI shaped**, which is most of the work — `toMessages()` writes pi's
+transcript as chat messages, tool calls and all, and the chunks come back as text,
+`reasoning_content` and streamed tool calls. `jinja: true` at load time is what parses the
+chat template of the model, and is what both of those depend on. The thinking level
+reaches a Qwen through `chat_template_kwargs.enable_thinking`; a template that does not
+read it ignores it.
+
+**One model is held at a time.** The weights sit in memory and a second set beside them is
+what a tab has no room for, so picking another model exits the first. The first turn on a
+model waits for hundreds of MB, which is told as a thinking block on a timer, the way the
+Gemini Nano download is; wllama caches the file in the browser, so the second visit loads
+from disk and the block never appears. `unloadWllama()` frees it all.
+
+**Two things gate it.** `wllamaSupported()` keeps the row out of the picker where there is
+no `WebAssembly`, no `Worker`, or the document is an MV3 page — an extension may load no
+remote script, so the panel is offered the providers that answer over the network instead.
+The second gate is the machine: a laptop answers a 0.6B model at a readable speed, and a
+phone may not.
 
 ## Where the choices go
 

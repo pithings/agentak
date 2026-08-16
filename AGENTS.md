@@ -183,18 +183,20 @@ extension/                      MV3 side panel, package name `@agentak/extension
 
 ## Current status
 
-The agent works end to end with 10 providers and the page tools. Five providers are free
+The agent works end to end with 11 providers and the page tools. Six providers are free
 and do not need an API key. A new chat starts without a provider. The first message opens
 the settings page, and a free provider can be selected with one click.
 
-Chrome Built-in AI is the fifth free one, and the only provider that sends no request:
-Gemini Nano runs in the browser through the Prompt API. It is listed only where the
-browser carries that API, which today means a Chrome with both flags set. It answers
-text alone — no tool calls and no images.
+Two of the six send no request to a model server. Chrome Built-in AI runs Gemini Nano
+through the Prompt API, and is listed only where the browser carries that API, which today
+means a Chrome with both flags set. It answers text alone — no tool calls and no images.
+Local (wllama) runs llama.cpp in the tab as WebAssembly: the module comes from a CDN, the
+weights from Hugging Face, and the browser keeps both. It is listed on any page with a
+worker, which is every page but an MV3 one — the side panel may import no remote module.
 
 Kilo and OpenCode Zen do not answer CORS preflight requests. Regular web pages therefore
-show 7 providers, while the extension shows all 9 — plus Chrome's own, where it is
-there. See
+show 7 of the network providers, plus wllama, while the extension shows all 9 — plus
+Chrome's own, where it is there, and without wllama. See
 [`.agents/pi.md`](.agents/pi.md). The chat UI, Markdown renderer, and side panel have not
 yet been tested in a real browser.
 

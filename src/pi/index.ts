@@ -58,6 +58,19 @@ export {
   SUPPORTED_APIS,
 } from "./providers.ts";
 export {
+  findLocalModel,
+  type LocalModel,
+  loadWllamaModule,
+  useWllamaModule,
+  WLLAMA_MODEL_ID,
+  WLLAMA_MODELS,
+  WLLAMA_MODULE_URL,
+  WLLAMA_PROVIDER_ID,
+  WLLAMA_WASM_URL,
+  type WllamaLoader,
+  wllamaSupported,
+} from "./local.ts";
+export {
   ON_DEVICE_MODEL_ID,
   ON_DEVICE_MODELS,
   ON_DEVICE_PROVIDER_ID,
