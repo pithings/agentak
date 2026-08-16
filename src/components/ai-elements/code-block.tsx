@@ -4,31 +4,18 @@ import { memo } from "preact/compat";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { ShjToken } from "rangi/core";
 import { tokenize } from "rangi/core";
-import { bash, diff, json, ts, tsx } from "rangi/languages";
+import { languages as LANGUAGES } from "rangi/languages";
 
 import { Button, type ButtonProps } from "../ui/button.tsx";
 import { CheckIcon, CopyIcon } from "../../lib/icons.tsx";
 import { reset, u } from "../../styles/base.ts";
 import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
-// Only the grammars listed here are bundled. Everything else falls back to
-// plain text, which rangi returns as a single untyped token.
-const LANGUAGES = { bash, diff, json, ts, tsx };
-
-// Fence tags a model is likely to write for a grammar that is bundled.
-const ALIASES: Record<string, keyof typeof LANGUAGES> = {
-  javascript: "ts",
-  js: "ts",
-  json5: "json",
-  jsonc: "json",
-  jsx: "tsx",
-  patch: "diff",
-  sh: "bash",
-  shell: "bash",
-  typescript: "ts",
-  zsh: "bash",
-};
-
+// Every grammar rangi ships, under its own name and its aliases, so a fence tag
+// needs no table of ours. A name that is still not in here falls back to plain
+// text, which rangi returns as a single untyped token. A grammar that embeds
+// another — vue, astro, html, markdown — resolves it out of this same registry,
+// so the whole set has to be here for a `<script>` block to colour.
 export type CodeLanguage = keyof typeof LANGUAGES | (string & {});
 
 // Token colors come from --shj-* in styles/base.ts, so the class-based `.dark`
@@ -49,9 +36,7 @@ interface KeyedLine {
 const tokenizeLines = (code: string, language: CodeLanguage): KeyedLine[] => {
   const lines: KeyedToken[][] = [[]];
 
-  const lang = ALIASES[language] ?? language;
-
-  for (const { text, type } of tokenize(code, { lang, languages: LANGUAGES })) {
+  for (const { text, type } of tokenize(code, { lang: language, languages: LANGUAGES })) {
     const parts = text.split("\n");
     for (const [index, part] of parts.entries()) {
       if (index > 0) {

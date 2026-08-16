@@ -54,10 +54,17 @@ directly.
 ## Syntax highlighting
 
 `code-block.tsx` uses [`rangi`](https://github.com/pi0/rangi) through `rangi/core`,
-which bundles no grammar. `LANGUAGES` in that file lists what is registered (`bash`,
-`diff`, `json`, `ts`, `tsx` — tool input/output plus the fences that reach a code block
-through markdown). An unregistered language comes back as one untyped token, so it
-renders verbatim.
+which bundles no grammar of its own. The registry it is given is rangi's whole
+`languages` object, some 87 names: every grammar rangi ships, plus its aliases, which
+that object spreads in under the alternative spellings. A fence tag is therefore looked
+up as written — `js`, `javascript`, `sh`, `yml`, `patch` all land on a grammar with no
+table of ours in between. A name that is still unknown comes back as one untyped token,
+so it renders verbatim.
+
+The whole set has to be registered, not a chosen few: a grammar that embeds another —
+`vue`, `astro`, `html`, `markdown` — resolves the inner one **by name** out of this same
+registry. Register `vue` alone and the SFC shell colours while the `<script>` body stays
+plain. The grammars are one chunk, ~36 kB raw and ~13 kB gzipped.
 
 rangi is synchronous: tokenizing happens in a `useMemo` and the first render is already
 coloured. No highlighter cache, no token cache, no placeholder pass.
