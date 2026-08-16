@@ -56,3 +56,12 @@ export interface ChatQueueItem {
   id: string;
   text: string;
 }
+
+/** One stored conversation, as the history page lists it. */
+export interface ChatHistoryEntry {
+  id: string;
+  /** What the list calls it — the model's title, or the first message. */
+  title: string;
+  /** When it was last written, in ms. The newest heads the list. */
+  updated?: number;
+}

@@ -13,22 +13,25 @@ store:   every event -> toViewMessages(agent.state) -> AgentSnapshot
 session: AgentSnapshot + providers + models + title -> ChatSnapshot -> Chat
 ```
 
-| File              | What                                                      |
-| ----------------- | --------------------------------------------------------- |
-| `create-agent.ts` | the `Agent`, the stream function, the system prompt       |
-| `free-models.ts`  | the hand-written catalogs of the four keyless providers   |
-| `approvals.ts`    | the confirmation gate behind `beforeToolCall`             |
-| `models.ts`       | catalog filtering, the defaults                           |
-| `providers.ts`    | the provider list, the api modules, `streamFor()`         |
-| `catalog.ts`      | one provider's models, fetched once per page              |
-| `use-catalog.ts`  | the same, as a hook, for a host driving `Chat` itself     |
-| `storage.ts`      | the store the keys, provider, model and level live in     |
-| `transcript.ts`   | `AgentMessage[]` -> renderable parts, and the usage panel |
-| `store.ts`        | a subscribable view of `Agent` events                     |
-| `errors.ts`       | a failed turn, worded for the person reading it           |
-| `use-agent.ts`    | the store as a hook — `ChatState`, unchanged              |
-| `session.ts`      | the store, the page and the title as one `ChatSession`    |
-| `title.ts`        | the conversation's name — derived, or asked of the model  |
+| File               | What                                                      |
+| ------------------ | --------------------------------------------------------- |
+| `create-agent.ts`  | the `Agent`, the stream function, the system prompt       |
+| `free-models.ts`   | the hand-written catalogs of the four keyless providers   |
+| `approvals.ts`     | the confirmation gate behind `beforeToolCall`             |
+| `models.ts`        | catalog filtering, the defaults                           |
+| `providers.ts`     | the provider list, the api modules, `streamFor()`         |
+| `catalog.ts`       | one provider's models, fetched once per page              |
+| `use-catalog.ts`   | the same, as a hook, for a host driving `Chat` itself     |
+| `storage.ts`       | the store the keys, provider, model and level live in     |
+| `history.ts`       | the conversations a session keeps, over that same store   |
+| `transcript.ts`    | `AgentMessage[]` -> renderable parts, and the usage panel |
+| `store.ts`         | a subscribable view of `Agent` events                     |
+| `errors.ts`        | a failed turn, worded for the person reading it           |
+| `use-agent.ts`     | the store as a hook — `ChatState`, unchanged              |
+| `session.ts`       | the store, the page and the title as one `ChatSession`    |
+| `title.ts`         | the conversation's name — derived, or asked of the model  |
+| `on-device.ts`     | Chrome's own model, and whether this browser carries it   |
+| `chrome-prompt.ts` | the Prompt API as an api pi can speak                     |
 
 ## Imports stay dynamic
 
@@ -40,9 +43,11 @@ for a value. Everything comes from a subpath:
 - `api/<name>` — `streamSimple`, fetched with the first turn that needs it. The
   anthropic and openai sdks are ~100 KB each and land in chunks of their own.
 
-Only `free-models.ts` is imported statically, in `models.ts`, so `DEFAULT_MODEL` exists
-and an agent can be built before any chunk lands. It is written by hand and weighs a
-couple of KB, so nothing is saved by fetching it.
+Only `free-models.ts` and `on-device.ts` are imported statically — the first in
+`models.ts`, so `DEFAULT_MODEL` exists and an agent can be built before any chunk lands,
+the second in `providers.ts`, which has to know whether this browser carries Chrome's own
+model before it lists a row for it. Both are written by hand and weigh a couple of KB, so
+nothing is saved by fetching them.
 
 The pi-ai root is browser-safe — `node:` imports live under its `./node` export, which
 nothing here touches. Every api module sets `dangerouslyAllowBrowser`: the key goes
@@ -56,15 +61,17 @@ so `streamFor()` picks the module per turn and a gateway model costs no extra co
 
 | Provider                                 | Api                                |
 | ---------------------------------------- | ---------------------------------- |
+| Chrome Built-in AI                       | chrome-prompt — on the device      |
 | LLM7, Kilo, OVHcloud, OpenCode Zen       | openai-completions — free, no key  |
 | Vercel AI Gateway, OpenRouter (gateways) | per model — any of the three below |
 | OpenAI                                   | openai-responses                   |
 | Groq, Cerebras                           | openai-completions                 |
 
-`SUPPORTED_APIS` is `anthropic-messages`, `openai-completions`, `openai-responses`; a
-catalog entry outside them is filtered out of the settings page. Adding a provider is an entry
-plus its `defaultModelId`. `test/pi/providers.test.ts` loads every catalog and fails
-if a default no longer exists, or if a listed model needs an api this build lacks.
+`SUPPORTED_APIS` is `anthropic-messages`, `chrome-prompt`, `openai-completions` and
+`openai-responses`; a catalog entry outside them is filtered out of the settings page.
+Adding a provider is an entry plus its `defaultModelId`. `test/pi/providers.test.ts`
+loads every catalog and fails if a default no longer exists, or if a listed model needs
+an api this build lacks.
 
 Left out on purpose: providers that need an account id in the url (Cloudflare), an
 OAuth flow (Copilot, Codex), signed requests (Bedrock, Vertex), or another sdk for one
@@ -168,6 +175,52 @@ Their paid models are not listed: LLM7 and Zen answer `invalid_api_key` for thos
 only the free tier is written down. Free tiers rotate — a model that starts to 404 is
 a line to delete.
 
+### The fifth is not a request at all
+
+**Chrome Built-in AI** is Gemini Nano, running in the browser. Chrome exposes it as the
+`LanguageModel` global — the Prompt API — so the turn never leaves the device: no
+endpoint, no key, no preflight, and no rate limit to write down. `free: true` for the
+same reason as the other four, and every rate is zero because nothing is billed.
+
+`chrome-prompt` is an api of this repo's own, the only entry in `APIS` that is not one
+of pi-ai's. It answers `streamSimple` and nothing else, which is all `streamFor()` asks
+for, and it is fetched with the first turn like every other api module.
+
+| File               | What                                                                 |
+| ------------------ | -------------------------------------------------------------------- |
+| `on-device.ts`     | the api as typescript sees it, the one model, `promptApiSupported()` |
+| `chrome-prompt.ts` | pi's context in, pi's events out                                     |
+
+`on-device.ts` is the second module imported statically, next to `free-models.ts`, and
+for the same reason: `providers.ts` has to answer `supported()` before any chunk lands.
+It is one model and a handful of interfaces.
+
+**The api is not the shape pi speaks.** It takes the history up front, through
+`initialPrompts`, and the turn to answer through one `prompt()` call — so `toTurns()`
+splits pi's messages at the last one, merges runs of a role, drops empty turns, and
+tells a tool result as the user. A session is built per turn and destroyed after it:
+pi's transcript is the conversation, and it can be edited or restored between turns.
+
+**What Gemini Nano does not do**: tool calls, images, thinking, a token ceiling, or a
+stop sequence. The loop offers its tools to every model, so a turn that carries them is
+answered from the chat alone and says so in `AssistantMessage.diagnostics`. The window
+is 9216 tokens shared between input and output, and past it Chrome throws
+`QuotaExceededError` rather than truncating — `failure()` words that one as the chat's
+own sentence. The usage panel prices a turn at nothing and counts it from
+`session.inputUsage` before and after, which is the session's estimate, not a tokenizer.
+
+**Two things gate it.** The api is behind `#optimization-guide-on-device-model` and
+`#prompt-api-for-gemini-nano` until Chrome ships it — an extension page gets it without
+an origin trial, a site needs one — and the weights are a one-time ~4 GB download that
+the first `create()` starts. `promptApiSupported()` is the first gate: `Provider.supported`
+keeps the row out of the picker on a browser that carries no `LanguageModel`, which is
+every browser but a flagged Chrome, so nothing is offered that cannot answer. The
+download is the second, and it is reported as a thinking block — the only channel the
+event protocol has for work that is not the answer. Chrome reports it through a monitor
+callback, which cannot yield, so the percentage is read on a timer and the block closes
+as soon as `create()` settles. The mapping back to the api drops thinking, so the model
+never reads its own download log.
+
 ## Where the choices go
 
 `storage.ts` names the four things the picker decides — the key per provider, the
@@ -179,7 +232,19 @@ typed in one conversation answers in the next and goes when the page goes.
 A host that wants more passes the `storage` option: `browserStorage()` for `localStorage`,
 as the playground and the panel do, or a store of its own. Both methods are synchronous,
 so an async store such as `chrome.storage` is read by the host and passed through `apiKey`
-instead.
+instead. `remove` is a third method and an optional one: a store without it drops a value
+by writing it empty, which reads back as nothing.
+
+The thinking level is the one choice with a default worth naming. A model runs at the level
+the conversation was written at, then the level this browser last used it at, then the last
+level chosen by hand in this session — and where nothing answers, at `medium`, clamped to
+what the model offers. A model that is chosen to reason reasons, so a level is only `off`
+where somebody said `off`, and a model with no reasoning clamps to `off` on its own.
+
+A key also comes back out: `forgetKey(provider)` on the session drops it from the store and
+from the session's own map — including one a host passed through `apiKey`, which that host
+still holds and hands to the next session. The provider then has no key, so it is one to
+set up again, and a session running on it steps off rather than failing the next turn.
 
 ## Storing a conversation
 
@@ -193,9 +258,45 @@ session.subscribe(() => keep(session.save())); // debounced by whoever stores it
 ```
 
 It sits beside `dispose()` for the same reason: nothing in the surface calls it, so it is
-what this factory owes its caller, not what the chat asks of a harness.
-[`session.md`](session.md) is the other half — `ChatSession` holds one live conversation
-and never lists them, so a host switches conversations by switching sessions.
+what this factory owes its caller, not what the chat asks of a harness. `restore()` is its
+other half: the transcript and the choices it ran under, put back into the session that is
+already mounted — the loop's messages, the provider, the model and the level, all replaced
+in place. That is what a host needs to move between conversations without swapping a
+session, and it is what the history page below runs on.
+
+**A swap waits for the turn it interrupts.** `store.ts` grew `load()` for this: pi refuses
+to reset while a run is active and `abort()` only asks, so a swap over a streaming answer
+lands on `waitForIdle()` and an idle one — every swap a person makes — lands at once.
+
+## The conversations a session keeps
+
+`history: true` on `createPiSession()`, and the chat grows a history page: the clock at the
+head of the header, listing what this session has stored, with the live one marked. Picking
+one is `restore()` under the covers, so the chat never unmounts. `history.ts` is the store
+behind it, over the same `PiStorage` as the keys — memory by default, `localStorage` where
+a host passed `browserStorage()`, or a `PiHistory` of the host's own where neither will do.
+
+Off by default: the library stores nothing unasked, and a host already keeping its own with
+`save()` should grow no second list. Turned on:
+
+- The session opens on the **newest stored conversation**, so a reload comes back where it
+  was left. A `snapshot` option wins over that — a host that hands one over keeps its own.
+- A conversation is written **every time the loop settles**, and again when the model names
+  it, so nothing is debounced and nothing is flushed on `pagehide`. `dispose()` writes the
+  last one in hand.
+- **New conversation** files the one it replaces away rather than dropping it; an empty
+  conversation is never written, so nothing lists a chat that was never spoken to.
+- Forgetting the live conversation leaves an empty chat on a new id.
+
+Two keys, not one: an index of what exists, and one entry per conversation. The page reads
+the index alone, so listing never parses a transcript, and one is dropped by its own key
+rather than by rewriting the rest. Twenty are kept; past that the oldest goes. `set` reports
+nothing — `localStorage` throws when it is full and `browserStorage()` swallows it — so a
+write is read back, and one that will not fit gives up older conversations until it lands.
+
+[`session.md`](session.md) is the other half: `history`, `conversationId` and
+`openConversation` are the seam the page runs on, and a harness that stores nothing reports
+no list, so the button is not there.
 
 **More than the transcript travels.** A transcript alone comes back under whatever model
 was used last rather than the one that wrote the answers, so `PiSnapshot` carries
@@ -234,6 +335,15 @@ Both places that show a failure run through it: `store.ts` for the error row abo
 composer, and `transcript.ts` for the failed turn left in the transcript. `clearError()`
 still compares the raw message, so dismissing works on what pi holds rather than on what is
 displayed.
+
+**A 4xx opens the settings page.** `failureStatus()` reads the status back out of the same
+message, and `store.ts` carries it beside the worded one as `errorStatus`. A turn that
+failed with one is the provider answering about the key, the model or the account — none of
+which the transcript can fix — so `session.ts` opens the page where all three are chosen,
+with the error row still above the composer. Once per failure: the page is the person's to
+close again, and only a new error opens it a second time. A 5xx, and a request that never
+arrived, are the provider's own to recover from, so those only say so and offer the retry
+button.
 
 ## What feeds each element
 

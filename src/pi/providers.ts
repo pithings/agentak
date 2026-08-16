@@ -2,6 +2,12 @@ import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { Api, AssistantMessageEventStream, Model } from "@earendil-works/pi-ai";
 
 import { KILO_MODELS, LLM7_MODELS, OPENCODE_ZEN_MODELS, OVHCLOUD_MODELS } from "./free-models.ts";
+import {
+  ON_DEVICE_MODEL_ID,
+  ON_DEVICE_MODELS,
+  ON_DEVICE_PROVIDER_ID,
+  promptApiSupported,
+} from "./on-device.ts";
 
 /** A model from any provider. The api it speaks is on the model itself. */
 export type AnyModel = Model<Api>;
@@ -32,6 +38,12 @@ export interface Provider {
    * `false` names the ones that do not, and a page drops them.
    */
   cors?: boolean;
+  /**
+   * Whether this browser carries the provider at all. Only the on-device one
+   * answers it: a Chrome without the Prompt API has nothing to offer, and the
+   * picker must not list a row that cannot answer.
+   */
+  supported?: () => boolean;
   /** Where the key comes from. A free provider has none. */
   keyUrl?: string;
   keyPlaceholder?: string;
@@ -42,6 +54,15 @@ export interface Provider {
 }
 
 export const PROVIDERS: Provider[] = [
+  {
+    id: ON_DEVICE_PROVIDER_ID,
+    label: "Chrome Built-in AI",
+    free: true,
+    supported: promptApiSupported,
+    note: "Gemini Nano runs on this device. Chrome downloads it once, ~4 GB.",
+    defaultModelId: ON_DEVICE_MODEL_ID,
+    load: async () => ON_DEVICE_MODELS,
+  },
   {
     id: "llm7",
     label: "LLM7",
@@ -141,10 +162,13 @@ export const corsFree = (): boolean => globalThis.location?.protocol === "chrome
  * The providers this runtime can reach. `Access-Control-Allow-Origin` is the
  * server's to send, so a provider that sends none is unreachable from a page
  * and no request header changes that — the picker offers it nowhere it would
- * fail. The extension gets the whole list.
+ * fail. The extension gets the whole list, bar the one Chrome itself decides:
+ * the on-device model is listed only where the browser carries the api.
  */
 export const availableProviders = (): Provider[] =>
-  corsFree() ? PROVIDERS : PROVIDERS.filter((provider) => provider.cors !== false);
+  PROVIDERS.filter(
+    (provider) => (corsFree() || provider.cors !== false) && (provider.supported?.() ?? true),
+  );
 
 /**
  * The api modules, one import each.
@@ -159,6 +183,8 @@ type ApiModule = { streamSimple: (...args: any[]) => AssistantMessageEventStream
 
 const APIS: Record<string, () => Promise<ApiModule>> = {
   "anthropic-messages": () => import("@earendil-works/pi-ai/api/anthropic-messages"),
+  // Not one of pi's: Chrome's own, written here. See `chrome-prompt.ts`.
+  "chrome-prompt": () => import("./chrome-prompt.ts"),
   "openai-completions": () => import("@earendil-works/pi-ai/api/openai-completions"),
   "openai-responses": () => import("@earendil-works/pi-ai/api/openai-responses"),
 };

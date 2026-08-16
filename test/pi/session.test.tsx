@@ -40,6 +40,13 @@ const scripted = (script: AssistantMessage[]): StreamFn => {
   };
 };
 
+/** A provider that refuses — the sdk's own wording for a bodiless answer. */
+const refusing =
+  (status: number): StreamFn =>
+  () => {
+    throw new Error(`${status} status code (no body)`);
+  };
+
 const answer = turn([{ type: "text", text: "Two plans." }], "stop");
 const named = turn([{ type: "text", text: "Plans on this page" }], "stop");
 
@@ -47,9 +54,13 @@ const named = turn([{ type: "text", text: "Plans on this page" }], "stop");
 const FREE = "llm7";
 const MODEL = "gemini-3.1-flash-lite";
 
+/** One that takes a key, and whose catalog is an import rather than a fetch. */
+const KEYED = "openai";
+
 /** The same, and its catalog carries a reasoning model beside a plain one. */
 const THINKS = "ovhcloud";
 const REASONING_MODEL = "gpt-oss-20b";
+const OTHER_REASONING_MODEL = "gpt-oss-120b";
 const PLAIN_MODEL = "Qwen3-Coder-30B-A3B-Instruct";
 
 afterEach(cleanup);
@@ -116,7 +127,9 @@ describe("createPiSession", () => {
 
     session.selectModel?.(REASONING_MODEL);
     expect(session.snapshot().thinkingLevels).toContain("medium");
-    expect(session.snapshot().thinkingLevel).toBe("off");
+    // A model chosen to reason reasons: nothing is stored for this one, so it
+    // starts in the middle rather than off.
+    expect(session.snapshot().thinkingLevel).toBe("medium");
 
     // Nothing to choose from, so the picker shows no level at all.
     session.selectModel?.(PLAIN_MODEL);
@@ -133,6 +146,11 @@ describe("createPiSession", () => {
     // A model that cannot reason must not be asked to: the level goes with it.
     first.selectModel?.(PLAIN_MODEL);
     expect(first.snapshot().thinkingLevel).toBe("off");
+
+    // A reasoning model this browser has not run takes the level last chosen by
+    // hand, rather than the default one.
+    first.selectModel?.(OTHER_REASONING_MODEL);
+    expect(first.snapshot().thinkingLevel).toBe("high");
 
     const next = piSession({ provider: THINKS, streamFn: scripted([answer]) });
     await waitFor(() => expect(next.snapshot().models?.length).toBeGreaterThan(0));
@@ -152,6 +170,147 @@ describe("createPiSession", () => {
     expect(events).toBe(1);
     expect(session.snapshot()).not.toBe(first);
     expect(session.snapshot().pickerOpen).toBe(true);
+  });
+
+  it("opens the settings page when the provider refuses the request", async () => {
+    const session = piSession({ provider: FREE, streamFn: refusing(401) });
+    await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
+    session.selectModel?.(MODEL);
+    expect(session.snapshot().pickerOpen).toBe(false);
+
+    // The key, the model and the provider are all on that page, and the error
+    // row stays above the composer while it is up.
+    session.send("what is this page?");
+    await waitFor(() => expect(session.snapshot().error).toMatch(/API key/));
+    expect(session.snapshot().pickerOpen).toBe(true);
+
+    // Theirs to close again: the same failure does not open it a second time.
+    session.setPickerOpen?.(false);
+    expect(session.snapshot().pickerOpen).toBe(false);
+  });
+
+  it("takes a key back out, and steps off the provider it was running", async () => {
+    const session = piSession({ streamFn: scripted([answer]) });
+    const keyed = () => session.snapshot().providers?.find((entry) => entry.id === KEYED);
+
+    session.saveKey?.(KEYED, "sk-live");
+    session.selectProvider?.(KEYED);
+    await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
+    expect(keyed()?.hasKey).toBe(true);
+    expect(storage.get(`api-key:${KEYED}`)).toBe("sk-live");
+
+    session.forgetKey?.(KEYED);
+    // Nothing is left to answer with, so the provider is one to set up again
+    // rather than one that fails the next turn.
+    expect(keyed()?.hasKey).toBe(false);
+    expect(session.snapshot().providerId).toBeUndefined();
+    expect(session.snapshot().models).toHaveLength(0);
+    expect(storage.get(`api-key:${KEYED}`)).toBeFalsy();
+
+    // And the store it went from is the one the next session opens on.
+    const next = piSession({ provider: KEYED, streamFn: scripted([answer]) });
+    expect(next.snapshot().providerId).toBeUndefined();
+  });
+
+  it("leaves the page shut when the provider itself is down", async () => {
+    const session = piSession({ provider: FREE, streamFn: refusing(503) });
+    await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
+    session.selectModel?.(MODEL);
+
+    session.send("what is this page?");
+    await waitFor(() => expect(session.snapshot().error).toMatch(/unavailable/));
+    expect(session.snapshot().pickerOpen).toBe(false);
+  });
+});
+
+describe("a pi session that keeps its own conversations", () => {
+  /** A session on the free provider with its model already chosen. */
+  const ready = async () => {
+    const session = piSession({ history: true, provider: FREE, streamFn: scripted([answer]) });
+    await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
+    session.selectModel?.(MODEL);
+    return session;
+  };
+
+  it("stores nothing, and lists nothing, unless a host asks", async () => {
+    const session = piSession({ provider: FREE, streamFn: scripted([answer]) });
+    await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
+    session.selectModel?.(MODEL);
+
+    session.send("what is this page?");
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(2));
+
+    // No list is what takes the history button off the header.
+    expect(session.snapshot().history).toBeUndefined();
+    expect(session.snapshot().conversationId).toBeUndefined();
+  });
+
+  it("keeps a conversation, files it away on a reset, and opens it again in place", async () => {
+    const session = await ready();
+
+    session.send("what is this page?");
+    await waitFor(() => expect(session.snapshot().history?.length).toBe(1));
+    const first = session.snapshot().history?.[0];
+    expect(first?.title).toBe("what is this page?");
+    expect(session.snapshot().conversationId).toBe(first?.id);
+
+    // A new conversation does not lose the one it replaces.
+    session.reset();
+    expect(session.snapshot().messages).toHaveLength(0);
+    expect(session.snapshot().conversationId).not.toBe(first?.id);
+
+    session.send("and the tools?");
+    await waitFor(() => expect(session.snapshot().history?.length).toBe(2));
+    // Newest first.
+    expect(session.snapshot().history?.[0].title).toBe("and the tools?");
+
+    // The session replaces its own state: the same session, another transcript.
+    session.openConversation?.(first?.id ?? "");
+    await waitFor(() => expect(session.snapshot().title).toBe("what is this page?"));
+    expect(session.snapshot().messages).toHaveLength(2);
+    expect(session.snapshot().conversationId).toBe(first?.id);
+    expect(session.snapshot().modelId).toBe(MODEL);
+  });
+
+  it("drops one, and leaves an empty chat where the live one is dropped", async () => {
+    const session = await ready();
+
+    session.send("what is this page?");
+    await waitFor(() => expect(session.snapshot().history?.length).toBe(1));
+    const live = session.snapshot().conversationId ?? "";
+
+    session.forgetConversation?.(live);
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(0));
+    expect(session.snapshot().history).toHaveLength(0);
+    expect(session.snapshot().conversationId).not.toBe(live);
+  });
+
+  it("opens on the newest stored conversation, so a reload comes back where it was", async () => {
+    const first = await ready();
+    first.send("what is this page?");
+    await waitFor(() => expect(first.snapshot().history?.length).toBe(1));
+    const id = first.snapshot().conversationId;
+    first.dispose();
+
+    // The same store, a new session: the conversation is what it opens on.
+    const next = piSession({ history: true, provider: FREE, streamFn: scripted([answer]) });
+    expect(next.snapshot().conversationId).toBe(id);
+    expect(next.snapshot().messages).toHaveLength(2);
+    await waitFor(() => expect(next.snapshot().modelId).toBe(MODEL));
+  });
+
+  it("replaces its state on a snapshot a host holds itself", async () => {
+    const session = await ready();
+    session.send("what is this page?");
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(2));
+
+    const held = session.save();
+    session.reset();
+    expect(session.snapshot().messages).toHaveLength(0);
+
+    session.restore(held);
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(2));
+    expect(session.snapshot().title).toBe("what is this page?");
   });
 });
 

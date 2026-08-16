@@ -19,8 +19,13 @@ import { u } from "@/styles/base.ts";
 
 // One session for the life of the panel, which is the life of the document. The
 // session forgets its choices with the document unless a host asks for more, and
-// a panel that asked nothing would ask for the key every time it opens.
+// a panel that asked nothing would ask for the key every time it opens. It keeps
+// its conversations in that same store, so the panel opens on the last one and
+// lists the rest on its own history page.
 render(
-  <ChatPanel session={createPiSession({ storage: browserStorage() })} style={u.fill} />,
+  <ChatPanel
+    session={createPiSession({ history: true, storage: browserStorage() })}
+    style={u.fill}
+  />,
   document.querySelector("#root")!,
 );

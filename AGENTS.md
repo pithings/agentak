@@ -108,9 +108,24 @@ The provider, model, thinking level, and API key are all selected on the setting
 `components/chat/settings.tsx`. Two controls open it: a button in the header, and the
 composer's trigger, which also names the model that is running. The page then replaces the
 transcript. Choosing a model closes it again, as do sending a message and the header's
-back arrow. These choices come from the Pi
+back arrow. The Pi session also opens the page itself when a turn fails with a 4xx status:
+the provider refused the key, the model, or the account, and the answer is on that page.
+These choices come from the Pi
 session. A custom session without providers shows no provider section and no key section.
 A model without reasoning support shows no thinking-level choice.
+
+A saved key can be replaced or removed. The key section then shows both buttons, and
+"Remove" drops the key through the session's `forgetKey`. The Pi session takes it out of
+its store and steps off the provider, which then needs a key again. A session without
+`forgetKey` shows only "Change key".
+
+The stored conversations are the second page, `components/chat/history.tsx`. A clock
+button at the head of the header opens it, and the page again replaces the transcript.
+Each row is one conversation, with the live one marked and a button to forget it. Picking
+one closes the page: the session then replaces its own state with that conversation, so
+the chat is never unmounted or swapped. Only one page shows at a time. A session that
+reports no `history` shows no button. `createPiSession({ history: true })` is the built-in
+store behind it; see [`.agents/pi.md`](.agents/pi.md).
 
 The first user message becomes the default conversation title. If `generateTitle` is
 true, the model creates a title after the first answer. This uses one extra request and is
@@ -152,7 +167,7 @@ src/
   components/ai-elements/       AI SDK Elements ported to Preact
   components/_parked/           Ports nothing renders yet; exported all the same
   components/chat.tsx           Chat UI with transcript input and callbacks
-  components/chat/              Header, empty state, messages, queue, composer, settings
+  components/chat/              Header, empty state, messages, queue, composer, settings, history
   components/elements.tsx       Renderer map for `{ kind: "element" }` parts
   components/markdown.tsx       md4x AST rendered with Preact
   styles/base.ts                `tokens`, reset presets, `u`, and animation settings
@@ -168,12 +183,18 @@ extension/                      MV3 side panel, package name `@agentak/extension
 
 ## Current status
 
-The agent works end to end with 9 providers and the page tools. Four providers are free
+The agent works end to end with 10 providers and the page tools. Five providers are free
 and do not need an API key. A new chat starts without a provider. The first message opens
 the settings page, and a free provider can be selected with one click.
 
+Chrome Built-in AI is the fifth free one, and the only provider that sends no request:
+Gemini Nano runs in the browser through the Prompt API. It is listed only where the
+browser carries that API, which today means a Chrome with both flags set. It answers
+text alone — no tool calls and no images.
+
 Kilo and OpenCode Zen do not answer CORS preflight requests. Regular web pages therefore
-show 7 providers, while the extension shows all 9. See
+show 7 providers, while the extension shows all 9 — plus Chrome's own, where it is
+there. See
 [`.agents/pi.md`](.agents/pi.md). The chat UI, Markdown renderer, and side panel have not
 yet been tested in a real browser.
 
@@ -182,10 +203,15 @@ available through `agentak/pi`, and a host can provide a different session. See
 [`.agents/session.md`](.agents/session.md).
 
 A conversation can be stored and opened again. `PiSession.save()` returns a `PiSnapshot` —
-the transcript with the provider, model, thinking level and title it ran under — and the
-`snapshot` option opens on one. Where it is kept is the host's business: the playground
-lists its conversations in `localStorage` and switches between them by switching sessions.
-See [`.agents/pi.md`](.agents/pi.md).
+the transcript with the provider, model, thinking level and title it ran under —
+`restore()` puts one back into the running session, and the `snapshot` option opens on one.
+
+A session can also keep the conversations itself: `createPiSession({ history: true })`
+stores them in the same `PiStorage` as the keys, lists them on the chat's history page, and
+opens on the newest one. Picking one replaces the session state in place. The playground
+does this with `browserStorage()` and keeps no list of its own. A host that stores
+conversations elsewhere still uses `save()` and `restore()`. See
+[`.agents/pi.md`](.agents/pi.md).
 
 ### Next tasks
 

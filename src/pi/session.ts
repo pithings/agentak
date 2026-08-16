@@ -1,8 +1,9 @@
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
-import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
+import { clampThinkingLevel, getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 
 import { cachedCatalog, loadCatalog } from "./catalog.ts";
 import { type AgentOptions, createAgent, SYSTEM_PROMPT } from "./create-agent.ts";
+import { createHistory, mintConversationId, type PiHistory } from "./history.ts";
 import { findModel } from "./models.ts";
 import { type AnyModel, availableProviders, findProvider, type Provider } from "./providers.ts";
 import {
@@ -13,7 +14,8 @@ import {
 } from "./snapshot.ts";
 import { createChoices, type PiChoices, type PiStorage } from "./storage.ts";
 import { createAgentStore } from "./store.ts";
-import { generateTitle, titleRequest } from "./title.ts";
+import { generateTitle, titleRequest, toTitle } from "./title.ts";
+import { toViewMessages } from "./transcript.ts";
 import type { ChatAgent, ChatProvider } from "../components/chat/types.ts";
 import type { ChatSession, ChatSessionOptions, ChatSnapshot } from "../session.ts";
 
@@ -43,6 +45,18 @@ export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "message
    * transcript, and they win over the per-browser defaults.
    */
   snapshot?: PiSnapshot;
+  /**
+   * Keep the conversations this session has, and list them in the chat's own
+   * history page — the clock in the header. `true` keeps them in `storage`,
+   * which is memory unless a host asks for more; a `PiHistory` of your own
+   * keeps them wherever you like.
+   *
+   * Off by default: nothing is stored unasked, and a host that keeps its own
+   * with `save()` grows no second list. A session that keeps them opens on the
+   * newest one, so a reload comes back where it was left — unless `snapshot`
+   * names another, which wins.
+   */
+  history?: boolean | PiHistory;
   /** Name the conversation with the model rather than the first message. */
   generateTitle?: boolean;
 }
@@ -67,7 +81,23 @@ export interface PiSession extends ChatSession {
    * caller, not what the chat asks of a harness.
    */
   save(): PiSnapshot;
+  /**
+   * Replace the whole state with a stored conversation, or with nothing, which
+   * is a new one — the other half of `save()`, and what the history page runs
+   * on. The transcript, the provider, the model and the level all follow it, in
+   * the session that is already mounted: nothing is swapped around the chat.
+   *
+   * A conversation this session keeps is stored first, so moving off one never
+   * loses it. A turn in flight is stopped.
+   */
+  restore(snapshot?: PiSnapshot): void;
 }
+
+/**
+ * Where a model that can reason starts, before a stored choice says otherwise.
+ * Clamped to what the model offers, so a model without it takes the nearest.
+ */
+const DEFAULT_THINKING: ThinkingLevel = "medium";
 
 /** Keys already in hand: what a host passed, over what the store holds. */
 function seedKeys(
@@ -114,6 +144,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     apiKey,
     provider: openOn,
     generateTitle: named,
+    history: keeping,
     snapshot: stored,
     storage,
     ...agentOptions
@@ -121,10 +152,22 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
 
   const choices = createChoices(storage);
 
+  /** Where this session's own conversations go, if it keeps any. */
+  const kept = keeping ? (keeping === true ? createHistory(storage) : keeping) : undefined;
+
+  /**
+   * What to open on: the conversation a host passed, or — where this session
+   * keeps its own — the newest it stored, so a reload comes back where it was
+   * left. A host that passes one keeps it, under an id of this session's own.
+   */
+  const latest = stored ? undefined : kept?.list()[0];
+  const opened = stored ?? (latest ? kept?.read(latest.id) : undefined);
+  let conversationId = latest?.id ?? mintConversationId();
+
   // Where the surface runs decides the list: a page drops the providers that
   // answer no preflight. Fixed for the life of the session.
   const available = availableProviders();
-  const wanted = openOn ?? stored?.provider ?? choices.storedProviderId();
+  const wanted = openOn ?? opened?.provider ?? choices.storedProviderId();
 
   let keys = seedKeys(choices, available, apiKey, wanted);
   let providerId = openingProvider(available, keys, wanted);
@@ -134,14 +177,14 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    * the level for the model. Spent once, because a pick after that is the
    * visitor's and must not be overruled by the file it came from.
    */
-  let opening = stored;
+  let opening = opened;
 
   // Keys are read through the closure, so adding one does not rebuild the agent
   // and lose the transcript. pi asks per provider, which is the id it passes.
   const runtime = createAgent({
     ...agentOptions,
     apiKey: (provider) => keys[provider],
-    messages: stored ? usablePiMessages(stored.messages) : [],
+    messages: opened ? usablePiMessages(opened.messages) : [],
   });
   const store = createAgentStore(runtime);
 
@@ -150,19 +193,36 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   let models: AnyModel[] = [];
   let modelsLoading = false;
   let catalogError: string | undefined;
+  /**
+   * The level chosen by hand, or the one a host opened the session on. It
+   * carries to a model this browser has not run yet, where the model offers it.
+   */
+  let lastThinking = agentOptions.thinkingLevel;
   /** Typed before a provider was chosen. It goes as soon as one can answer. */
   let pending = "";
   let pickerOpen = false;
+  let historyOpen = false;
+  let titled: { for: string; title: string } | undefined;
+  /** What was asked already, so a second event does not ask twice. */
+  let asked: string | undefined;
+  /** The failure the page was opened for, so closing it again stands. */
+  let acted: string | undefined;
+
   /**
    * A restored title is the model's own from last time, kept against the same
    * first message it named — and `asked` with it, so bringing a conversation
-   * back does not buy its title a second time.
+   * back does not buy its title a second time. Read from the snapshot rather
+   * than the loop, because a restore hands the loop its messages a beat later.
    */
-  const restoredTitle = stored?.title ? titleRequest(store.snapshot().messages).derived : undefined;
-  let titled =
-    restoredTitle && stored?.title ? { for: restoredTitle, title: stored.title } : undefined;
-  /** What was asked already, so a second event does not ask twice. */
-  let asked: string | undefined = restoredTitle;
+  const adoptTitle = (from?: PiSnapshot) => {
+    const derived = from?.title
+      ? toTitle(toViewMessages(usablePiMessages(from.messages)))
+      : undefined;
+    titled = derived && from?.title ? { for: derived, title: from.title } : undefined;
+    asked = derived;
+  };
+
+  adoptTitle(opened);
 
   const notify = () => {
     cached = undefined;
@@ -185,15 +245,20 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    * browser last used it at — and never at one it does not offer, because a
    * level carried over from another model would go to a provider that refuses
    * it.
+   *
+   * A model nothing here has an answer for thinks at `DEFAULT_THINKING`, near
+   * the middle of what it offers: a reasoning model is chosen to reason, so it
+   * is only off where somebody said off. A model that cannot reason clamps to
+   * `off`, which is the whole of what it has.
    */
   const followThinking = () => {
     if (!providerId) return;
     const restore = restoring();
     const kept = restore?.thinkingLevel ?? choices.storedThinkingLevel(providerId, model().id);
     const offered = levels();
-    const known = offered.find((level) => level === kept);
-    const wanted = known ?? runtime.agent.state.thinkingLevel;
-    store.setThinkingLevel(offered.includes(wanted) ? wanted : "off");
+    const wanted =
+      offered.find((level) => level === kept) ?? offered.find((level) => level === lastThinking);
+    store.setThinkingLevel(wanted ?? clampThinkingLevel(model(), DEFAULT_THINKING));
     // The last thing a restore owed, so the snapshot is spent here.
     if (restore) opening = undefined;
   };
@@ -289,8 +354,33 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     }).then((title) => {
       if (!title) return;
       titled = { for: derived, title };
+      // The stored conversation is listed under the same name the header shows.
+      keep();
       notify();
     });
+  };
+
+  /**
+   * A turn that failed with a 4xx is the provider answering about the key, the
+   * model or the account — nothing the transcript can fix, and nothing the
+   * person can act on without leaving it. The settings page opens on it, where
+   * all three are chosen, with the error row still above the composer.
+   *
+   * Once per failure: the page is theirs to close again, and only a new error
+   * opens it a second time. A 5xx and a network failure are the provider's own
+   * to recover from, so those only say so and offer the retry button.
+   */
+  const askOnFailure = () => {
+    const { error, errorStatus } = store.snapshot();
+    if (!error) {
+      acted = undefined;
+      return;
+    }
+    if (error === acted) return;
+    acted = error;
+    if (!errorStatus || errorStatus >= 500) return;
+    pickerOpen = true;
+    historyOpen = false;
   };
 
   // Provider, model and key are all one picker, so this is the whole of what the
@@ -326,6 +416,65 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   const generated = (derived?: string) =>
     titled && titled.for === derived ? titled.title : undefined;
 
+  /**
+   * A copy of the transcript, and the three choices it ran under. The array is
+   * copied because the agent goes on mutating its own.
+   *
+   * `WholePiSnapshot` is what makes this the one place to edit: a field added to
+   * `PiSnapshot` has to be written here, or the object below no longer compiles.
+   */
+  const capture = (): PiSnapshot => {
+    const whole: WholePiSnapshot = {
+      messages: [...runtime.agent.state.messages],
+      model: ready() ? model().id : undefined,
+      provider: providerId,
+      thinkingLevel: ready() ? runtime.agent.state.thinkingLevel : undefined,
+      title: generated(titleRequest(store.snapshot().messages).derived),
+      version: PI_SNAPSHOT_VERSION,
+    };
+    return whole;
+  };
+
+  /** What the history page calls this one: the model's title, or the first message. */
+  const listTitle = () => {
+    const { derived } = titleRequest(store.snapshot().messages);
+    return generated(derived) ?? derived ?? "New conversation";
+  };
+
+  /**
+   * Write this conversation where the session keeps its own. An empty one is
+   * not written — there is nothing to come back to.
+   */
+  const keep = () => kept?.keep(conversationId, capture(), listTitle());
+
+  /**
+   * The whole state, replaced in place: the transcript, and the choices the
+   * conversation ran under. What a fresh session does at construction, done to
+   * one that is already mounted — so the chat above it never unmounts and the
+   * host swaps nothing.
+   *
+   * The provider is taken the same way it is taken on the first build: the
+   * conversation's own, then this browser's, then none. `opening` holds the
+   * model and the level until the catalog lands, exactly as before.
+   */
+  const restore = (next?: PiSnapshot) => {
+    pending = "";
+    opening = next;
+    adoptTitle(next);
+    store.load(next ? usablePiMessages(next.messages) : []);
+
+    const open = openingProvider(available, keys, next?.provider ?? choices.storedProviderId());
+    if (open && open !== providerId) {
+      providerId = open;
+      load(open); // notifies, and follows the choices once the catalog is in
+      return;
+    }
+    // The catalog is already in hand, so only the conversation's own model and
+    // level are left to follow.
+    follow();
+    notify();
+  };
+
   const build = (): ChatSnapshot => {
     const loop = store.snapshot();
     const live = ready();
@@ -346,11 +495,20 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       thinkingLevels: live ? levels() : undefined,
       title: generated(derived) ?? derived,
       usage: live ? loop.usage : undefined,
+      // A session that keeps no conversations reports none, and the chat then
+      // shows no history button at all.
+      conversationId: kept ? conversationId : undefined,
+      history: kept?.list(),
+      historyOpen,
     };
   };
 
   const offStore = store.subscribe(() => {
     maybeTitle();
+    askOnFailure();
+    // Written when the loop settles rather than on every event: a streamed
+    // answer notifies per token, and each write is the whole transcript.
+    if (!runtime.agent.state.isStreaming) keep();
     notify();
   });
 
@@ -382,7 +540,14 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
 
     stop: () => store.stop(),
 
+    /**
+     * A new conversation. The one it replaces is kept where the session keeps
+     * its own, under the id it had, so the header's plus button files a
+     * conversation away rather than losing it.
+     */
     reset() {
+      keep();
+      conversationId = mintConversationId();
       titled = undefined;
       asked = undefined;
       pending = "";
@@ -434,6 +599,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
      */
     setThinkingLevel(level) {
       if (!ready() || !providerId) return;
+      lastThinking = level;
       store.setThinkingLevel(level);
       choices.storeThinkingLevel(providerId, model().id, level);
     },
@@ -444,9 +610,65 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       notify();
     },
 
+    /**
+     * Take a key back out, of the store and of this session. The provider it
+     * belongs to can no longer answer, so one that is running is stepped off
+     * rather than left to fail the next turn: the settings page then asks for a
+     * key again, exactly as it does for a provider that never had one.
+     *
+     * A key a host passed through `apiKey` goes the same way, for this session.
+     * The host holds that one, so a new session is given it again.
+     */
+    forgetKey(id) {
+      keys = Object.fromEntries(Object.entries(keys).filter(([provider]) => provider !== id));
+      choices.forgetApiKey(id);
+      if (id === providerId) {
+        providerId = undefined;
+        models = [];
+        modelsLoading = false;
+        catalogError = undefined;
+      }
+      notify();
+    },
+
     setPickerOpen(open) {
       pickerOpen = open;
       notify();
+    },
+
+    setHistoryOpen(open) {
+      historyOpen = open;
+      notify();
+    },
+
+    /**
+     * Move to a stored conversation. The one being left is written first, so
+     * nothing is lost by looking at another; one that is gone from the store —
+     * dropped to make room, or forgotten in another tab — leaves this one where
+     * it is.
+     */
+    openConversation(id) {
+      if (!kept || id === conversationId) return;
+      const next = kept.read(id);
+      if (!next) return;
+      keep();
+      conversationId = id;
+      restore(next);
+    },
+
+    /**
+     * Drop one for good. Dropping the live conversation leaves an empty chat on
+     * a new id rather than a transcript nothing stores.
+     */
+    forgetConversation(id) {
+      if (!kept) return;
+      kept.forget(id);
+      if (id !== conversationId) {
+        notify();
+        return;
+      }
+      conversationId = mintConversationId();
+      restore();
     },
 
     setOptions(next) {
@@ -455,27 +677,18 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       notify();
     },
 
-    /**
-     * A copy of the transcript, and the three choices it ran under. The array is
-     * copied because the agent goes on mutating its own.
-     *
-     * `WholePiSnapshot` is what makes this the one place to edit: a field added
-     * to `PiSnapshot` has to be written here, or the object below no longer
-     * compiles.
-     */
-    save() {
-      const whole: WholePiSnapshot = {
-        messages: [...runtime.agent.state.messages],
-        model: ready() ? model().id : undefined,
-        provider: providerId,
-        thinkingLevel: ready() ? runtime.agent.state.thinkingLevel : undefined,
-        title: generated(titleRequest(store.snapshot().messages).derived),
-        version: PI_SNAPSHOT_VERSION,
-      };
-      return whole;
+    save: capture,
+
+    /** The conversation being left is kept, exactly as the history page keeps it. */
+    restore(next) {
+      keep();
+      conversationId = mintConversationId();
+      restore(next);
     },
 
     dispose() {
+      // The last word: a tab that closes mid-conversation still stored it.
+      keep();
       offStore();
       store.dispose();
       listeners.clear();

@@ -173,6 +173,16 @@ export interface ContextUsageView {
 
 const EMPTY_COSTS = { input: 0, output: 0, cache: 0, total: 0 };
 
+/**
+ * pi keeps a fixed 16k for a summary — more than a small window holds. Gemini
+ * Nano has 9k, so the plain threshold sits below zero and every turn reads as
+ * near the limit. The reserve is capped at half the window instead.
+ */
+const compactionSettings = (contextWindow: number) => ({
+  ...DEFAULT_COMPACTION_SETTINGS,
+  reserveTokens: Math.min(DEFAULT_COMPACTION_SETTINGS.reserveTokens, Math.floor(contextWindow / 2)),
+});
+
 /** pi reports cache writes as their own bucket; the panel has one cache row. */
 const contextTokens = (usage: Usage) => usage.input + usage.cacheRead + usage.cacheWrite;
 
@@ -223,7 +233,11 @@ export function toContextUsage(
     modelId: model.id,
     // The same call the harness compacts on, so the warning stands exactly
     // where a compaction would run — see `.agents/session.md`.
-    nearLimit: shouldCompact(usedTokens, model.contextWindow, DEFAULT_COMPACTION_SETTINGS),
+    nearLimit: shouldCompact(
+      usedTokens,
+      model.contextWindow,
+      compactionSettings(model.contextWindow),
+    ),
     usage: {
       inputTokens: totals.input,
       outputTokens: totals.output,

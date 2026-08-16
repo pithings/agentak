@@ -23,7 +23,6 @@ drop the chat into.
 | `styles.css`          | `@import "tailwindcss"`, and the `@theme` that reads the `--*` names  |
 | `theme.ts`            | `.dark` on the root — the whole theme switch, page and widget         |
 | `chat-store.ts`       | the widget state the topbar and the catalog both reach for            |
-| `chat-history.ts`     | the conversations this browser has had, in `localStorage`             |
 | `components/*.vue`    | topbar, sidebar, chatbox, preview card, and the preact bridge         |
 | `views/*.vue`         | readme home, catalog grid, demo transcript, single-component page     |
 | `catalog.tsx`         | every component with fixture data, plus the lookups the routes use    |
@@ -60,8 +59,8 @@ The demo is the other `ChatMode`, and not a state anything starts in: it is one
 **Play the demo** button under the greeting, passed in as `emptyActions`. Taking it
 swaps the wrapper for `DemoAgent` over the canned turns — a hand-mounted `PreactHost`
 island, because canned turns are the one surface with no session behind them. The
-session watcher ends the live one on the way, and stores it first — so the demo keeps
-nothing, and going back to live reopens the conversation where it was left.
+session watcher ends the live one on the way, and ending it stores what it holds — so the
+demo keeps nothing, and going back to live reopens the conversation where it was left.
 
 **One title bar.** The surface heads itself — context meter and new conversation in
 the header, model and provider in the composer, next to send — so the page puts no
@@ -82,29 +81,19 @@ composer must not take a column of the page away.
 
 ### The conversations it keeps
 
-`chat-history.ts` and the clock button in the header. A session is one conversation and
-knows nothing of the ones beside it, so listing them is the host's work: pi hands over a
-`PiSnapshot` through `save()` and opens on one through the `snapshot` option — see
-[`pi.md`](pi.md) — and everything here is about where they go and how they come back.
+Two words of host code: `history: true` on `createPiSession()`, beside the
+`browserStorage()` the keys already use. The session keeps every conversation there and
+lists them on the chat's own history page — the clock at the head of the bar — so the page
+holds no list, no ids and no wiring of its own. See [`pi.md`](pi.md) for what it stores and
+[`session.md`](session.md) for the seam it travels on.
 
-Two keys, not one: an index of what exists, and one entry per conversation. The menu reads
-the index alone, so opening it parses no transcript, and a conversation is dropped by its
-own key rather than by rewriting the rest. Twenty are kept; past that the oldest goes, and
-a write that will not fit gives up older conversations until it lands. Every access is
-guarded — a page can deny `localStorage` outright, and a full one throws just the same — so
-a failure means the conversation lives for this page load and no longer.
+Picking one replaces the session's state in place, so the widget never swaps a session and
+never loses the island. The page opens on the newest stored conversation, the header's
+**new conversation** button files the one it replaces away, and `dispose()` on the way out
+writes what is in hand — a tab that closes needs no flush, because a conversation is
+written every time the loop settles.
 
-The widget owns the wiring. `conversations.currentId` is what its session watcher keys on,
-so picking a conversation in the menu swaps the session, and the page opens on the newest
-one. Writes are debounced a beat past the last event, because a streamed answer notifies per
-token and each write stringifies the whole transcript; `pagehide` flushes what the beat has
-not. Nothing is stored for a conversation with no messages: the header's **new
-conversation** button empties the session, and the widget reads that as a fresh id rather
-than as the stored conversation being emptied — so the old one stays in the list.
-
-The menu is preact inside the vue app, like the rest of `chat-actions.tsx`, and vue's
-reactivity is still the one source: `useConversations()` is a `watch` that turns a change
-into a render. The demo carries no menu — its turns are canned.
+The demo keeps nothing — its turns are canned, and it has no session at all.
 
 ### Three layouts, one surface
 

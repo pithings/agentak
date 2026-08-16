@@ -81,6 +81,26 @@ describe("ChatSettings", () => {
     expect(screen.getByRole("button", { name: "Change key" })).toBeTruthy();
   });
 
+  it("removes a stored key only where a harness answers for one", () => {
+    const forgotten: string[] = [];
+
+    const { rerender } = render(<ChatSettings providerId="openai" providers={PROVIDERS} />);
+    // A harness that cannot drop a key offers no button that would.
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
+
+    rerender(
+      <ChatSettings
+        onForgetKey={(id) => forgotten.push(id)}
+        providerId="openai"
+        providers={PROVIDERS}
+      />,
+    );
+    expect(screen.getByText(/Removing the key stops OpenAI/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(forgotten).toEqual(["openai"]);
+  });
+
   it("takes a free provider outright and a keyed one only after its key", () => {
     const picked: string[] = [];
     const saved: [string, string][] = [];

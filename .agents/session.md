@@ -38,15 +38,19 @@ forwards options by.
 `ChatSession` is five required members — `subscribe`, `snapshot`, `send`, `stop`,
 `reset` — plus optional ones for the parts of the surface that answer back:
 `respondToTool`, `dequeue`, `dismissError`, `retry`, `selectProvider`, `selectModel`,
-`setThinkingLevel`, `saveKey`, `setPickerOpen`, `setOptions`. **Absent means gone, not broken.** A harness with one
+`setThinkingLevel`, `saveKey`, `forgetKey`, `setPickerOpen`, `openConversation`,
+`forgetConversation`, `setHistoryOpen`, `setOptions`. **Absent means gone, not broken.** A harness with one
 fixed model carries no `providers`, and `settings.tsx` then heads its own model list under
 `providerLabel`; one with no token accounting carries no `usage`, and the composer shows
 no meter; one with no `dismissError` shows an error row with nothing to close it.
 
 Data and method pair up: `models` with `selectModel`, `providers` with `selectProvider`,
-`queued` with `dequeue`, `thinkingLevels` with `setThinkingLevel`, and `error` with both
-`dismissError` and `retry`. One without the other is a list nothing chooses from, or a
-method nothing calls.
+`queued` with `dequeue`, `thinkingLevels` with `setThinkingLevel`, `history` with
+`openConversation` and `forgetConversation`, and `error` with both `dismissError` and
+`retry`. One without the other is a list nothing chooses from, or a method nothing calls.
+`saveKey` pairs with `forgetKey` the same way: a key that can only be replaced is a key
+the browser keeps for good, so the settings page shows a remove button only where the
+harness answers for one.
 
 **`thinkingLevels` is what the chosen model offers, not the scale.** pi's scale is
 `off | minimal | low | medium | high | xhigh | max`, but a model takes only part of it
@@ -84,16 +88,24 @@ Two rules a harness must keep:
 the settings page — provider, key, thinking level and model, shown in place of the
 transcript. A session that implements the setter owns both halves, and the surface reads
 `snapshot.pickerOpen` alone; one that does not leaves both here. Implementing the setter
-and forgetting the field would otherwise leave the page shut for good.
+and forgetting the field would otherwise leave the page shut for good. `historyOpen` and
+`setHistoryOpen` are the same pair for the history page, and `Chat` holds one page slot:
+opening either puts the other away, so the transcript is never behind two pages.
 
-**One session is one conversation.** Nothing here loads, lists or names a stored
-transcript. A host that keeps several switches between them by switching sessions, which
-`useSession` keys on — the seam does not grow a history API.
+**The session moves between conversations; the host does not have to.** `history` is what
+it has stored — an id, a title and when it was last written — `conversationId` is the one
+that is live, and `openConversation` **replaces the session's own state** with another.
+The chat stays mounted through it: nothing is unmounted, swapped or re-created around it.
+A harness that stores nothing reports no `history`, and the header then grows no clock
+button at all. A host can still switch conversations by switching sessions, which
+`useSession` keys on — the two ways do not fight, because a session that keeps none lists
+none.
 
-What a harness stores is its own shape, beside `dispose()` rather than in the `Pick`: pi
-has `save()` and a `snapshot` option, carrying the transcript with the provider, model and
-thinking level it ran under — see [`pi.md`](pi.md). `playground/src/chat-history.ts` is a
-host doing the listing part with them.
+The list is all the seam knows: a title and a time, never a transcript. What a harness
+stores, and where, is its own shape and sits beside `dispose()` rather than in the `Pick`.
+pi has `save()`, `restore()` and a `snapshot` option, carrying the transcript with the
+provider, model and thinking level it ran under, plus `history: true` for the built-in
+store behind the page — see [`pi.md`](pi.md).
 
 ## Subscribe and snapshot, not a hook
 

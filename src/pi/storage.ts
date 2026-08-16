@@ -13,6 +13,12 @@
 export interface PiStorage {
   get(name: string): string | undefined;
   set(name: string, value: string): void;
+  /**
+   * Take a value out. Optional, because a store of two methods is the whole of
+   * what the picker needs — a conversation dropped from a store without it is
+   * written empty instead, which reads back as nothing.
+   */
+  remove?(name: string): void;
 }
 
 const PREFIX = "agentak:";
@@ -24,6 +30,9 @@ export function memoryStorage(): PiStorage {
     get: (name) => values.get(name),
     set: (name, value) => {
       values.set(name, value);
+    },
+    remove: (name) => {
+      values.delete(name);
     },
   };
 }
@@ -49,16 +58,25 @@ export function browserStorage(): PiStorage {
         // Nothing to do: the value lives for this session only.
       }
     },
+    remove(name) {
+      try {
+        globalThis.localStorage?.removeItem(PREFIX + name);
+      } catch {
+        // Nothing to do: it was never written.
+      }
+    },
   };
 }
 
 /** The default store, shared by every session that names none. */
-const pageStorage = memoryStorage();
+export const pageStorage = memoryStorage();
 
 /** The choices a store holds, named. */
 export interface PiChoices {
   storedApiKey(provider: string): string | undefined;
   storeApiKey(provider: string, key: string): void;
+  /** Take a key back out, so the browser holds it no longer. */
+  forgetApiKey(provider: string): void;
   storedProviderId(): string | undefined;
   storeProviderId(id: string): void;
   storedModelId(provider: string): string | undefined;
@@ -72,9 +90,16 @@ export interface PiChoices {
  * already set up asks nothing.
  */
 export function createChoices(storage: PiStorage = pageStorage): PiChoices {
+  // A store need not answer `remove`, and an empty value reads back as nothing.
+  const drop = (name: string) => {
+    if (storage.remove) storage.remove(name);
+    else storage.set(name, "");
+  };
+
   return {
     storedApiKey: (provider) => storage.get(`api-key:${provider}`),
     storeApiKey: (provider, key) => storage.set(`api-key:${provider}`, key),
+    forgetApiKey: (provider) => drop(`api-key:${provider}`),
 
     storedProviderId: () => storage.get("provider"),
     storeProviderId: (id) => storage.set("provider", id),

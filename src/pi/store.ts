@@ -1,7 +1,7 @@
 import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
 
 import type { AgentRuntime } from "./create-agent.ts";
-import { describeFailure } from "./errors.ts";
+import { describeFailure, failureStatus } from "./errors.ts";
 import type { AnyModel } from "./providers.ts";
 import { isFailedTurn } from "./snapshot.ts";
 import { type ContextUsageView, toContextUsage, toViewMessages } from "./transcript.ts";
@@ -20,6 +20,12 @@ export interface AgentSnapshot {
   messages: ViewMessage[];
   isStreaming: boolean;
   error?: string;
+  /**
+   * The status behind `error`, when the provider named one. The message is
+   * already worded for the person reading it, so this is for whoever acts on a
+   * failure rather than shows it.
+   */
+  errorStatus?: number;
   usage?: ContextUsageView;
   /** The model of the next turn, whichever provider it belongs to. */
   model: AnyModel;
@@ -36,6 +42,12 @@ export interface AgentStore {
   send(text: string): void;
   stop(): void;
   reset(): void;
+  /**
+   * Replace the transcript in place — a stored conversation, or nothing, which
+   * is `reset()`. The messages are the caller's to cut: pi is handed whatever
+   * this is given. See `usablePiMessages()`.
+   */
+  load(messages: AgentMessage[]): void;
   /**
    * Answer a tool confirmation, by tool call id. A denial's `reason` is what the
    * model is told instead of the tool's output, so it can take another way.
@@ -122,9 +134,35 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
   });
   const offApprovals = approvals.subscribe(notify);
 
+  /**
+   * The transcript, replaced in place. pi refuses to reset while a run is
+   * active, and `abort()` only asks — the run ends once its listeners have. So
+   * a swap over a streaming turn waits on `waitForIdle()`, and an idle one,
+   * which is every swap a person makes, lands at once.
+   */
+  const load = (messages: AgentMessage[]) => {
+    const swap = () => {
+      agent.reset();
+      if (messages.length > 0) agent.state.messages = [...messages];
+      approvals.clear();
+      queued = [];
+      failure = undefined;
+      dismissed = undefined;
+      notify();
+    };
+
+    if (!agent.state.isStreaming) {
+      swap();
+      return;
+    }
+    agent.abort();
+    void agent.waitForIdle().then(swap);
+  };
+
   const build = (): AgentSnapshot => {
     const messages = agent.state.messages;
-    const error = failure ?? agent.state.errorMessage;
+    const raw = failure ?? agent.state.errorMessage;
+    const error = raw === dismissed ? undefined : raw;
     return {
       messages: toViewMessages(messages, agent.state.streamingMessage, {
         answers: approvals.answers(),
@@ -134,7 +172,8 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
       isStreaming: agent.state.isStreaming,
       model: agent.state.model as AnyModel,
       thinkingLevel: agent.state.thinkingLevel,
-      error: error === dismissed ? undefined : describeFailure(error),
+      error: describeFailure(error),
+      errorStatus: failureStatus(error),
       queued,
     };
   };
@@ -185,15 +224,9 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
       notify();
     },
 
-    reset() {
-      agent.abort();
-      agent.reset();
-      approvals.clear();
-      queued = [];
-      failure = undefined;
-      dismissed = undefined;
-      notify();
-    },
+    reset: () => load([]),
+
+    load,
 
     clearError() {
       dismissed = failure ?? agent.state.errorMessage;

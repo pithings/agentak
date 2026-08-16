@@ -80,6 +80,17 @@ there is then nothing left to measure — on a phone a focused field means a key
 either way. Anything that should spend the room a keyboard leaves asks this;
 `CommandList` is the first, and gives up its height cap while one is up.
 
+## Two pages, one slot
+
+`chat/settings.tsx` and `chat/history.tsx` both stand **where the transcript is**, not in a
+popover over it: a provider list and a list of conversations are read, and a panel the
+height of a phone keyboard is not where either belongs. `chat.tsx` holds one flag per page
+and opens only one at a time — opening either puts the other away, so the transcript is
+never behind two pages. The header follows: the back arrow takes the leading spot from the
+history button while a page is up, and the title says which page it is.
+
+Each flag is controllable, so a session can own it instead — see [`session.md`](session.md).
+
 ## Exports
 
 `src/index.ts` exports the shell, not single elements, so a new component needs no

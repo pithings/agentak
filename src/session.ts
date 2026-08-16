@@ -33,6 +33,9 @@ export type ChatSnapshot = Pick<
   | "thinkingLevel"
   | "thinkingLevels"
   | "pickerOpen"
+  | "history"
+  | "conversationId"
+  | "historyOpen"
 >;
 
 /** What the host mounts, rather than what a harness reports. */
@@ -80,8 +83,11 @@ export type ChatSessionOptionsListed = Exhausted<
  * provider picker in front of it. A host with its own
  * harness implements this instead and keeps the whole surface.
  *
- * One conversation: a host switches conversations by switching sessions, which
- * `useSession` keys on. Nothing here loads or lists a transcript.
+ * One conversation at a time, and the session is what moves between them:
+ * `history` lists what it has stored and `openConversation` replaces its own
+ * state with one, so the chat stays mounted. A harness that stores nothing
+ * reports no `history`, and the surface then shows no list at all. A host can
+ * still switch conversations by switching sessions, which `useSession` keys on.
  *
  * Subscribe and snapshot rather than a hook, so a session can be written in any
  * framework, or none: the surface is preact, but the app around it is usually
@@ -131,12 +137,39 @@ export interface ChatSession {
   setThinkingLevel?(level: ChatThinkingLevel): void;
   saveKey?(providerId: string, key: string): void;
   /**
+   * Drop the key a provider is set up with. Pairs with `saveKey`: without it the
+   * settings page offers no way to take one back out, and a key typed once is
+   * kept for as long as the harness keeps it.
+   *
+   * The provider then has no key, so the harness reports it as one to set up
+   * again — and steps off it if it was the one running.
+   */
+  forgetKey?(providerId: string): void;
+  /**
    * Only a session that opens the picker itself needs this — the built-in one
    * does, because a first message with no provider chosen asks. Implementing it
    * makes the session authoritative, and the surface then reads `pickerOpen`
    * from the snapshot alone. Otherwise the surface holds the flag.
    */
   setPickerOpen?(open: boolean): void;
+
+  /**
+   * Open a stored conversation, by the id `history` lists it under.
+   *
+   * The session replaces its own state with it — the transcript and whatever
+   * the conversation ran under — rather than the host swapping sessions around
+   * a mounted chat. Pairs with `history`; without it the page lists rows that
+   * nothing opens.
+   */
+  openConversation?(id: string): void;
+  /** Drop a stored conversation. Without it a row carries no forget button. */
+  forgetConversation?(id: string): void;
+  /**
+   * The history page's flag, the same deal as `setPickerOpen`: a session that
+   * answers this owns both halves, and the surface then reads
+   * `snapshot.historyOpen` alone. Otherwise the surface holds it.
+   */
+  setHistoryOpen?(open: boolean): void;
 
   setOptions?(options: ChatSessionOptions): void;
 }

@@ -7,12 +7,6 @@ import { browserStorage } from "@/pi/storage.ts";
 import { u } from "@/styles/base.ts";
 import { ChatPanel } from "@/vue/index.ts";
 import { ChatActions, StartDemo } from "../chat-actions.tsx";
-import {
-  conversations,
-  keepConversation,
-  newConversation,
-  storedConversation,
-} from "../chat-history.ts";
 import { chat, closeChat, openChat, setChatMode } from "../chat-store.ts";
 import { DemoAgent } from "../demo-agent.tsx";
 import PreactHost from "./preact-host.vue";
@@ -82,85 +76,36 @@ const startDemo = h(StartDemo, { onStart: playDemo });
  * unmounted, and a session made there would load a stored provider's model list
  * for a chat nobody opened. The demo swap ends it.
  *
- * ## One session, one conversation
+ * ## The conversations are the session's own
  *
- * The session holds a single conversation and knows nothing of the ones beside
- * it, so the page keeps the list — `chat-history.ts` — and switches between them
- * by switching sessions. The transcript, the provider, the model and the
- * thinking level all travel in the snapshot, so a reload comes back on the same
- * model the answers were written by rather than whatever this browser used last.
+ * `history: true` is the whole of what this page writes for them: the session
+ * keeps every conversation in the same store as the keys, lists them on the
+ * chat's own history page — the clock in the header — and replaces its state
+ * with the one that is picked. Nothing is swapped around the chat, so the page
+ * keeps no list and no ids of its own.
+ *
+ * The transcript, the provider, the model and the thinking level all travel
+ * together, so a reload comes back on the same model the answers were written
+ * by rather than whatever this browser used last.
  */
 const session = shallowRef<PiSession>();
 
-/** The conversation the live session holds, and the id its transcript is kept under. */
-let held: string | undefined;
-let untrack: (() => void) | undefined;
-let pending: ReturnType<typeof setTimeout> | undefined;
-
-/**
- * Written a beat after the agent settles rather than on every event: a streamed
- * answer notifies per token, and each write is a `JSON.stringify` of the whole
- * transcript.
- */
-const SETTLE = 400;
-
-function store() {
-  if (pending) {
-    clearTimeout(pending);
-    pending = undefined;
-  }
-  const live = session.value;
-  if (!live || !held) return;
-
-  const snapshot = live.save();
-  // Empty, with something stored under the same id: the header's new
-  // conversation button was taken. The stored one stays where it is, and the
-  // box moves on to an id of its own.
-  if (snapshot.messages.length === 0) {
-    if (storedConversation(held)) newConversation();
-    return;
-  }
-  keepConversation(held, snapshot);
-}
-
-function open(id: string | undefined) {
-  store();
-  untrack?.();
-  untrack = undefined;
-  session.value?.dispose();
-  held = id;
-
-  if (!id) {
-    session.value = undefined;
-    return;
-  }
-  // The session keeps its choices in memory unless a host asks for more. This
-  // page asks: the key and the model are typed once, not once a reload.
-  const live = createPiSession({ snapshot: storedConversation(id), storage: browserStorage() });
-  session.value = live;
-  untrack = live.subscribe(() => {
-    if (pending) clearTimeout(pending);
-    pending = setTimeout(store, SETTLE);
-  });
-}
-
 watch(
-  () => (chat.mounted && chat.mode === "live" ? conversations.currentId : undefined),
-  (id) => {
-    // The id minted for the session already up: it is empty and nothing is
-    // stored under the new id, so only the name of what is being written moves.
-    // Picking a stored conversation is the other case, and that one swaps.
-    if (id && held && session.value?.save().messages.length === 0 && !storedConversation(id)) {
-      held = id;
+  () => chat.mounted && chat.mode === "live",
+  (live) => {
+    if (!live) {
+      // Whoever made the session ends it, and ending it stores what it holds.
+      session.value?.dispose();
+      session.value = undefined;
       return;
     }
-    open(id);
+    // The session keeps its choices and its conversations in memory unless a
+    // host asks for more. This page asks: the key and the model are typed once,
+    // not once a reload, and the transcripts outlive the tab.
+    session.value ??= createPiSession({ history: true, storage: browserStorage() });
   },
   { immediate: true },
 );
-
-// A tab closing does not wait for the beat above.
-const flush = () => store();
 
 // The demo is the one surface the wrapper does not cover — canned turns, no
 // loop — so it stays a hand-mounted island. A stable factory: `PreactHost`
@@ -259,7 +204,6 @@ function onKey(event: KeyboardEvent) {
 
 onMounted(() => {
   globalThis.addEventListener("keydown", onKey);
-  globalThis.addEventListener("pagehide", flush);
   phone?.addEventListener("change", measure);
   desktop?.addEventListener("change", measure);
   measure();
@@ -267,11 +211,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   globalThis.removeEventListener("keydown", onKey);
-  globalThis.removeEventListener("pagehide", flush);
   phone?.removeEventListener("change", measure);
   desktop?.removeEventListener("change", measure);
-  store();
-  untrack?.();
+  // A tab that closes needs no flush of its own: the session writes the
+  // conversation every time the loop settles.
   session.value?.dispose();
   session.value = undefined;
 });

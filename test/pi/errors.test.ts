@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { describeFailure } from "../../src/pi/errors.ts";
+import { describeFailure, failureStatus } from "../../src/pi/errors.ts";
 
 describe("describeFailure", () => {
   it("names what a bodiless status means", () => {
@@ -20,5 +20,19 @@ describe("describeFailure", () => {
     const message = "429 Rate limit reached for gpt-oss-20b, retry in 4s";
     expect(describeFailure(message)).toBe(message);
     expect(describeFailure(undefined)).toBeUndefined();
+  });
+});
+
+describe("failureStatus", () => {
+  it("reads the status the sdk puts at the head of the message", () => {
+    expect(failureStatus("401 status code (no body)")).toBe(401);
+    expect(failureStatus('401 {"error":{"message":"Incorrect API key"}}')).toBe(401);
+    expect(failureStatus("503 status code (no body)")).toBe(503);
+  });
+
+  it("reads nothing out of a message that names no status", () => {
+    expect(failureStatus("Failed to fetch")).toBeUndefined();
+    expect(failureStatus("200 tokens is over the limit")).toBeUndefined();
+    expect(failureStatus(undefined)).toBeUndefined();
   });
 });

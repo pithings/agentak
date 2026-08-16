@@ -1,7 +1,7 @@
 import type { ComponentChildren } from "preact";
 
 import { Button } from "../ui/button.tsx";
-import { ArrowLeftIcon, PlusIcon, SlidersIcon } from "../../lib/icons.tsx";
+import { ArrowLeftIcon, ClockIcon, PlusIcon, SlidersIcon } from "../../lib/icons.tsx";
 import { reset } from "../../styles/base.ts";
 import { sx, type Sx } from "../../styles/sx.ts";
 
@@ -30,6 +30,10 @@ const S = {
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
+  // The title is what holds the two ends of the bar apart, so a conversation
+  // with no name yet needs the room it would have taken — without it the row
+  // packs to the right and the leading button travels with it.
+  gap: { flex: "1" },
 } satisfies Record<string, Sx>;
 
 export interface ChatHeaderProps {
@@ -50,15 +54,38 @@ export interface ChatHeaderProps {
    * of this.
    */
   onSettings?: () => void;
+  /**
+   * The way to the stored conversations. It leads the bar, because the list is
+   * where a conversation comes from and the settings are where it is set up.
+   * Absent where a harness stores none, and while a page is up.
+   */
+  onHistory?: () => void;
 }
 
 /** The chat's title bar: the title, the chat's own buttons, and the host's. */
-export function ChatHeader({ onReset, title, actions, onBack, onSettings }: ChatHeaderProps) {
+export function ChatHeader({
+  onReset,
+  title,
+  actions,
+  onBack,
+  onSettings,
+  onHistory,
+}: ChatHeaderProps) {
   return (
     <header style={S.header}>
       {onBack ? (
         <Button aria-label="Back" onClick={onBack} size="icon-sm" title="Back" variant="ghost">
           <ArrowLeftIcon />
+        </Button>
+      ) : onHistory ? (
+        <Button
+          aria-label="Conversations"
+          onClick={onHistory}
+          size="icon-sm"
+          title="Conversations"
+          variant="ghost"
+        >
+          <ClockIcon />
         </Button>
       ) : null}
 
@@ -67,7 +94,9 @@ export function ChatHeader({ onReset, title, actions, onBack, onSettings }: Chat
         <h2 style={sx(reset.text, S.title)} title={title}>
           {title}
         </h2>
-      ) : null}
+      ) : (
+        <div style={S.gap} />
+      )}
 
       {onBack ? null : (
         <Button

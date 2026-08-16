@@ -6,6 +6,7 @@ import {
   DEFAULT_PROVIDER_ID,
   findModel,
 } from "../../src/pi/models.ts";
+import { ON_DEVICE_PROVIDER_ID } from "../../src/pi/on-device.ts";
 import {
   type AnyModel,
   availableProviders,
@@ -81,7 +82,19 @@ describe("PROVIDERS", () => {
     expect(ids).not.toContain("kilo");
     expect(ids).not.toContain("opencode-zen");
     expect(ids).toContain(DEFAULT_PROVIDER_ID);
-    expect(ids.length).toBe(PROVIDERS.length - blocked.length);
+    // jsdom is not Chrome either, so the on-device provider goes with them.
+    expect(ids).not.toContain(ON_DEVICE_PROVIDER_ID);
+    expect(ids.length).toBe(PROVIDERS.length - blocked.length - 1);
+  });
+
+  it("lists the on-device provider only where the browser carries the api", () => {
+    const global = globalThis as { LanguageModel?: unknown };
+    global.LanguageModel = { availability: async () => "available", create: async () => ({}) };
+    try {
+      expect(availableProviders().map((entry) => entry.id)).toContain(ON_DEVICE_PROVIDER_ID);
+    } finally {
+      delete global.LanguageModel;
+    }
   });
 
   it("prices a free provider at nothing, and asks it for no key", async () => {

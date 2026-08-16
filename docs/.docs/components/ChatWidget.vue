@@ -15,9 +15,11 @@ import type { PiSession } from "../../../src/pi/index.ts";
  * The chat button of the documentation site, and the chat it opens.
  *
  * The chat is the real thing, not a screenshot: `ChatPanel` from `agentak/vue`
- * over a Pi session this component makes and ends itself. The session starts on
- * no provider, so the first message opens the picker, where the free providers
- * need no API key.
+ * over a Pi session this component makes and ends itself. The first message of
+ * a first visit opens the picker, where the free providers need no API key; the
+ * choice is kept in `localStorage`, so a reader is asked once. The conversations
+ * go to the same store, so the chat carries its own history page and a reader
+ * comes back to the last one on the next page of the site.
  *
  * `.docs/layouts/docs.vue` renders it beside the page, so the button is on
  * every documentation page.
@@ -82,14 +84,19 @@ const state = computed(() => (mounted.value ? (open.value ? "is-open" : "is-clos
  */
 async function load() {
   if (session.value) return;
-  const [{ ChatPanel }, { createPiSession }, { Button }, preact] = await Promise.all([
-    import("../../../src/vue/index.ts"),
-    import("../../../src/pi/index.ts"),
-    import("../../../src/components/index.ts"),
-    import("preact"),
-  ]);
+  const [{ ChatPanel }, { browserStorage, createPiSession }, { Button }, preact] =
+    await Promise.all([
+      import("../../../src/vue/index.ts"),
+      import("../../../src/pi/index.ts"),
+      import("../../../src/components/index.ts"),
+      import("preact"),
+    ]);
   ui.value = { Button, h: preact.h };
-  session.value = createPiSession();
+  // `localStorage`, so the provider, model and key a reader picks are still
+  // there on the next page of the documentation — and so are the conversations:
+  // `history` keeps them in that same store, opens on the last one, and lists
+  // the rest on the chat's own history page.
+  session.value = createPiSession({ history: true, storage: browserStorage() });
   Panel.value = ChatPanel;
 }
 

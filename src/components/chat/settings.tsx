@@ -19,6 +19,7 @@ import {
   ExternalLinkIcon,
   KeyIcon,
   SlidersIcon,
+  TrashIcon,
 } from "../../lib/icons.tsx";
 import { reset, u } from "../../styles/base.ts";
 import { sx, type Sx } from "../../styles/sx.ts";
@@ -149,14 +150,13 @@ const S = {
     color: "var(--muted-foreground)",
     fontSize: "0.75rem",
   },
+  // The field and its button, or the two buttons a stored key offers. Either
+  // way the row is the section's width and the children take what they need.
   keyRow: {
     display: "flex",
     alignItems: "center",
     gap: "0.5rem",
   },
-  // Takes only the room its words need — the section is a column, and a button
-  // in one would otherwise stretch to the page.
-  keyButton: { alignSelf: "flex-start" },
   keyLink: {
     display: "inline-flex",
     width: "fit-content",
@@ -222,6 +222,11 @@ export interface ChatSettingsProps {
   /** Called with a provider that is ready to run — keyed ones, after the key. */
   onProviderChange?: (id: string) => void;
   onSaveKey?: (providerId: string, key: string) => void;
+  /**
+   * Drop the key a provider is set up with. Without it a stored key can only be
+   * replaced, never taken out — so the section then offers no remove button.
+   */
+  onForgetKey?: (providerId: string) => void;
   /** Heads the model list. Only needed when the page carries no providers. */
   providerLabel?: string;
   /**
@@ -266,6 +271,7 @@ export function ChatSettings({
   providerId,
   onProviderChange,
   onSaveKey,
+  onForgetKey,
   providerLabel,
   thinkingLevel = "off",
   thinkingLevels,
@@ -336,6 +342,15 @@ export function ChatSettings({
     setKeying(null);
   };
 
+  // The key goes, and the provider goes with it where it was the one running —
+  // the section is then the one a provider that never had a key shows.
+  const forget = () => {
+    if (!target) return;
+    onForgetKey?.(target.id);
+    setDraft("");
+    setKeying(null);
+  };
+
   return (
     <div data-slot="chat-settings" style={sx(S.page, style)}>
       {providers && providers.length > 0 && (
@@ -381,20 +396,34 @@ export function ChatSettings({
           {stored ? (
             // The key itself is never shown — nothing reads one back out of
             // storage to fill a field with, and a row of dots says no more than
-            // the button does.
-            <Button
-              onClick={() => {
-                setKeying(target.id);
-                setDraft("");
-              }}
-              size="sm"
-              style={S.keyButton}
-              type="button"
-              variant="outline"
-            >
-              <KeyIcon />
-              Change key
-            </Button>
+            // the button does. So the two things left to do with one are the
+            // whole of this row: type another, or take it out.
+            <div style={S.keyRow}>
+              <Button
+                onClick={() => {
+                  setKeying(target.id);
+                  setDraft("");
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <KeyIcon />
+                Change key
+              </Button>
+              {onForgetKey && (
+                <Button
+                  onClick={forget}
+                  size="sm"
+                  title={`Remove the ${target.label} key`}
+                  type="button"
+                  variant="ghost"
+                >
+                  <TrashIcon />
+                  Remove
+                </Button>
+              )}
+            </div>
           ) : (
             <div style={S.keyRow}>
               <Input
@@ -421,13 +450,17 @@ export function ChatSettings({
               <ExternalLinkIcon style={u.icon} />
             </a>
           )}
-          {!stored && (
+          {!stored ? (
             <p style={S.note}>
               {target.hasKey
                 ? "The new key replaces the one saved."
                 : "Kept in this browser, and sent only to the provider you pick."}
             </p>
-          )}
+          ) : onForgetKey ? (
+            // What removing it costs: a keyed provider answers nothing without
+            // one, so it is a provider to set up again.
+            <p style={S.note}>Removing the key stops {target.label} until another is saved.</p>
+          ) : null}
         </section>
       )}
 

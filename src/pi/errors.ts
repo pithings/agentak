@@ -15,6 +15,23 @@ const BARE_STATUS = /^(\d{3}) status code \(no body\)$/;
 const NO_RESPONSE =
   /^(\(no status code or body\)|Connection error\.?|Failed to fetch|Load failed|NetworkError.*)$/i;
 
+/**
+ * The status both sdks put at the head of the message, with a body or without:
+ * `429 status code (no body)`, `401 {"error":…}`. Only 4xx and 5xx, so a
+ * provider that opens its own words with a number is not read as a status.
+ */
+const LEADING_STATUS = /^([45]\d{2})\b/;
+
+/**
+ * The http status a failed turn carried, when its message names one. What the
+ * session acts on: a 4xx is the provider answering about the key, the model or
+ * the account, and none of that is fixed in the transcript.
+ */
+export function failureStatus(message: string | undefined): number | undefined {
+  const found = message ? LEADING_STATUS.exec(message.trim()) : undefined;
+  return found ? Number(found[1]) : undefined;
+}
+
 const forStatus = (status: number): string => {
   switch (status) {
     case 400:

@@ -36,10 +36,17 @@ export {
   browserStorage,
   createChoices,
   memoryStorage,
+  pageStorage,
   type PiChoices,
   type PiStorage,
 } from "./storage.ts";
-export { describeFailure } from "./errors.ts";
+export {
+  createHistory,
+  mintConversationId,
+  type PiHistory,
+  type PiHistoryEntry,
+} from "./history.ts";
+export { describeFailure, failureStatus } from "./errors.ts";
 export {
   type AnyModel,
   availableProviders,
@@ -50,6 +57,15 @@ export {
   streamFor,
   SUPPORTED_APIS,
 } from "./providers.ts";
+export {
+  ON_DEVICE_MODEL_ID,
+  ON_DEVICE_MODELS,
+  ON_DEVICE_PROVIDER_ID,
+  type PromptApi,
+  type PromptAvailability,
+  promptApi,
+  promptApiSupported,
+} from "./on-device.ts";
 export { type CatalogState, useCatalog } from "./use-catalog.ts";
 export {
   generateTitle,

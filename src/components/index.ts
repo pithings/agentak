@@ -75,6 +75,7 @@ export * from "./chat.tsx";
 export * from "./chat/composer.tsx";
 export * from "./chat/empty.tsx";
 export * from "./chat/header.tsx";
+export * from "./chat/history.tsx";
 export * from "./chat/message.tsx";
 export * from "./chat/queue.tsx";
 export * from "./chat/settings.tsx";

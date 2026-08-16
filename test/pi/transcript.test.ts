@@ -168,4 +168,19 @@ describe("toContextUsage", () => {
 
     expect(toContextUsage([full], model)?.nearLimit).toBe(true);
   });
+
+  it("does not warn from the first turn on a window smaller than pi's reserve", () => {
+    // Gemini Nano's 9k window: the fixed 16k reserve would put the threshold
+    // below zero, so half the window is the reserve instead.
+    const small = { ...model, contextWindow: 9_216 };
+
+    expect(toContextUsage([assistant([])], small)?.nearLimit).toBe(false);
+
+    const full = assistant([]);
+    if (full.role === "assistant") {
+      full.usage = usage({ cacheRead: 0, cacheWrite: 0, input: 4_609, output: 0 });
+    }
+
+    expect(toContextUsage([full], small)?.nearLimit).toBe(true);
+  });
 });

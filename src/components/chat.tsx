@@ -1,5 +1,5 @@
 import type { ComponentChildren } from "preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import {
   Conversation,
@@ -10,6 +10,7 @@ import { Shimmer } from "./ai-elements/shimmer.tsx";
 import { ChatComposer, type ChatComposerProps } from "./chat/composer.tsx";
 import { ChatEmpty } from "./chat/empty.tsx";
 import { ChatHeader } from "./chat/header.tsx";
+import { ChatHistory, type ChatHistoryProps } from "./chat/history.tsx";
 import { ChatMessage, type ChatRespond } from "./chat/message.tsx";
 import { ChatQueue } from "./chat/queue.tsx";
 import { ChatSettings } from "./chat/settings.tsx";
@@ -24,6 +25,7 @@ import { sx, type Sx } from "../styles/sx.ts";
 
 export type {
   ChatAgent,
+  ChatHistoryEntry,
   ChatModel,
   ChatProvider,
   ChatQueueItem,
@@ -105,7 +107,20 @@ const S = {
   },
 } satisfies Record<string, Sx>;
 
-export interface ChatProps extends ChatComposerProps {
+// Said while the turn is still the user's and nothing has come back. One per
+// turn, so the same word does not sit there through a whole conversation.
+const working = [
+  "Working…",
+  "Thinking…",
+  "Reading…",
+  "Pondering…",
+  "Musing…",
+  "Puzzling…",
+  "Mulling…",
+  "Chewing…",
+];
+
+export interface ChatProps extends ChatComposerProps, ChatHistoryProps {
   messages: ViewMessage[];
   error?: string;
   /** Clear the error and keep the transcript. Without it, nothing dismisses one. */
@@ -161,11 +176,22 @@ export function Chat({
   emptyActions,
   pickerOpen,
   onPickerOpenChange,
+  history,
+  conversationId,
+  onOpenConversation,
+  onForgetConversation,
+  historyOpen: historyOpenProp,
+  onHistoryOpenChange,
   ...composer
 }: ChatProps) {
   const last = messages.at(-1);
   // Nothing has come back yet: the turn is still the user's, or it is empty.
   const waiting = isStreaming && (last?.role !== "assistant" || last.parts.length === 0);
+  // The message waited on holds the word still — a re-render mid-wait keeps it.
+  const workingLabel = useMemo(
+    () => working[Math.floor(Math.random() * working.length)],
+    [last?.id],
+  );
 
   // The settings page takes the transcript's place, so the surface holds the
   // flag rather than the composer's trigger — the trigger only toggles it. A
@@ -175,6 +201,24 @@ export function Chat({
     onChange: onPickerOpenChange,
     prop: pickerOpen,
   });
+
+  // The history page is the same deal, and the two share the one slot: opening
+  // either puts the other away, so the transcript is never behind two pages.
+  const [historyOpen, setHistoryOpen] = useControllableState({
+    defaultProp: false,
+    onChange: onHistoryOpenChange,
+    prop: historyOpenProp,
+  });
+
+  const showSettings = (open: boolean) => {
+    if (open) setHistoryOpen(false);
+    setSettingsOpen(open);
+  };
+
+  const showHistory = (open: boolean) => {
+    if (open) setSettingsOpen(false);
+    setHistoryOpen(open);
+  };
 
   const inset = useKeyboardInset();
   const [foot, footRef] = useFootHeight();
@@ -186,19 +230,42 @@ export function Chat({
     <div className={className} style={sx(S.chat, style)}>
       <ChatHeader
         actions={actions}
-        onBack={settingsOpen ? () => setSettingsOpen(false) : undefined}
+        onBack={
+          settingsOpen || historyOpen
+            ? () => {
+                setSettingsOpen(false);
+                setHistoryOpen(false);
+              }
+            : undefined
+        }
+        // Nothing stored is nothing to list: a harness that keeps no
+        // conversations reports no `history`, and the bar grows no button.
+        onHistory={history && !settingsOpen && !historyOpen ? () => showHistory(true) : undefined}
         onReset={onReset}
         // Nothing to choose is nothing to open — the same test the composer puts
         // its own trigger behind.
         onSettings={
           !settingsOpen && (composer.providers?.length || composer.models?.length)
-            ? () => setSettingsOpen(true)
+            ? () => showSettings(true)
             : undefined
         }
-        title={settingsOpen ? "Settings" : title}
+        title={historyOpen ? "Conversations" : settingsOpen ? "Settings" : title}
       />
 
-      {settingsOpen ? (
+      {historyOpen ? (
+        <ChatHistory
+          conversationId={conversationId}
+          history={history}
+          onForgetConversation={onForgetConversation}
+          // Opening one is what the page is for, so it is done: the chosen
+          // transcript comes back in the session's own state, under this page.
+          onOpenConversation={(id) => {
+            onOpenConversation?.(id);
+            setHistoryOpen(false);
+          }}
+          style={{ paddingBottom: `calc(1rem + ${clear})` }}
+        />
+      ) : settingsOpen ? (
         // The page ends above the floating foot, exactly as the transcript does.
         <ChatSettings
           {...composer}
@@ -208,7 +275,7 @@ export function Chat({
           // effect on this flag.
           onModelChange={(id) => {
             composer.onModelChange?.(id);
-            setSettingsOpen(false);
+            showSettings(false);
           }}
           style={{ paddingBottom: `calc(1rem + ${clear})` }}
         />
@@ -227,7 +294,7 @@ export function Chat({
                 />
               ))
             )}
-            {waiting ? <Shimmer>Working…</Shimmer> : null}
+            {waiting ? <Shimmer>{workingLabel}</Shimmer> : null}
           </ConversationContent>
           <ConversationScrollButton style={{ bottom: `calc(1rem + ${clear})` }} />
         </Conversation>
@@ -265,9 +332,10 @@ export function Chat({
           {...composer}
           // Saying something is done choosing: the answer is in the transcript,
           // which the page is standing in front of.
-          onPickerOpenChange={setSettingsOpen}
+          onPickerOpenChange={showSettings}
           onSend={(text) => {
             setSettingsOpen(false);
+            setHistoryOpen(false);
             composer.onSend(text);
           }}
           pickerOpen={settingsOpen}

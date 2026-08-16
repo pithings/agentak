@@ -94,6 +94,12 @@ export function AgentChat({
   const pickerOpen = session.setPickerOpen ? (snapshot.pickerOpen ?? false) : held;
   const onPickerOpenChange = session.setPickerOpen ?? setHeld;
 
+  // The history page is the same flag twice over: the session owns it when it
+  // answers `setHistoryOpen`, and the surface holds it when nothing does.
+  const [heldHistory, setHeldHistory] = useState(false);
+  const historyOpen = session.setHistoryOpen ? (snapshot.historyOpen ?? false) : heldHistory;
+  const onHistoryOpenChange = session.setHistoryOpen ?? setHeldHistory;
+
   // Nothing can answer yet: the first message would only open the settings page,
   // so the empty state says so first. It leads the host's own content, because
   // choosing a model comes before whatever a launcher offers to do with one.
@@ -116,9 +122,16 @@ export function AgentChat({
       actions={actions}
       className={className}
       emptyActions={empty}
+      historyOpen={historyOpen}
       onDequeue={session.dequeue && ((id) => session.dequeue?.(id))}
       onDismissError={session.dismissError && (() => session.dismissError?.())}
+      onForgetConversation={
+        session.forgetConversation && ((id) => session.forgetConversation?.(id))
+      }
+      onForgetKey={session.forgetKey && ((id) => session.forgetKey?.(id))}
+      onHistoryOpenChange={onHistoryOpenChange}
       onModelChange={session.selectModel && ((id) => session.selectModel?.(id))}
+      onOpenConversation={session.openConversation && ((id) => session.openConversation?.(id))}
       onPickerOpenChange={onPickerOpenChange}
       onProviderChange={session.selectProvider && ((id) => session.selectProvider?.(id))}
       onReset={() => session.reset()}
