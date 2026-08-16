@@ -10,7 +10,13 @@ import {
   ConfirmationRequest,
   ConfirmationTitle,
 } from "../ai-elements/confirmation.tsx";
-import { Message, MessageContent, MessageResponse } from "../ai-elements/message.tsx";
+import {
+  Message,
+  MessageAction,
+  MessageActions,
+  MessageContent,
+  MessageResponse,
+} from "../ai-elements/message.tsx";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "../ai-elements/reasoning.tsx";
 import { Task, TaskContent, TaskTrigger } from "../ai-elements/task.tsx";
 import {
@@ -25,7 +31,17 @@ import {
 import { useCollapsible } from "../ui/collapsible.tsx";
 import { Input } from "../ui/input.tsx";
 import { Element } from "../elements.tsx";
-import { AlertTriangleIcon, Chevron } from "../../lib/icons.tsx";
+import {
+  AlertTriangleIcon,
+  CheckIcon,
+  Chevron,
+  CopyIcon,
+  SquareIcon,
+  Volume2Icon,
+} from "../../lib/icons.tsx";
+import { renderMarkdownText, useMarkdown } from "../../lib/markdown.ts";
+import { useCopy } from "../../lib/use-copy.ts";
+import { useSpeech } from "../../lib/use-speech.ts";
 import type { ToolState, ViewMessage, ViewPart, ViewToolPart } from "../../types.ts";
 import { u } from "../../styles/base.ts";
 import { sx, type Sx } from "../../styles/sx.ts";
@@ -108,6 +124,10 @@ const S = {
   runName: { flexShrink: "0", fontSize: "0.875rem", fontWeight: "500" },
   runCount: { flexShrink: "0", color: "var(--muted-foreground)", fontSize: "0.75rem" },
   runChevron: { flexShrink: "0" },
+  // Under the answer, quiet until it is wanted. The negative inset pulls the
+  // button's own padding back over the column edge, so the glyph sits under the
+  // first character of the text rather than beside it.
+  actions: { marginLeft: "-0.375rem", color: "var(--muted-foreground)" },
 } satisfies Record<string, Sx>;
 
 const TOOL_STATE = {
@@ -230,12 +250,71 @@ function sameMessage(a: ViewMessage, b: ViewMessage): boolean {
   );
 }
 
+/**
+ * What "copy" puts on the clipboard: the answer alone, without the thinking or
+ * the tool calls that produced it, as the markdown the model wrote.
+ */
+function answerText(parts: ViewPart[]): string {
+  return parts
+    .flatMap((part) => (part.kind === "text" ? [part.text.trim()] : []))
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/**
+ * Every part an emoji is built from: a keycap with the digit it caps, then the
+ * pictograph, the skin tone and the flag letter, and last the joiner and the
+ * variation selector that hold a sequence together. A voice either names one —
+ * "party popper" — or says nothing at all, and neither belongs mid-sentence.
+ *
+ * The joiner and the selector stand outside the character class, where a
+ * combining mark reads as a half-written sequence.
+ */
+const EMOJI =
+  /[\d#*]\uFE0F?\u20E3|[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Regional_Indicator}]|\uFE0F|\u200D|\u20E3/gu;
+
+/**
+ * The same answer as words for a voice.
+ *
+ * md4x renders the plain text, so the markers that a voice would read out as
+ * punctuation — "asterisk asterisk" — go the way they do on the page, a link
+ * reads as its label rather than its url, and raw html is dropped. Only a code
+ * fence is decided here: a block read aloud is a minute of noise, so it is
+ * named rather than spoken, and it goes before the renderer sees it.
+ *
+ * The renderer is the one the transcript has already loaded to draw this same
+ * answer. Where it failed to load the markdown goes as it is — which is how the
+ * message itself is then shown.
+ */
+export function spokenText(markdown: string): string {
+  const source = markdown.replace(/```[^]*?```|~~~[^]*?~~~/g, "\n\nCode block.\n\n");
+
+  return (
+    (renderMarkdownText(source) ?? source)
+      // A list marker, a quote mark and the tabs between table cells survive
+      // the render, and all three are punctuation to a voice.
+      .replace(/^[^\S\n]*([-*+]\s+|\d+\.\s+|>\s?)/gm, "")
+      // A table row ends on a tab as well as separating on one, and a row that
+      // ends on ", " reads as though a cell were coming.
+      .replace(/\t+$/gm, "")
+      .replace(/\t+/g, ", ")
+      .replace(EMOJI, "")
+      .replace(/[^\S\n]+/g, " ")
+      .replace(/ ?\n ?/g, "\n")
+      .replace(/\n{2,}/g, "\n")
+      .trim()
+  );
+}
+
 /** One turn of the transcript, part by part. */
 function ChatMessageView({ message, isStreaming, onRespond }: ChatMessageProps) {
   const lastPart = message.parts.length - 1;
 
   const isUser = message.role === "user";
   const rows = chatRows(message.parts, isStreaming ? lastPart : -1);
+  // Offered on a finished answer only — mid-stream it would copy half a reply,
+  // and a turn that only called tools has nothing to copy.
+  const answer = isUser || isStreaming ? "" : answerText(message.parts);
 
   return (
     <Message from={message.role} style={isUser ? undefined : S.turn}>
@@ -258,7 +337,45 @@ function ChatMessageView({ message, isStreaming, onRespond }: ChatMessageProps) 
         )}
         {message.error ? <p style={S.error}>{message.error}</p> : null}
       </MessageContent>
+      {answer ? (
+        <MessageActions style={S.actions}>
+          <ChatCopyAction text={answer} />
+          <ChatSpeakAction text={answer} />
+        </MessageActions>
+      ) : null}
     </Message>
+  );
+}
+
+/** Copy the answer above it. The icon reports the copy, so nothing else has to. */
+function ChatCopyAction({ text }: { text: string }) {
+  const { copied, copy } = useCopy();
+
+  return (
+    <MessageAction onClick={() => void copy(text)} tooltip={copied ? "Copied" : "Copy response"}>
+      {copied ? <CheckIcon /> : <CopyIcon />}
+    </MessageAction>
+  );
+}
+
+/**
+ * Read the answer above it aloud, and stop it again. The button is left out
+ * where the browser has no speech synthesis.
+ */
+function ChatSpeakAction({ text }: { text: string }) {
+  const { supported, speaking, toggle } = useSpeech();
+  // The answer above has already asked for md4x, so this only waits on the same
+  // load — and asks for it where a turn somehow drew no markdown at all.
+  useMarkdown();
+  if (!supported) return null;
+
+  return (
+    <MessageAction
+      onClick={() => toggle(spokenText(text))}
+      tooltip={speaking ? "Stop reading" : "Read aloud"}
+    >
+      {speaking ? <SquareIcon /> : <Volume2Icon />}
+    </MessageAction>
   );
 }
 

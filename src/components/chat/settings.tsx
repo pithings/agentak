@@ -309,6 +309,12 @@ export function ChatSettings({
       )
     : models;
 
+  // A list this long is read by typing at it, so the field takes the focus as
+  // soon as a provider has one — on arrival, and again when another provider's
+  // catalog lands. Not on a finger, where focus raises the keyboard over the
+  // models the field is there to filter, and not while a key is being typed.
+  const searchable = !pending && !!models && models.length > SEARCH_FROM;
+
   // The field is the only thing this section is for, and it is reached by a tap
   // on a provider that needs a key — so it takes the focus, phone or not. Preact
   // forwards no ref through a component, so the field is read off the section.
@@ -316,6 +322,12 @@ export function ChatSettings({
   useEffect(() => {
     if (keying) keyRef.current?.querySelector("input")?.focus();
   }, [keying]);
+
+  const searchRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!searchable || keying || isTouch()) return;
+    searchRef.current?.querySelector("input")?.focus();
+  }, [searchable, keying, providerId]);
 
   // A provider is half the choice, so picking one never closes the page: the
   // model list under it changes to that provider's, which is what to read next.
@@ -484,12 +496,12 @@ export function ChatSettings({
         </section>
       )}
 
-      <section style={S.section}>
+      <section ref={searchRef} style={S.section}>
         {/* Whose models these are, where the provider list is not the answer —
             a gateway carries the same model names as the vendor. */}
         <h3 style={sx(reset.text, S.heading)}>{where ? `Model — ${where}` : "Model"}</h3>
 
-        {!pending && models && models.length > SEARCH_FROM && (
+        {searchable && (
           <Input
             aria-label="Search models"
             onInput={(event) => setSearch((event.target as HTMLInputElement).value)}

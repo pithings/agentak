@@ -105,12 +105,65 @@ import-graph tests make sure each framework is only imported by its own wrapper.
 minimize button. `emptyActions` appears below the greeting and is only shown before the
 first message.
 
+Each finished answer carries a row of two buttons under it: copy, and read aloud. Both
+take the text parts of that turn and leave out the thinking and the tool calls. Copy puts
+the markdown the model wrote on the clipboard; read aloud speaks it as words, so
+`spokenText()` runs it through md4x's own `renderToText` first — `renderMarkdownText()` in
+`lib/markdown.ts`, the parser the transcript has already loaded to draw that same answer.
+The render drops the markers a voice would read as punctuation, keeps a link's label and
+not its url, and leaves `snake_case` and `2 * 3` alone. Around it `spokenText()` decides
+the four things the render cannot: a code fence is named rather than read, the list and
+quote marks it keeps are cut, a table row is spoken as cells rather than tabs, and emoji
+go — a voice either names one or says nothing. Where md4x failed to load the markdown goes
+as it is, which is how the message itself is shown then too. A turn that is still
+streaming, a user turn, and a turn that only called tools show no row.
+
+`lib/use-copy.ts` holds the clipboard call and the short "copied" state.
+`lib/use-speech.ts` holds the reading: it speaks through `window.speechSynthesis`, and the
+button is left out where the browser has none. The text goes in as sentences of at most
+180 characters, because Chrome drops an utterance that runs past about fifteen seconds,
+and at rate 1, the engine's own pace, which is the pace a voice was recorded at. The hook
+takes another rate where a caller wants one.
+
+`pickVoice()` chooses which voice reads, because the engine's own first one is the robotic
+one — Alex or Albert on macOS, eSpeak on Linux. The list is all the API offers, so the name
+is what it goes on: the page's language first, then the mark each engine writes on its
+better voices — "(Enhanced)" and "(Premium)" for a voice Apple has downloaded, "Online
+(Natural)" for the neural ones Edge streams, and the "Google …" names of Chrome's network
+voices. Safari carries no mark until a voice is downloaded — it offers Apple's own voices
+and nothing else — so its newer names are ranked above Alex. The macOS joke shelf is pushed
+to the back, though a joke voice that reads the language still beats a good one that does
+not. One voice runs the whole reading, and where
+Chrome has not loaded its list yet the engine keeps its own.
+
+One voice at a time — starting a reading cancels any other, and each reading carries a
+number so the events of a cancelled one do not clear the flag of its replacement.
+
+The composer takes two slash commands: `/model` opens the settings page, and `/new` starts
+a conversation — the header's two buttons, reached from the keyboard. A field holding one
+slash word lists what it can be above the composer, a row per command. The list is walked
+without leaving the field: the arrows move a cursor that wraps at either end, Tab writes the
+rest of the name and stops there, Enter runs the row the cursor is on, and Escape puts the
+list away without touching what was typed. The pointer moves the same cursor, so one row is
+ever lit. A submit with the list shut still runs the command a name states, or the one
+command a half-typed name leaves; anything else is a message and is sent as it was written,
+a leading slash included. While the list is open the field carries the combobox role and
+`aria-activedescendant`, and drops both with it — a chat's textarea is a message field the
+rest of the time. Each command is only offered where the surface can answer it: a session
+with no providers and no models carries no `/model`, and `Chat` is what passes the composer
+its `onReset`.
+
 The provider, model, thinking level, and API key are all selected on the settings page,
 `components/chat/settings.tsx`. Two controls open it: a button in the header, and the
-composer's trigger, which also names the model that is running. The page then replaces the
-transcript. Choosing a model closes it again, as do sending a message and the header's
-back arrow. The Pi session also opens the page itself when a turn fails with a 4xx status:
-the provider refused the key, the model, or the account, and the answer is on that page.
+composer's trigger, which also names the model that is running. The page then takes the
+whole surface under the header: it replaces the transcript, and the composer is hidden
+under it, because there is nothing to say to a provider that is still being chosen. The
+composer is hidden and not unmounted, so a half-typed message is still there on the way
+back. Choosing a model closes the page again, as do sending a message and the header's
+back arrow. The Pi session also opens the page itself when a turn fails with a 401, 402,
+403 or 404: the provider refused the key, the account, or the model, and the answer is on
+that page. A rate limit, a timeout and a full context window are answered by waiting, so
+those leave the transcript where it is and offer the retry button instead.
 These choices come from the Pi
 session. A custom session without providers shows no provider section and no key section.
 A model without reasoning support shows no thinking-level choice.
@@ -121,7 +174,9 @@ its store and steps off the provider, which then needs a key again. A session wi
 `forgetKey` shows only "Change key".
 
 The stored conversations are the second page, `components/chat/history.tsx`. A clock
-button at the head of the header opens it, and the page again replaces the transcript.
+button at the head of the header opens it, and the page again replaces the transcript —
+the composer stays, because opening a conversation is one click and what is typed is for
+the chat, not the page.
 Each row is one conversation, with the live one marked and a button to forget it. Picking
 one closes the page: the session then replaces its own state with that conversation, so
 the chat is never unmounted or swapped. Only one page shows at a time. A session that

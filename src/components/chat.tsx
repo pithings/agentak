@@ -1,5 +1,5 @@
 import type { ComponentChildren, RefObject } from "preact";
-import { useEffect, useMemo, useRef } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import {
   Conversation,
@@ -229,6 +229,17 @@ export function Chat({
     setHistoryOpen(open);
   };
 
+  // Starting a conversation and opening a stored one both end with a transcript
+  // and nothing to do but say something, so both hand the focus to the composer.
+  // A counter, not a flag: every click is a request, including the second one.
+  const [focusKey, setFocusKey] = useState(0);
+
+  // The header's button and the composer's `/new` are one thing asked twice.
+  const startNew = () => {
+    onReset();
+    setFocusKey((n) => n + 1);
+  };
+
   const surfaceRef = useRef<HTMLDivElement>(null);
   const footRef = useFootHeight(surfaceRef);
   useKeyboardLift(surfaceRef);
@@ -248,7 +259,7 @@ export function Chat({
         // Nothing stored is nothing to list: a harness that keeps no
         // conversations reports no `history`, and the bar grows no button.
         onHistory={history && !settingsOpen && !historyOpen ? () => showHistory(true) : undefined}
-        onReset={onReset}
+        onReset={startNew}
         // Nothing to choose is nothing to open — the same test the composer puts
         // its own trigger behind.
         onSettings={
@@ -269,11 +280,15 @@ export function Chat({
           onOpenConversation={(id) => {
             onOpenConversation?.(id);
             setHistoryOpen(false);
+            setFocusKey((n) => n + 1);
           }}
           style={{ paddingBottom: CLEAR }}
         />
       ) : settingsOpen ? (
-        // The page ends above the floating foot, exactly as the transcript does.
+        // The page ends above the floating foot, exactly as the transcript
+        // does — and with the composer hidden under it, the foot is only the
+        // error row that opened the page, if there is one, so `CLEAR` is the
+        // room that row needs and no more.
         <ChatSettings
           {...composer}
           // The model is the last of the four choices and the only one nothing
@@ -335,11 +350,20 @@ export function Chat({
         <ChatQueue items={queued} onDequeue={onDequeue} />
 
         <ChatComposer
+          focusKey={focusKey}
+          // The settings page is the whole surface under the header: there is
+          // nothing to say to a provider that is still being chosen, so the
+          // composer goes with the transcript rather than floating over the
+          // page. Hidden, not unmounted — the draft survives the trip. The
+          // history page keeps it, because opening a conversation is one click
+          // and the message already typed is for the one on screen.
+          hidden={settingsOpen}
           isStreaming={isStreaming}
           {...composer}
           // Saying something is done choosing: the answer is in the transcript,
           // which the page is standing in front of.
           onPickerOpenChange={showSettings}
+          onReset={startNew}
           onSend={(text) => {
             setSettingsOpen(false);
             setHistoryOpen(false);

@@ -148,6 +148,13 @@ const openingProvider = (
 };
 
 /**
+ * The statuses the settings page is the answer to: a refused key, an account
+ * out of credit or without the rights, and a model the provider does not serve.
+ * Every other failure leaves the transcript where it is.
+ */
+const ANSWERED_ON_SETTINGS = new Set([401, 402, 403, 404]);
+
+/**
  * The built-in session: pi's `Agent` over the host's tools, with the provider,
  * model and key picker in front of it.
  *
@@ -397,14 +404,17 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   };
 
   /**
-   * A turn that failed with a 4xx is the provider answering about the key, the
-   * model or the account — nothing the transcript can fix, and nothing the
-   * person can act on without leaving it. The settings page opens on it, where
-   * all three are chosen, with the error row still above the composer.
+   * A turn that failed on the key, the account behind it or the model is the
+   * provider answering about a choice the transcript cannot fix. The settings
+   * page opens on those, where all three are made, with the error row still
+   * above the composer.
    *
    * Once per failure: the page is theirs to close again, and only a new error
-   * opens it a second time. A 5xx and a network failure are the provider's own
-   * to recover from, so those only say so and offer the retry button.
+   * opens it a second time. Every other failure only says so and offers the
+   * retry button — a 5xx and a network failure are the provider's own to
+   * recover from, and a rate limit, a timeout or a full context window are
+   * answered by waiting rather than by anything on that page. Taking the
+   * transcript away for those would answer nothing and lose their place.
    */
   const askOnFailure = () => {
     const { error, errorStatus } = store.snapshot();
@@ -414,7 +424,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     }
     if (error === acted) return;
     acted = error;
-    if (!errorStatus || errorStatus >= 500) return;
+    if (!errorStatus || !ANSWERED_ON_SETTINGS.has(errorStatus)) return;
     pickerOpen = true;
     historyOpen = false;
   };

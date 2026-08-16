@@ -2,6 +2,7 @@ import type { ComarkNode } from "md4x/standalone";
 import { useEffect, useState } from "preact/hooks";
 
 let parse: typeof import("md4x/standalone").parseAST | undefined;
+let toText: typeof import("md4x/standalone").renderToText | undefined;
 let loading: Promise<boolean> | undefined;
 
 /**
@@ -15,6 +16,7 @@ export function loadMarkdown(): Promise<boolean> {
     .then(async (md) => {
       await md.init();
       parse = md.parseAST;
+      toText = md.renderToText;
       return true;
     })
     .catch(() => false);
@@ -25,6 +27,15 @@ export function loadMarkdown(): Promise<boolean> {
 export function parseMarkdown(text: string): ComarkNode[] | undefined {
   // `heal` closes the delimiters a stream leaves open mid-token.
   return parse?.(text, { heal: true }).nodes;
+}
+
+/**
+ * The same markdown as plain text — md4x's own renderer, so the markers, the
+ * link targets and any raw html go the way they do on the page. Undefined until
+ * the parser is ready.
+ */
+export function renderMarkdownText(text: string): string | undefined {
+  return toText?.(text, { heal: true });
 }
 
 /** True once `parseMarkdown` returns nodes. */

@@ -6,10 +6,19 @@
  * the whole answer in that case — a rate limit, a rejected key, a provider that
  * is down — so it is written out here instead. A response that does carry a
  * message is left alone: the provider's own words say more than any rule here.
+ *
+ * A body is only the provider's words once it is opened. Both sdks look for a
+ * `message` at the top of it, find none where the provider nests one under
+ * `error`, and stringify the whole object — so the chat is shown
+ * `429 {"error":{"message":"…","type":"rate_limit_error"}}` where a sentence
+ * belongs. The sentence is taken back out here.
  */
 
 /** The OpenAI and Anthropic SDKs both word a bodiless response this way. */
 const BARE_STATUS = /^(\d{3}) status code \(no body\)$/;
+
+/** A status and the json the sdk could not read a message out of. */
+const STATUS_BODY = /^([45]\d{2}) (\{[\S\s]*\})$/;
 
 /** The request never reached the provider: no status, no body. Wording varies. */
 const NO_RESPONSE =
@@ -31,6 +40,34 @@ export function failureStatus(message: string | undefined): number | undefined {
   const found = message ? LEADING_STATUS.exec(message.trim()) : undefined;
   return found ? Number(found[1]) : undefined;
 }
+
+/**
+ * The sentence inside an error body, wherever the provider put it. Vercel,
+ * OpenAI and Anthropic all nest it under `error`; a few write it at the top.
+ */
+function bodyMessage(body: string): string | undefined {
+  let parsed: { error?: unknown; message?: unknown };
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return undefined;
+  }
+
+  const error = parsed?.error as { message?: unknown } | string | undefined;
+  const found =
+    typeof error === "string"
+      ? error
+      : typeof error?.message === "string"
+        ? error.message
+        : typeof parsed?.message === "string"
+          ? parsed.message
+          : undefined;
+
+  return found?.trim() || undefined;
+}
+
+/** Whether the provider already said what to do about a limit it just named. */
+const SAYS_WAIT = /\b(wait|retry|retrying|try again|slow down)\b/i;
 
 const forStatus = (status: number): string => {
   switch (status) {
@@ -65,6 +102,21 @@ export function describeFailure(message: string | undefined): string | undefined
 
   const status = BARE_STATUS.exec(message.trim());
   if (status) return forStatus(Number(status[1]));
+
+  const carried = STATUS_BODY.exec(message.trim());
+  if (carried) {
+    const said = bodyMessage(carried[2]);
+    // Json all the way down is a body that says nothing; the status is again
+    // the whole answer.
+    if (!said) return forStatus(Number(carried[1]));
+
+    // A rate limit is the one status a provider names without saying what to do
+    // about it, and the answer is always the same. Said once: a provider that
+    // gives its own wait keeps it.
+    return Number(carried[1]) === 429 && !SAYS_WAIT.test(said)
+      ? `${said.replace(/[.!?]?$/, ".")} Wait a moment, or select another model.`
+      : said;
+  }
 
   if (NO_RESPONSE.test(message.trim())) {
     return "Could not reach the provider. Check the network, and that the browser is allowed to call it.";

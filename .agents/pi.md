@@ -214,7 +214,10 @@ composer takes the focus — `chat/composer.tsx` watches the flag for that, and 
 focus alone on a phone, where it would be a keyboard over half the surface. Sending a
 message closes the page too, and so does the back arrow in the header. The model list
 carries a search field only past eight models, under which it would filter a list already
-in one view.
+in one view. Where the field is there it takes the focus — on arrival with a provider set,
+and again when another provider's catalog lands — so a list that long is read by typing
+at it. Not on a phone, for the same reason the composer leaves the focus alone there, and
+not while a key is being typed.
 
 **Picking a provider is half a choice**, so it closes the dropdown and changes the model
 list under it, and the page itself stays up. Nothing picks a model for anyone: `follow()` in `session.ts`
@@ -551,14 +554,25 @@ composer, and `transcript.ts` for the failed turn left in the transcript. `clear
 still compares the raw message, so dismissing works on what pi holds rather than on what is
 displayed.
 
-**A 4xx opens the settings page.** `failureStatus()` reads the status back out of the same
-message, and `store.ts` carries it beside the worded one as `errorStatus`. A turn that
-failed with one is the provider answering about the key, the model or the account — none of
-which the transcript can fix — so `session.ts` opens the page where all three are chosen,
-with the error row still above the composer. Once per failure: the page is the person's to
-close again, and only a new error opens it a second time. A 5xx, and a request that never
-arrived, are the provider's own to recover from, so those only say so and offer the retry
-button.
+**A body is opened before it is shown.** Both sdks look for a `message` at the top of an
+error body, find none where the provider nests one under `error` — which Vercel, OpenAI and
+Anthropic all do — and stringify the whole object, so the row would read
+`429 {"error":{"message":"…","type":"rate_limit_error"}}`. `describeFailure()` takes the
+sentence back out. A body that carries no sentence at all leaves the status as the whole
+answer, the same as a bodiless one, and a 429 that names a limit without saying what to do
+about it gains "Wait a moment, or select another model." — said once, so a provider that
+gives its own wait keeps it.
+
+**Four statuses open the settings page.** `failureStatus()` reads the status back out of
+the same message, and `store.ts` carries it beside the worded one as `errorStatus`. A 401,
+402, 403 or 404 is the provider answering about the key, the account behind it or the
+model — none of which the transcript can fix — so `session.ts` opens the page where all
+three are chosen, with the error row still above the composer. Once per failure: the page
+is the person's to close again, and only a new error opens it a second time. Everything
+else leaves the transcript up and offers the retry button: a 5xx and a request that never
+arrived are the provider's own to recover from, and a rate limit, a timeout or a full
+context window are answered by waiting rather than by anything on that page — `ANSWERED_ON_SETTINGS`
+in `session.ts` is the list.
 
 ## What feeds each element
 

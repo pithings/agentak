@@ -1,11 +1,19 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { toolTitle } from "../../src/components/ai-elements/tool.tsx";
-import { ChatMessage } from "../../src/components/chat/message.tsx";
+import { ChatMessage, spokenText } from "../../src/components/chat/message.tsx";
+import { loadMarkdown } from "../../src/lib/markdown.ts";
+import { pickVoice, speechChunks } from "../../src/lib/use-speech.ts";
 import type { ViewMessage, ViewToolPart } from "../../src/types.ts";
 
 afterEach(cleanup);
+
+// `spokenText` renders the plain text with md4x, so the wasm is instantiated
+// once for the whole file and every case below takes the parsed path.
+beforeAll(async () => {
+  expect(await loadMarkdown()).toBe(true);
+});
 
 const message = (part: ViewToolPart): ViewMessage => ({
   id: "a0",
@@ -251,5 +259,219 @@ describe("an untrusted tool result", () => {
   it("says nothing about a call that has not answered yet", () => {
     render(<ChatMessage message={message({ ...call, untrustedFrom: "https://docs.example" })} />);
     expect(screen.queryByText(/Unverified content/)).toBeNull();
+  });
+});
+
+const said = (parts: ViewMessage["parts"]): ViewMessage => ({
+  id: "a0",
+  parts,
+  role: "assistant",
+});
+
+describe("copying an answer", () => {
+  let written: string[] = [];
+
+  beforeEach(() => {
+    written = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (text: string) => void written.push(text) },
+    });
+  });
+
+  const copy = () => screen.getByTitle("Copy response");
+
+  it("copies the answer, without the work behind it", async () => {
+    render(
+      <ChatMessage
+        message={said([
+          { kind: "thinking", text: "Not this." },
+          { kind: "text", text: "First line." },
+          read(1),
+          { kind: "text", text: "Second line." },
+        ])}
+      />,
+    );
+
+    fireEvent.click(copy());
+    expect(await screen.findByTitle("Copied")).toBeTruthy();
+    expect(written).toEqual(["First line.\n\nSecond line."]);
+  });
+
+  it("waits for the answer to finish, and offers nothing without one", () => {
+    const text = said([{ kind: "text", text: "Half an ans" }]);
+
+    const { rerender } = render(<ChatMessage isStreaming message={text} />);
+    expect(screen.queryByTitle("Copy response")).toBeNull();
+
+    rerender(<ChatMessage message={{ ...text, role: "user" }} />);
+    expect(screen.queryByTitle("Copy response")).toBeNull();
+
+    rerender(<ChatMessage message={said([read(1)])} />);
+    expect(screen.queryByTitle("Copy response")).toBeNull();
+
+    rerender(<ChatMessage message={text} />);
+    expect(copy()).toBeTruthy();
+  });
+});
+
+/** One sentence of 150 characters — two of them are over the chunk cap. */
+const LONG = `${"word ".repeat(30).trim()}.`;
+
+/** One entry of the list an engine offers; the tests read the name and the tag. */
+const speaks = (name: string, lang = "en-US") => ({ lang, name }) as SpeechSynthesisVoice;
+
+describe("reading an answer aloud", () => {
+  class Utterance {
+    onend: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    rate = 1;
+    voice: SpeechSynthesisVoice | null = null;
+    constructor(public text: string) {}
+  }
+
+  let queue: Utterance[] = [];
+
+  beforeEach(() => {
+    queue = [];
+    vi.stubGlobal("SpeechSynthesisUtterance", Utterance);
+    vi.stubGlobal("speechSynthesis", {
+      cancel: () => {
+        // The engine reports every dropped utterance, exactly as a browser does.
+        for (const utterance of queue) utterance.onerror?.();
+        queue = [];
+      },
+      getVoices: () => [speaks("Albert"), speaks("Thomas", "fr-FR"), speaks("Samantha (Enhanced)")],
+      speak: (utterance: Utterance) => queue.push(utterance),
+    });
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("says nothing where the browser cannot speak", () => {
+    vi.unstubAllGlobals();
+    render(<ChatMessage message={said([{ kind: "text", text: "Hello." }])} />);
+    expect(screen.queryByTitle("Read aloud")).toBeNull();
+  });
+
+  it("reads the answer as words, and stops it on the second press", () => {
+    render(<ChatMessage message={said([{ kind: "text", text: "**One.** Two." }])} />);
+
+    fireEvent.click(screen.getByTitle("Read aloud"));
+    // The markdown is stripped before the engine sees it, and it reads at the
+    // engine's own pace.
+    expect(queue.map((utterance) => utterance.text)).toEqual(["One. Two."]);
+    expect(queue[0].rate).toBe(1);
+    // Not the engine's own first voice, which is the robotic one.
+    expect(queue[0].voice?.name).toBe("Samantha (Enhanced)");
+
+    fireEvent.click(screen.getByTitle("Stop reading"));
+    expect(queue).toEqual([]);
+    expect(screen.getByTitle("Read aloud")).toBeTruthy();
+  });
+
+  it("gives the button back when the reading ends by itself", async () => {
+    render(<ChatMessage message={said([{ kind: "text", text: `${LONG} ${LONG}` }])} />);
+
+    fireEvent.click(screen.getByTitle("Read aloud"));
+    expect(queue.length).toBe(2);
+
+    // Only the last utterance ends the reading — the others hand over.
+    queue[0].onend?.();
+    expect(screen.getByTitle("Stop reading")).toBeTruthy();
+
+    queue[1].onend?.();
+    expect(await screen.findByTitle("Read aloud")).toBeTruthy();
+  });
+});
+
+describe("spokenText", () => {
+  it("drops the markers a voice would read as punctuation", () => {
+    expect(spokenText("## Heading\n\n- **bold** and _thin_ and `code`")).toBe(
+      "Heading\nbold and thin and code",
+    );
+    expect(spokenText("See [the docs](https://example.com).")).toBe("See the docs.");
+    expect(spokenText("> A quote\n\n<div>and markup</div>")).toBe("A quote");
+  });
+
+  it("leaves the punctuation that is part of a word", () => {
+    expect(spokenText("Call snake_case with 2 * 3.")).toBe("Call snake_case with 2 * 3.");
+  });
+
+  it("reads a table row as cells, not as pipes", () => {
+    expect(spokenText("| a | b |\n| - | - |\n| 1 | 2 |")).toBe("a, b\n1, 2");
+  });
+
+  it("names a code fence instead of reading it", () => {
+    expect(spokenText("Run this:\n\n```sh\npnpm build\n```\n\nThen open it.")).toBe(
+      "Run this:\nCode block.\nThen open it.",
+    );
+  });
+
+  it("drops emoji, whole sequences and all", () => {
+    expect(spokenText("Shipped 🎉 and tested 👨‍👩‍👧 🇫🇷 1️⃣ 👍🏽.")).toBe("Shipped and tested .");
+  });
+});
+
+describe("pickVoice", () => {
+  const pick = (names: string[], lang = "en-US") =>
+    pickVoice(
+      names.map((name) => speaks(name)),
+      lang,
+    )?.name;
+
+  it("takes the language first, and the engine's order between equals", () => {
+    const voices = [
+      speaks("Daniel", "en-GB"),
+      speaks("Amélie", "fr-CA"),
+      speaks("Thomas", "fr-FR"),
+    ];
+
+    expect(pickVoice(voices, "fr-FR")?.name).toBe("Thomas");
+    // A regional pair beats a language the reader did not ask for.
+    expect(pickVoice(voices, "fr-BE")?.name).toBe("Amélie");
+    expect(pickVoice(voices, "en_US")?.name).toBe("Daniel");
+    expect(pickVoice([], "en-US")).toBeUndefined();
+  });
+
+  it("takes the voice a browser marks as its better one", () => {
+    // Safari and Chrome on macOS.
+    expect(pick(["Alex", "Samantha", "Samantha (Enhanced)"])).toBe("Samantha (Enhanced)");
+    // Safari has no mark to read until a voice is downloaded, so a plain name
+    // is all Apple's newer voices carry.
+    expect(pick(["Alex", "Samantha"])).toBe("Samantha");
+    expect(pick(["Albert", "Google US English"])).toBe("Google US English");
+    // Edge streams the neural ones; Chrome on Linux has eSpeak alone.
+    expect(pick(["Microsoft David Desktop", "Microsoft Aria Online (Natural)"])).toBe(
+      "Microsoft Aria Online (Natural)",
+    );
+    expect(pick(["English (America)+espeak"])).toBe("English (America)+espeak");
+  });
+
+  it("leaves the joke shelf until nothing else is offered", () => {
+    expect(pick(["Bad News", "Zarvox", "Alex", "Bells"])).toBe("Alex");
+    expect(pick(["Fred", "Trinoids"])).toBe("Fred");
+    // A joke voice still reads the language; a good one in another does not.
+    expect(pickVoice([speaks("Zarvox"), speaks("Samantha", "fr-FR")], "en-US")?.name).toBe(
+      "Zarvox",
+    );
+  });
+});
+
+describe("speechChunks", () => {
+  it("packs sentences into a piece, and cuts between two of them", () => {
+    expect(speechChunks("One. Two!\nThree?")).toEqual(["One. Two! Three?"]);
+    expect(speechChunks("  ")).toEqual([]);
+    expect(speechChunks(`${LONG} ${LONG}`)).toEqual([LONG, LONG]);
+  });
+
+  it("keeps a piece short enough for chrome to finish it", () => {
+    const long = `${"word ".repeat(80).trim()}.`;
+    const parts = speechChunks(`${long} ${long}`);
+
+    expect(parts.length).toBeGreaterThan(2);
+    expect(Math.max(...parts.map((part) => part.length))).toBeLessThanOrEqual(180);
+    // Every word survives the cut, and none of them is split.
+    expect(parts.join(" ").split(/\s+/).length).toBe(160);
   });
 });

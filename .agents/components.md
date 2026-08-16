@@ -114,6 +114,12 @@ and opens only one at a time — opening either puts the other away, so the tran
 never behind two pages. The header follows: the back arrow takes the leading spot from the
 history button while a page is up, and the title says which page it is.
 
+The settings page also puts the composer away — its `hidden` prop, which is `display: none`
+and not an unmount, so the uncontrolled textarea keeps its draft. Nothing is said to a
+provider that is still being chosen, and the floating foot is then only the error row that
+opened the page, so `CLEAR` measures the room that row needs and no more. The history page
+keeps the composer.
+
 Each flag is controllable, so a session can own it instead — see [`session.md`](session.md).
 
 ## Exports

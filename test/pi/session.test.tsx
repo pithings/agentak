@@ -189,6 +189,18 @@ describe("createPiSession", () => {
     expect(session.snapshot().pickerOpen).toBe(false);
   });
 
+  it("keeps the transcript up when the provider is only rate limiting", async () => {
+    const session = piSession({ provider: FREE, streamFn: refusing(429) });
+    await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
+    session.selectModel?.(MODEL);
+
+    session.send("what is this page?");
+    await waitFor(() => expect(session.snapshot().error).toMatch(/rate limiting/));
+    // Waiting is the answer to a 429, and nothing on the settings page is —
+    // taking the transcript away would only lose their place.
+    expect(session.snapshot().pickerOpen).toBe(false);
+  });
+
   it("takes a key back out, and steps off the provider it was running", async () => {
     const session = piSession({ streamFn: scripted([answer]) });
     const keyed = () => session.snapshot().providers?.find((entry) => entry.id === KEYED);

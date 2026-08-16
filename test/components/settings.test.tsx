@@ -1,10 +1,13 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Chat } from "../../src/components/chat.tsx";
 import { ChatSettings } from "../../src/components/chat/settings.tsx";
 
-afterEach(cleanup);
+afterEach(() => {
+  vi.unstubAllGlobals();
+  cleanup();
+});
 
 const PROVIDERS = [
   { id: "llm7", label: "LLM7" },
@@ -16,6 +19,14 @@ const MODELS = [
   { contextWindow: 400_000, id: "gpt-5", name: "GPT-5" },
   { contextWindow: 200_000, id: "gpt-5-mini", name: "GPT-5 mini" },
 ];
+
+/** Past `SEARCH_FROM`, so the list carries its search field. */
+const manyModels = () =>
+  Array.from({ length: 12 }, (_, index) => ({
+    contextWindow: 128_000,
+    id: `m-${index}`,
+    name: `Model ${index}`,
+  }));
 
 describe("ChatSettings", () => {
   it("shows provider, key, thinking and model at once", () => {
@@ -145,13 +156,7 @@ describe("ChatSettings", () => {
   });
 
   it("says which models are left when the filter matches none", () => {
-    const many = Array.from({ length: 12 }, (_, index) => ({
-      contextWindow: 128_000,
-      id: `m-${index}`,
-      name: `Model ${index}`,
-    }));
-
-    const { container } = render(<ChatSettings models={many} providerLabel="Local" />);
+    const { container } = render(<ChatSettings models={manyModels()} providerLabel="Local" />);
     const rows = () => container.querySelectorAll('[data-slot="chat-settings-row"]');
 
     const search = screen.getByLabelText("Search models") as HTMLInputElement;
@@ -161,6 +166,25 @@ describe("ChatSettings", () => {
 
     fireEvent.input(search, { target: { value: "nothing" } });
     expect(screen.getByText(/No models match/)).toBeTruthy();
+  });
+
+  it("gives the search field the focus, but not to a finger", () => {
+    const many = manyModels();
+
+    // jsdom carries no `matchMedia`, which reads as a pointer that is not coarse.
+    const { container, rerender } = render(<ChatSettings models={many} providerLabel="Local" />);
+    expect(document.activeElement).toBe(screen.getByLabelText("Search models"));
+
+    // A key is what the page is waiting on, so the field for it keeps the focus.
+    rerender(<ChatSettings models={many} providerId="openai" providers={PROVIDERS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Change key" }));
+    expect(document.activeElement).toBe(container.querySelector('input[type="password"]'));
+
+    cleanup();
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("coarse") }));
+    render(<ChatSettings models={many} providerLabel="Local" />);
+    // A keyboard over the list it filters is worse than the list.
+    expect(document.activeElement).toBe(document.body);
   });
 });
 
