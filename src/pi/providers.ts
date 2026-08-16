@@ -52,8 +52,50 @@ export interface Provider {
   /** Picked when this provider is chosen and nothing is stored. */
   defaultModelId: string;
   /** The catalog. Loaded on demand — OpenRouter's alone is 136 KB of json. */
-  load: () => Promise<Catalog>;
+  load: CatalogLoader;
 }
+
+type CatalogLoader = () => Promise<Catalog>;
+
+/**
+ * Which pi-ai the catalogs are read from. `latest` and not the installed
+ * version, because the point is the models published since this build: pi-ai
+ * regenerates its json every release, and a bundled copy only ages. Write a
+ * version string here to pin it.
+ */
+const PI_AI_VERSION = "latest";
+
+const CDN = `https://esm.sh/@earendil-works/pi-ai@${PI_AI_VERSION}/providers`;
+
+/** How one catalog module arrives. What it exports is `catalog()`'s to name. */
+export type CatalogSource = (module: string) => Promise<Record<string, unknown>>;
+
+/** A url and not a package, so no bundler follows it and none of it ships. */
+const fromCdn: CatalogSource = (module) => import(/* @vite-ignore */ `${CDN}/${module}.models`);
+
+let source = fromCdn;
+
+/**
+ * Where the catalogs come from. The default reads esm.sh, which needs a network
+ * and a document that may import a module it does not ship. A host that is
+ * neither — an offline build, a page whose policy allows no remote module, the
+ * MV3 panel — passes its own import here instead, and pins the models it ships.
+ */
+export const useCatalogSource = (next: CatalogSource | undefined): void => {
+  source = next ?? fromCdn;
+};
+
+/** One provider's catalog, read from whichever pi-ai `source` answers with. */
+const catalog = (module: string): CatalogLoader => {
+  // `<id>.models` exports `<ID>_MODELS`, and has since pi-ai generated them.
+  const exportName = `${module.replace(/-/g, "_").toUpperCase()}_MODELS`;
+
+  return async () => {
+    const models = (await source(module))[exportName] as Catalog | undefined;
+    if (!models) throw new Error(`This pi-ai carries no ${exportName}.`);
+    return models;
+  };
+};
 
 export const PROVIDERS: Provider[] = [
   {
@@ -116,10 +158,7 @@ export const PROVIDERS: Provider[] = [
     keyUrl: "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%2Fapi-keys",
     keyPlaceholder: "vck_…",
     defaultModelId: "anthropic/claude-sonnet-5",
-    load: () =>
-      import("@earendil-works/pi-ai/providers/vercel-ai-gateway.models").then(
-        (m) => m.VERCEL_AI_GATEWAY_MODELS,
-      ),
+    load: catalog("vercel-ai-gateway"),
   },
   {
     id: "openrouter",
@@ -128,8 +167,7 @@ export const PROVIDERS: Provider[] = [
     keyUrl: "https://openrouter.ai/keys",
     keyPlaceholder: "sk-or-v1-…",
     defaultModelId: "anthropic/claude-sonnet-5",
-    load: () =>
-      import("@earendil-works/pi-ai/providers/openrouter.models").then((m) => m.OPENROUTER_MODELS),
+    load: catalog("openrouter"),
   },
   {
     id: "openai",
@@ -137,8 +175,7 @@ export const PROVIDERS: Provider[] = [
     keyUrl: "https://platform.openai.com/api-keys",
     keyPlaceholder: "sk-…",
     defaultModelId: "gpt-5",
-    load: () =>
-      import("@earendil-works/pi-ai/providers/openai.models").then((m) => m.OPENAI_MODELS),
+    load: catalog("openai"),
   },
   {
     id: "groq",
@@ -146,7 +183,7 @@ export const PROVIDERS: Provider[] = [
     keyUrl: "https://console.groq.com/keys",
     keyPlaceholder: "gsk_…",
     defaultModelId: "llama-3.3-70b-versatile",
-    load: () => import("@earendil-works/pi-ai/providers/groq.models").then((m) => m.GROQ_MODELS),
+    load: catalog("groq"),
   },
   {
     id: "cerebras",
@@ -154,8 +191,7 @@ export const PROVIDERS: Provider[] = [
     keyUrl: "https://cloud.cerebras.ai",
     keyPlaceholder: "csk-…",
     defaultModelId: "gpt-oss-120b",
-    load: () =>
-      import("@earendil-works/pi-ai/providers/cerebras.models").then((m) => m.CEREBRAS_MODELS),
+    load: catalog("cerebras"),
   },
 ];
 

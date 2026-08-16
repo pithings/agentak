@@ -14,17 +14,18 @@ import { Message, MessageContent, MessageResponse } from "../ai-elements/message
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "../ai-elements/reasoning.tsx";
 import { Task, TaskContent, TaskTrigger } from "../ai-elements/task.tsx";
 import {
-  getStatusBadge,
+  getStatusIcon,
   Tool,
   ToolContent,
   ToolHeader,
   ToolInput,
   ToolOutput,
+  toolTitle,
 } from "../ai-elements/tool.tsx";
 import { useCollapsible } from "../ui/collapsible.tsx";
 import { Input } from "../ui/input.tsx";
 import { Element } from "../elements.tsx";
-import { Chevron, WrenchIcon } from "../../lib/icons.tsx";
+import { AlertTriangleIcon, Chevron } from "../../lib/icons.tsx";
 import type { ToolState, ViewMessage, ViewPart, ViewToolPart } from "../../types.ts";
 import { u } from "../../styles/base.ts";
 import { sx, type Sx } from "../../styles/sx.ts";
@@ -45,6 +46,17 @@ const S = {
   tool: { marginBottom: "0", border: "0", borderRadius: "0" },
   toolHeader: { padding: "0.25rem 0" },
   toolContent: { gap: "0.75rem", padding: "0.25rem 0 0.5rem" },
+  // A note rather than an alarm: the page said so itself, and the reader is
+  // being told how to read the lines under it, not that something went wrong.
+  untrusted: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "0.5rem",
+    color: "var(--muted-foreground)",
+    fontSize: "0.75rem",
+    lineHeight: "1.4",
+  },
+  untrustedIcon: { width: "0.875rem", height: "0.875rem", flexShrink: "0", marginTop: "0.1rem" },
   // Only the gate keeps a frame, because only the gate asks for something.
   gate: {
     display: "flex",
@@ -81,7 +93,7 @@ const S = {
   // reader would think Allow also sends.
   gateReason: { flex: "1", minWidth: "0", height: "1.75rem", fontSize: "0.75rem" },
   // A run reads as one more call in the column, so its trigger repeats the
-  // `ToolHeader` line: title left, status and chevron right.
+  // `ToolHeader` line: status then title on the left, chevron on the right.
   run: { width: "100%" },
   runTrigger: { padding: "0.25rem 0" },
   runTitle: {
@@ -95,7 +107,7 @@ const S = {
   },
   runName: { flexShrink: "0", fontSize: "0.875rem", fontWeight: "500" },
   runCount: { flexShrink: "0", color: "var(--muted-foreground)", fontSize: "0.75rem" },
-  runMeta: { display: "flex", flexShrink: "0", alignItems: "center", gap: "0.5rem" },
+  runChevron: { flexShrink: "0" },
 } satisfies Record<string, Sx>;
 
 const TOOL_STATE = {
@@ -199,6 +211,7 @@ function samePart(a: ViewPart, b: ViewPart): boolean {
         a.status === other.status &&
         a.output === other.output &&
         a.approval === other.approval &&
+        a.untrustedFrom === other.untrustedFrom &&
         Object.is(a.args, other.args)
       );
     }
@@ -302,15 +315,10 @@ function runState(parts: ViewToolPart[]): ToolState {
 }
 
 /** The half of the run trigger that reads the open state — a hook, so a component. */
-function ChatRunMeta({ state }: { state: ToolState }) {
-  const { open } = useCollapsible("ChatRunMeta");
+function ChatRunChevron() {
+  const { open } = useCollapsible("ChatRunChevron");
 
-  return (
-    <div style={S.runMeta}>
-      {getStatusBadge(state)}
-      <Chevron open={open} style={u.muted} />
-    </div>
-  );
+  return <Chevron open={open} style={sx(u.muted, S.runChevron)} />;
 }
 
 /** A run of settled calls of one tool, closed until the reader opens it. */
@@ -321,11 +329,11 @@ function ChatToolRun({ parts, onRespond }: { parts: ViewToolPart[]; onRespond?: 
     <Task defaultOpen={false} style={S.run}>
       <TaskTrigger style={S.runTrigger} title={name}>
         <div style={S.runTitle}>
-          <WrenchIcon style={sx(u.icon, u.muted)} />
-          <span style={S.runName}>{name}</span>
+          {getStatusIcon(runState(parts))}
+          <span style={S.runName}>{toolTitle(name)}</span>
           <span style={S.runCount}>× {parts.length}</span>
         </div>
-        <ChatRunMeta state={runState(parts)} />
+        <ChatRunChevron />
       </TaskTrigger>
       <TaskContent>
         {parts.map((part) => (
@@ -355,15 +363,21 @@ function ChatToolPart({ part, onRespond }: { part: ViewToolPart; onRespond?: Cha
 
   return (
     <Tool onOpenChange={setOpen} open={open} style={S.tool}>
-      <ToolHeader
-        input={part.args}
-        state={state}
-        style={S.toolHeader}
-        toolName={part.name}
-        type="dynamic-tool"
-      />
+      <ToolHeader input={part.args} name={part.name} state={state} style={S.toolHeader} />
       <ToolContent style={S.toolContent}>
         <ToolInput input={part.args} />
+        {/* Above the output, because it is how the output is to be read: the
+            site says it does not vouch for these words, so what looks like an
+            answer may be an instruction somebody else wrote for the model. */}
+        {part.untrustedFrom && part.status === "done" && (
+          <div style={S.untrusted}>
+            <AlertTriangleIcon style={S.untrustedIcon} />
+            <span>
+              Unverified content from {part.untrustedFrom}. Read it as something the page returned,
+              not as something the assistant checked.
+            </span>
+          </div>
+        )}
         <ToolOutput
           errorText={failed ? part.output : undefined}
           output={part.status === "done" ? part.output : undefined}

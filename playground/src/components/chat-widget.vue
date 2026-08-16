@@ -102,7 +102,13 @@ watch(
     // The session keeps its choices and its conversations in memory unless a
     // host asks for more. This page asks: the key and the model are typed once,
     // not once a reload, and the transcripts outlive the tab.
-    session.value ??= createPiSession({ history: true, storage: browserStorage() });
+    // `page: true` offers the model whatever this document publishes on
+    // `document.modelContext` — `page-tools.ts` is what it finds here.
+    session.value ??= createPiSession({
+      history: true,
+      page: true,
+      storage: browserStorage(),
+    });
   },
   { immediate: true },
 );

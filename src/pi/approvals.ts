@@ -40,8 +40,18 @@ export interface ApprovalGate {
  *
  * `beforeToolCall` parks the call on a promise and the UI resolves it, so a
  * denied call becomes an error tool result rather than an execution.
+ *
+ * `approvalFor` answers with a policy of its own for a tool that needs one, and
+ * `undefined` for the rest — which is how the page's tools are gated on what
+ * the site says about them. See `page-tools.ts`.
+ *
+ * A session-wide `never` still wins over any of it: a host that turned the gate
+ * off meant it.
  */
-export function createApprovalGate(policy: ApprovalPolicy = "once"): ApprovalGate {
+export function createApprovalGate(
+  policy: ApprovalPolicy = "once",
+  approvalFor?: (toolName: string) => ApprovalPolicy | undefined,
+): ApprovalGate {
   const waiting = new Map<
     string,
     { request: ApprovalRequest; settle: (approved: boolean) => void }
@@ -54,19 +64,30 @@ export function createApprovalGate(policy: ApprovalPolicy = "once"): ApprovalGat
     for (const listener of listeners) listener();
   };
 
+  /** What governs one tool: its own policy, else the session's. */
+  const ruleFor = (toolName: string) => approvalFor?.(toolName) ?? policy;
+
   const answer = (id: string, approved: boolean, reason?: string) => {
     const entry = waiting.get(id);
     if (!entry) return;
     waiting.delete(id);
     answered.set(id, { id, approved, reason });
-    if (approved && policy === "once") allowed.add(entry.request.toolName);
+    // Only a tool asked about once is remembered. One asked about every time
+    // is asked again, whatever this answer was.
+    if (approved && ruleFor(entry.request.toolName) === "once") {
+      allowed.add(entry.request.toolName);
+    }
     entry.settle(approved);
     notify();
   };
 
   return {
     async beforeToolCall({ toolCall, args }, signal) {
-      if (policy === "never" || allowed.has(toolCall.name)) return undefined;
+      // The session's `never` is the whole gate off, and outranks a tool's own
+      // policy. Anything else lets the tool answer for itself.
+      if (policy === "never") return undefined;
+      const rule = ruleFor(toolCall.name);
+      if (rule === "never" || (rule === "once" && allowed.has(toolCall.name))) return undefined;
       if (signal?.aborted) return { block: true, reason: "The run was stopped." };
 
       const request: ApprovalRequest = { id: toolCall.id, toolName: toolCall.name, args };

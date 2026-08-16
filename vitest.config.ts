@@ -17,6 +17,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     include: ["test/**/*.test.{ts,tsx}"],
+    // The catalogs come from a url; node imports none. See `test/setup.ts`.
+    setupFiles: ["./test/setup.ts"],
     css: false,
     coverage: {
       include: ["src/components/**", "src/lib/**"],

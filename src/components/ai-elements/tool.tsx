@@ -2,21 +2,14 @@ import type { ComponentChildren, ComponentProps } from "preact";
 import { isValidElement } from "preact";
 
 import type { DynamicToolUIPart, ToolUIPart } from "../../types.ts";
-import { Badge } from "../ui/badge.tsx";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  type CollapsibleTriggerProps,
   useCollapsible,
 } from "../ui/collapsible.tsx";
-import {
-  CheckCircleIcon,
-  Chevron,
-  CircleIcon,
-  ClockIcon,
-  WrenchIcon,
-  XCircleIcon,
-} from "../../lib/icons.tsx";
+import { CheckCircleIcon, Chevron, CircleIcon, ClockIcon, XCircleIcon } from "../../lib/icons.tsx";
 import { useAnimation } from "../../lib/use-animation.ts";
 import { pulseKeyframes, pulseOptions, u } from "../../styles/base.ts";
 import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
@@ -90,13 +83,19 @@ const S = {
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
-  // Status and chevron, held to the right of whatever the title does.
-  toolMeta: {
-    display: "flex",
+  // The status, as the icon alone, and first on the line: it leads where a
+  // wrench used to, which said "tool" on a card that is already one. The word
+  // it used to carry stays on the element for a screen reader and as the
+  // native tooltip, so nothing is lost and the row keeps its width for the
+  // name and the input.
+  status: {
+    display: "inline-flex",
     flexShrink: "0",
     alignItems: "center",
-    gap: "0.5rem",
+    justifyContent: "center",
   },
+  // Alone on the right of the row now, and never squeezed by a long input.
+  toolChevron: { flexShrink: "0" },
   toolContent: {
     display: "flex",
     flexDirection: "column",
@@ -136,6 +135,13 @@ const S = {
     background: "var(--destructive-surface)",
     color: "var(--destructive)",
   },
+  // The badge floats over the box, so what the box holds has to start below it:
+  // a code block scrolls sideways, and without this its first line runs under
+  // the label. The badge is about 1.125rem tall and the block already pads
+  // 0.75rem, so this is the rest of that plus the gap. It costs the section
+  // that much height and no width, which the right-hand padding on plain text
+  // below does the other way around.
+  toolLabelClear: { paddingTop: "0.625rem" },
   // Output that is not a `CodeBlock` — plain text with no padding of its own,
   // and room at the top right for the badge.
   toolText: {
@@ -156,20 +162,19 @@ export const Tool = ({ className, style, ...props }: ToolProps) => (
 
 export type ToolPart = ToolUIPart | DynamicToolUIPart;
 
-export type ToolHeaderProps = {
+/** The name a part calls its tool: `toolName` on a dynamic one, `type` on the rest. */
+export const toolPartName = (part: ToolPart): string =>
+  part.type === "dynamic-tool" ? part.toolName : part.type;
+
+export type ToolHeaderProps = Omit<CollapsibleTriggerProps, "title"> & {
+  /** The tool, either as the model names it or as a part's `tool-<name>` type. */
+  name: string;
+  state: ToolPart["state"];
+  /** Shown in place of the heading `toolTitle()` reads out of `name`. */
   title?: string;
   /** The call's input. A short one reads as the header subtitle — `toolSummary`. */
   input?: ToolPart["input"];
-  className?: string;
-  style?: Sx;
-} & (
-  | { type: ToolUIPart["type"]; state: ToolUIPart["state"]; toolName?: never }
-  | {
-      type: DynamicToolUIPart["type"];
-      state: DynamicToolUIPart["state"];
-      toolName: string;
-    }
-);
+};
 
 const statusLabels: Record<ToolPart["state"], string> = {
   "approval-requested": "Awaiting Approval",
@@ -186,9 +191,9 @@ const statusLabels: Record<ToolPart["state"], string> = {
  * `useAnimation()` is a hook — the plain-VNode `statusIcons` map below never
  * mounts as a component, so it cannot call one itself.
  *
- * `Badge` clones a size onto any icon child it renders (see ui/badge.tsx),
- * so this takes `style` and forwards it to the sized wrapper, the same way
- * `ui/spinner.tsx` forwards a ref-bearing span in place of a plain icon.
+ * It takes `style` and forwards it to the sized wrapper, so it reads as an icon
+ * wherever one is expected, the same way `ui/spinner.tsx` forwards a
+ * ref-bearing span in place of a plain icon.
  */
 const PulsingClockIcon = ({ style }: { style?: Sx }) => {
   const ref = useAnimation<HTMLSpanElement>(pulseKeyframes, pulseOptions);
@@ -202,20 +207,26 @@ const PulsingClockIcon = ({ style }: { style?: Sx }) => {
 (PulsingClockIcon as unknown as { isIcon: true }).isIcon = true;
 
 const statusIcons: Record<ToolPart["state"], ComponentChildren> = {
-  "approval-requested": <ClockIcon style={u.warning} />,
-  "approval-responded": <CheckCircleIcon style={u.info} />,
-  "input-available": <PulsingClockIcon />,
-  "input-streaming": <CircleIcon />,
-  "output-available": <CheckCircleIcon style={u.success} />,
-  "output-denied": <XCircleIcon style={u.notice} />,
-  "output-error": <XCircleIcon style={u.danger} />,
+  "approval-requested": <ClockIcon style={sx(u.icon, u.warning)} />,
+  "approval-responded": <CheckCircleIcon style={sx(u.icon, u.info)} />,
+  "input-available": <PulsingClockIcon style={sx(u.icon, u.muted)} />,
+  "input-streaming": <CircleIcon style={sx(u.icon, u.muted)} />,
+  "output-available": <CheckCircleIcon style={sx(u.icon, u.success)} />,
+  "output-denied": <XCircleIcon style={sx(u.icon, u.notice)} />,
+  "output-error": <XCircleIcon style={sx(u.icon, u.danger)} />,
 };
 
-export const getStatusBadge = (status: ToolPart["state"]) => (
-  <Badge variant="secondary">
+/**
+ * The status, drawn as the icon alone: the colour and the shape say it, and a
+ * word next to them says it a second time in a pill wide enough to crowd the
+ * tool name. The word still rides along — `title` for a pointer, and text a
+ * screen reader reads out of the header button's own name.
+ */
+export const getStatusIcon = (status: ToolPart["state"]) => (
+  <span style={S.status} title={statusLabels[status]}>
     {statusIcons[status]}
-    {statusLabels[status]}
-  </Badge>
+    <span style={u.srOnly}>{statusLabels[status]}</span>
+  </span>
 );
 
 /** Longest subtitle drawn on the header line; anything past it is an ellipsis. */
@@ -260,25 +271,80 @@ const summarize = (input: ToolPart["input"]): { text: string; cut: boolean } | u
  */
 export const toolSummary = (input: ToolPart["input"]): string | undefined => summarize(input)?.text;
 
+/** A word the reader knows better than its lowercase form — `DOM`, `URL`, `CSS`. */
+const ACRONYM = /^[A-Z\d]{2,}$/;
+
+/**
+ * The verbs a tool name may open with. A running call reads in the -ing form,
+ * and only a verb on this list is bent — an unknown first word is left alone,
+ * because a wrong word reads worse than a plain one.
+ */
+const VERBS = new Set(
+  `add analyze apply browse build call cancel check clear click close copy count
+   create delete download edit execute extract fetch fill find generate get insert
+   inspect install list load make move navigate open parse press query read refresh
+   reload remove render resolve run save scroll search select send set show start
+   stop submit summarize take test translate type update upload validate view wait
+   write`.split(/\s+/),
+);
+
+/** The -ing forms that "drop a final e, or add ing" gets wrong. */
+const GERUNDS: Record<string, string> = {
+  get: "getting",
+  run: "running",
+  set: "setting",
+  stop: "stopping",
+  submit: "submitting",
+};
+
+const gerund = (verb: string): string =>
+  GERUNDS[verb] ?? (verb.endsWith("e") ? `${verb.slice(0, -1)}ing` : `${verb}ing`);
+
+/**
+ * The tool name as a heading: `get_current_page`, `getCurrentPage` and
+ * `tool-get_current_page` all read as "Get current page". Only the first word
+ * is capitalized, so the heading is a name and not a title bar, and an acronym
+ * is left as the tool wrote it.
+ *
+ * Pass the call's `state` and a running call says what it is doing —
+ * "Getting current page" — for as long as it runs.
+ */
+export const toolTitle = (name: string, state?: ToolPart["state"]): string => {
+  const words = name
+    .replace(/^tool-/, "")
+    .replace(/([a-z\d])([A-Z])/g, "$1 $2")
+    .split(/[\s_.:/-]+/)
+    .filter(Boolean)
+    .map((word) => (ACRONYM.test(word) ? word : word.toLowerCase()));
+
+  if (words.length === 0) return name;
+  if (state === "input-available" && VERBS.has(words[0])) words[0] = gerund(words[0]);
+  words[0] = words[0].charAt(0).toUpperCase() + words[0].slice(1);
+
+  return words.join(" ");
+};
+
 export const ToolHeader = ({
   className,
   style,
   title,
   input,
-  type,
+  name,
   state,
-  toolName,
   ...props
 }: ToolHeaderProps) => {
-  const derivedName = type === "dynamic-tool" ? toolName : type.split("-").slice(1).join("-");
   const { open } = useCollapsible("ToolHeader");
   const summary = toolSummary(input);
+  const heading = title ?? toolTitle(name, state);
 
   return (
     <CollapsibleTrigger className={className} style={sx(S.toolHeader, style)} {...props}>
       <div style={S.toolTitle}>
-        <WrenchIcon style={sx(u.icon, u.muted)} />
-        <span style={S.toolName}>{title ?? derivedName}</span>
+        {getStatusIcon(state)}
+        {/* The heading is a rewrite, so the name the model calls stays reachable. */}
+        <span style={S.toolName} title={heading === name ? undefined : name}>
+          {heading}
+        </span>
         {/* The native `title` carries what the ellipsis cuts — there is no tooltip. */}
         {summary ? (
           <span style={S.toolSummary} title={summary}>
@@ -286,10 +352,7 @@ export const ToolHeader = ({
           </span>
         ) : null}
       </div>
-      <div style={S.toolMeta}>
-        {getStatusBadge(state)}
-        <Chevron open={open} style={u.muted} />
-      </div>
+      <Chevron open={open} style={sx(u.muted, S.toolChevron)} />
     </CollapsibleTrigger>
   );
 };
@@ -339,7 +402,11 @@ export const ToolInput = ({ className, style, input, ...props }: ToolInputProps)
       {typeof input === "string" ? (
         <div style={S.toolText}>{input}</div>
       ) : (
-        <CodeBlock code={JSON.stringify(input, null, 2)} language="json" style={toolCodeSx} />
+        <CodeBlock
+          code={JSON.stringify(input, null, 2)}
+          language="json"
+          style={sx(toolCodeSx, S.toolLabelClear)}
+        />
       )}
     </div>
   );
@@ -350,19 +417,46 @@ export type ToolOutputProps = WithSx<ComponentProps<"div">> & {
   errorText: ToolPart["errorText"];
 };
 
+/**
+ * A string result that carries JSON, indented. A tool that answers with a
+ * serialized object usually sends it on one line, which reads in the box as one
+ * line the width of the whole object.
+ *
+ * The opening brace or bracket is the signature; anything else is prose, and a
+ * string that opens with one but does not parse is prose too — a truncated
+ * result, or a sentence about an object. Both are returned as they came, and
+ * the caller then highlights nothing.
+ */
+const formatJson = (text: string): string | undefined => {
+  const trimmed = text.trim();
+
+  if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) return undefined;
+
+  try {
+    return JSON.stringify(JSON.parse(trimmed), null, 2);
+  } catch {
+    return undefined;
+  }
+};
+
 export const ToolOutput = ({ className, style, output, errorText, ...props }: ToolOutputProps) => {
   if (!(output || errorText)) {
     return null;
   }
 
+  // Only what comes first in the box sits under the badge. An error line takes
+  // that place when there is one, and it clears the badge with its own padding.
+  const codeSx = sx(toolCodeSx, !errorText && S.toolLabelClear);
+
   let Output = <div style={S.toolText}>{output as ComponentChildren}</div>;
 
   if (typeof output === "object" && !isValidElement(output)) {
-    Output = (
-      <CodeBlock code={JSON.stringify(output, null, 2)} language="json" style={toolCodeSx} />
-    );
+    Output = <CodeBlock code={JSON.stringify(output, null, 2)} language="json" style={codeSx} />;
   } else if (typeof output === "string") {
-    Output = <CodeBlock code={output} language="json" style={toolCodeSx} />;
+    // Plain text is left as text: the json grammar would colour a stray quote
+    // or brace in a sentence as if the sentence were code.
+    const json = formatJson(output);
+    Output = <CodeBlock code={json ?? output} language={json ? "json" : "text"} style={codeSx} />;
   }
 
   return (

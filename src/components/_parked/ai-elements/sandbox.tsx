@@ -12,7 +12,7 @@ import { u } from "../../../styles/base.ts";
 import { sx, type Sx, type WithSx } from "../../../styles/sx.ts";
 import type { ToolState } from "../../../types.ts";
 
-import { getStatusBadge } from "../../ai-elements/tool.tsx";
+import { getStatusIcon } from "../../ai-elements/tool.tsx";
 
 // The list and tab overrides are `style` props, passed to TabsList/TabsTrigger,
 // which merge them in caller-last.
@@ -105,7 +105,7 @@ export const SandboxHeader = ({ className, style, title, state, ...props }: Sand
       <div style={S.sandboxTitle}>
         <CodeIcon style={sx(u.icon, u.muted)} />
         <span style={S.sandboxName}>{title}</span>
-        {getStatusBadge(state)}
+        {getStatusIcon(state)}
       </div>
       <Chevron open={open} style={u.muted} />
     </CollapsibleTrigger>

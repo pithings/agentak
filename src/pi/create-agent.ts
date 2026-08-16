@@ -41,6 +41,12 @@ export interface AgentOptions {
   tools?: AgentTool<any>[];
   /** How often a tool call is confirmed. Default: once per tool. */
   approvals?: ApprovalPolicy;
+  /**
+   * A policy for one tool, where it needs its own — `undefined` leaves it to
+   * `approvals`. The page's own tools are gated through here on what the site
+   * says about them; see `page-tools.ts`. `approvals: "never"` outranks it.
+   */
+  approvalFor?: (toolName: string) => ApprovalPolicy | undefined;
   /** A scripted provider under test. Default: the api the model names. */
   streamFn?: StreamFn;
 }
@@ -67,9 +73,10 @@ export function createAgent({
   systemPrompt = SYSTEM_PROMPT,
   tools = [],
   approvals = "once",
+  approvalFor,
   streamFn = streamFor,
 }: AgentOptions): AgentRuntime {
-  const gate = createApprovalGate(approvals);
+  const gate = createApprovalGate(approvals, approvalFor);
 
   const agent = new Agent({
     initialState: {

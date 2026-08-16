@@ -153,7 +153,11 @@ describe("streamSimple", () => {
         text("lo"),
         {
           choices: [{ delta: {}, finish_reason: "stop" }],
-          usage: { prompt_tokens: 12, completion_tokens: 3 },
+          usage: {
+            prompt_tokens: 12,
+            completion_tokens: 3,
+            prompt_tokens_details: { cached_tokens: 4 },
+          },
         },
       ],
     });
@@ -170,17 +174,58 @@ describe("streamSimple", () => {
 
     const done = first.at(-1) as Extract<AssistantMessageEvent, { type: "done" }>;
     expect(done.message.content).toEqual([{ type: "text", text: "Hello" }]);
-    expect(done.message.usage.input).toBe(12);
+    // The cached part of the prompt is told apart from the rest of it, so the
+    // two are the prompt rather than twice the prompt.
+    expect(done.message.usage.input).toBe(8);
+    expect(done.message.usage.cacheRead).toBe(4);
     expect(done.message.usage.output).toBe(3);
+    expect(done.message.usage.totalTokens).toBe(15);
     expect(done.message.usage.cost.total).toBe(0);
 
     expect(fake.loaded[0].url).toBe(MODEL.baseUrl);
     expect(fake.loaded[0].params.n_ctx).toBe(MODEL.contextWindow);
     expect(fake.calls[0].messages[0]).toEqual({ role: "system", content: "be brief" });
+    // The turn is counted only where the count is asked for.
+    expect(fake.calls[0].stream_options).toEqual({ include_usage: true });
 
     // The weights stay in memory: a second turn on the same model loads nothing.
     await collect({ messages: [user("again")] });
     expect(fake.loaded.length).toBe(1);
+  });
+
+  it("counts the turn from the timings, where there is no usage", async () => {
+    stub({
+      chunks: [
+        text("Hel"),
+        text("lo"),
+        {
+          choices: [{ delta: {}, finish_reason: "stop" }],
+          timings: { cache_n: 4, prompt_n: 8, predicted_n: 3 },
+        },
+      ],
+    });
+
+    const events = await collect({ messages: [user("hello")] });
+    const done = events.at(-1) as Extract<AssistantMessageEvent, { type: "done" }>;
+    expect(done.message.usage.input).toBe(8);
+    expect(done.message.usage.cacheRead).toBe(4);
+    expect(done.message.usage.output).toBe(3);
+    expect(done.message.usage.totalTokens).toBe(15);
+  });
+
+  it("estimates the turn, where the runtime counted neither way", async () => {
+    stub({
+      chunks: [text("Hel"), text("lo"), { choices: [{ delta: {}, finish_reason: "stop" }] }],
+    });
+
+    const events = await collect({ messages: [user("hello")] });
+    const done = events.at(-1) as Extract<AssistantMessageEvent, { type: "done" }>;
+    // Two chunks carried an answer; the prompt is measured by its characters.
+    expect(done.message.usage.output).toBe(2);
+    expect(done.message.usage.input).toBeGreaterThan(0);
+    expect(done.message.usage.totalTokens).toBe(
+      done.message.usage.input + done.message.usage.output,
+    );
   });
 
   it("tells the thinking of a reasoning model apart from its answer", async () => {

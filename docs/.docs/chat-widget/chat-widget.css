@@ -1,0 +1,229 @@
+/* The chat button of the documentation site, and the surface it opens.
+   See `ChatWidget.vue`.
+
+   ## The stylesheet holds both defaults
+
+   The panel, the room it takes and the button are placed here alone, with no
+   class from the component: the rail is docked and the page is padded above
+   `lg`, the sheet is folded away below it. That is what the server renders and
+   what the browser paints first, so the page is served at the width it keeps —
+   the rail lands in room that was always there, and nothing shifts when the
+   script arrives.
+
+   `html:has(.chat-panel …)` is what pads the page. The rule reaches the root
+   element, but only while the component is on the page, so a layout without the
+   chat keeps its full width.
+
+   Script only says what the READER changed: `is-open` and `is-closed` arrive on
+   mount, and each one moves the panel away from the default its layout carries.
+
+   Not scoped: the padding that makes room for the rail belongs to the root
+   element, which is nobody's child. */
+
+:root {
+  --chat-rail: clamp(20rem, 26vw, 28rem);
+  --chat-move: 260ms;
+  /* The middle of the button, which is where the sheet grows from: the pill is
+     `2.5rem` tall at `1rem`, and about `6rem` wide from the same edge. */
+  --chat-origin: calc(100% - 4rem) calc(100% - 2.25rem);
+}
+
+.chat-panel {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--background);
+}
+
+.chat-surface {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* The placeholder, which is the panel the server can draw: three hairlines at
+   the chat's own measurements — the header rule (`2rem` of buttons in
+   `0.375rem` of padding), the rule the composer sits above, and the box a
+   message is typed into. Nothing else; the transcript between them is what the
+   chat has yet to say. */
+.chat-ghost {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.chat-ghost-head {
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-ghost-body {
+  flex: 1 1 auto;
+}
+
+.chat-ghost-foot {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 0.5rem;
+}
+
+.chat-ghost-foot > div {
+  height: 6rem;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-md);
+}
+
+/* A pill that says what it opens, rather than a circle the reader must read an
+   icon out of. The brain is the mark the chat gives its own thinking. */
+.chat-button {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 60;
+  display: inline-flex;
+  height: 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.875rem;
+  border-radius: 9999px;
+  background: var(--brand);
+  color: var(--brand-foreground);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  box-shadow: var(--shadow-modal);
+  cursor: pointer;
+  transition:
+    opacity 150ms ease-out,
+    transform 150ms ease-out,
+    visibility 0s;
+}
+
+.chat-button:hover {
+  opacity: 0.9;
+}
+
+.chat-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.chat-button > svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* The sheet, below `lg`: the whole screen, folded into the button until the
+   reader takes it. `clip-path` is the morph — a circle the size of the button,
+   at the button, opening into the whole panel. */
+@media (max-width: 63.999rem) {
+  .chat-panel {
+    inset: 0;
+    visibility: hidden;
+    clip-path: circle(1.25rem at var(--chat-origin));
+    transition:
+      clip-path var(--chat-move) ease-out,
+      visibility 0s var(--chat-move);
+  }
+
+  .chat-panel.is-open {
+    visibility: visible;
+    clip-path: circle(150% at var(--chat-origin));
+    transition: clip-path var(--chat-move) ease-out;
+  }
+
+  .chat-button.is-open {
+    visibility: hidden;
+    opacity: 0;
+    transform: scale(0.5);
+    transition:
+      opacity 150ms ease-in,
+      transform 150ms ease-in,
+      visibility 0s 150ms;
+  }
+}
+
+/* The rail, `lg` and up: docked to the right edge and open with the page, so
+   the button is away until the reader minimises it. */
+@media (min-width: 64rem) {
+  /* The room the rail takes, reserved by the stylesheet: the page is SERVED
+     narrowed, so the rail needs none of it back on hydration. `:has` is what
+     keeps the rule to the pages this component is on. */
+  html:has(.chat-panel:not(.is-closed)) {
+    padding-right: var(--chat-rail);
+  }
+
+  /* The page moves only for the READER: the width is animated once one of the
+     state classes is on the panel, and those arrive with the first minimise.
+     A page that reaches this rule late — the dev server injects its styles from
+     script — therefore lands at its width rather than sliding into it. */
+  html:has(.chat-panel.is-open),
+  html:has(.chat-panel.is-closed) {
+    transition: padding-right var(--chat-move) ease-out;
+  }
+
+  .chat-panel {
+    inset: 0 0 0 auto;
+    width: var(--chat-rail);
+    border-left: 1px solid var(--border);
+    clip-path: none;
+    transition:
+      transform var(--chat-move) ease-out,
+      visibility 0s;
+  }
+
+  .chat-panel.is-closed {
+    visibility: hidden;
+    transform: translateX(100%);
+    transition:
+      transform var(--chat-move) ease-out,
+      visibility 0s var(--chat-move);
+  }
+
+  .chat-button:not(.is-closed) {
+    visibility: hidden;
+    opacity: 0;
+    transform: scale(0.5);
+    transition:
+      opacity 150ms ease-in,
+      transform 150ms ease-in,
+      visibility 0s 150ms;
+  }
+}
+
+/* The button stands where the rail's own header was, so minimising and opening
+   again happen at the same corner of the screen. Only on a screen wide enough
+   to hold it beside the header: below that the top-right corner is the site's
+   navigation, so the button keeps to the bottom, out of its way. */
+@media (min-width: 90.625rem) {
+  .chat-button {
+    top: 1rem;
+    bottom: auto;
+  }
+}
+
+/* Each state is named again, so that the rules above are matched on specificity
+   rather than left to win it. */
+@media (prefers-reduced-motion: reduce) {
+  html,
+  html:has(.chat-panel.is-open),
+  html:has(.chat-panel.is-closed),
+  .chat-panel,
+  .chat-panel.is-open,
+  .chat-panel.is-closed,
+  .chat-button,
+  .chat-button.is-open,
+  .chat-button:not(.is-closed) {
+    transition: none;
+  }
+
+  .chat-panel,
+  .chat-panel.is-open {
+    clip-path: none;
+  }
+}

@@ -6,3 +6,4 @@ description: "A complete AI chat UI for React, Vue, Preact, and plain JavaScript
 github: "pithings/agentak"
 themeColor: cyan
 url: "https://agentak.dev"
+# crossOriginIsolation: true

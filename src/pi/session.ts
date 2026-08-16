@@ -5,6 +5,7 @@ import { cachedCatalog, loadCatalog } from "./catalog.ts";
 import { type AgentOptions, createAgent, SYSTEM_PROMPT } from "./create-agent.ts";
 import { createHistory, mintConversationId, type PiHistory } from "./history.ts";
 import { findModel } from "./models.ts";
+import { createPageToolset, type PageTools } from "./page-tools.ts";
 import { type AnyModel, availableProviders, findProvider, type Provider } from "./providers.ts";
 import {
   PI_SNAPSHOT_VERSION,
@@ -16,6 +17,7 @@ import { createChoices, type PiChoices, type PiStorage } from "./storage.ts";
 import { createAgentStore } from "./store.ts";
 import { generateTitle, titleRequest, toTitle } from "./title.ts";
 import { toViewMessages } from "./transcript.ts";
+import { documentTools } from "./webmcp.ts";
 import type { ChatAgent, ChatProvider } from "../components/chat/types.ts";
 import type { ChatSession, ChatSessionOptions, ChatSnapshot } from "../session.ts";
 
@@ -59,6 +61,21 @@ export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "message
   history?: boolean | PiHistory;
   /** Name the conversation with the model rather than the first message. */
   generateTitle?: boolean;
+  /**
+   * Offer the model whatever tools the current page publishes — WebMCP, on
+   * `document.modelContext`. `true` reads this document, which is the whole of
+   * what a page needs; a `PageTools` of your own reads somewhere else, which is
+   * how the extension panel reaches the active tab.
+   *
+   * Off by default: the model is offered nothing nobody asked for. A page that
+   * carries no tools, and a browser without the api, both come to none — see
+   * `.agents/webmcp.md`.
+   *
+   * These arrive beside `tools`, never over them: a name a host tool already
+   * holds is given a suffix. A tool the page marked read-only runs unasked;
+   * anything else is confirmed on every call.
+   */
+  page?: boolean | PageTools;
 }
 
 /**
@@ -145,12 +162,27 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     provider: openOn,
     generateTitle: named,
     history: keeping,
+    page: reading,
     snapshot: stored,
     storage,
     ...agentOptions
   } = options;
 
   const choices = createChoices(storage);
+
+  /** The host's own tools. The page's stand beside them, never over them. */
+  const hostTools = agentOptions.tools ?? [];
+
+  /**
+   * The page's tools, where a host asked for them. The source is read at
+   * construction and again whenever it says its list changed, so a site that
+   * registers per screen is followed without a turn.
+   */
+  const toolset = reading
+    ? createPageToolset(reading === true ? documentTools() : reading, {
+        reserved: hostTools.map((tool) => tool.name),
+      })
+    : undefined;
 
   /** Where this session's own conversations go, if it keeps any. */
   const kept = keeping ? (keeping === true ? createHistory(storage) : keeping) : undefined;
@@ -183,6 +215,10 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   // and lose the transcript. pi asks per provider, which is the id it passes.
   const runtime = createAgent({
     ...agentOptions,
+    // A page tool is gated on the site's own word: read-only changes nothing,
+    // so it runs unasked, and anything else is confirmed every time — it is not
+    // the host's tool, and it acts on a site the visitor is signed in to.
+    approvalFor: (name) => toolset?.approvalFor(name) ?? agentOptions.approvalFor?.(name),
     apiKey: (provider) => keys[provider],
     messages: opened ? usablePiMessages(opened.messages) : [],
   });
@@ -503,6 +539,17 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     };
   };
 
+  /**
+   * The page's tools, beside the host's. Reassigned rather than pushed into:
+   * the list belongs to the page, so a screen that dropped a tool drops it here.
+   * The empty state reads `agent.state.tools`, so it follows on its own.
+   */
+  const offTools = toolset?.subscribe(() => {
+    runtime.agent.state.tools = [...hostTools, ...toolset.tools()];
+    notify();
+  });
+  void toolset?.refresh();
+
   const offStore = store.subscribe(() => {
     maybeTitle();
     askOnFailure();
@@ -690,6 +737,8 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       // The last word: a tab that closes mid-conversation still stored it.
       keep();
       offStore();
+      offTools?.();
+      toolset?.dispose();
       store.dispose();
       listeners.clear();
     },

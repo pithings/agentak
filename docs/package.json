@@ -7,6 +7,6 @@
   },
   "devDependencies": {
     "agentak": "link:..",
-    "undocs": "npm:undocs-nightly@0.10.1-20260815-193141-9780297"
+    "undocs": "npm:undocs-nightly@0.10.1-20260816-181506-abea463"
   }
 }

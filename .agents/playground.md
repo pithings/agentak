@@ -199,11 +199,18 @@ WIP MV3 side panel. `pnpm build:extension` writes `extension/dist`; load it unpa
 | `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported |
 | `sidepanel.html` | the panel document — one full-height `#root` to render into  |
 | `panel.tsx`      | `ChatPanel` from `agentak/preact`, over `createPiSession()`  |
+| `webmcp-tab.ts`  | the active tab's WebMCP tools, as the session's `page`       |
 | `background.ts`  | the service worker — opens the panel on the action click     |
 | `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`        |
 
-Not built yet: key storage in `chrome.storage` instead of `localStorage`. The agent
-carries no tools, so the panel reads nothing from the active tab yet.
+`page` is the one option the panel passes that a page does not. Its own document carries
+no tools, and a WebMCP tool cannot be serialised, so `webmcp-tab.ts` runs `getTools()` and
+`executeTool()` inside the tab through `chrome.scripting.executeScript` and only names and
+JSON strings come back. See [`webmcp.md`](webmcp.md).
+
+Not built yet: key storage in `chrome.storage` instead of `localStorage`, and any tool
+that reads the page's own text. `activeTab` is granted for the tab the toolbar button was
+clicked on, so the tools of another tab answer nothing until it is clicked there.
 
 The manifest asks for `sidePanel`, `activeTab`, `scripting` and `storage`. The CSP
 blocks third-party requests, which is one reason no component fetches a remote asset.

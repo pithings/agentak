@@ -16,15 +16,22 @@ import { createPiSession } from "@/pi/session.ts";
 import { browserStorage } from "@/pi/storage.ts";
 import { ChatPanel } from "@/preact/index.tsx";
 import { u } from "@/styles/base.ts";
+import { activeTabTools } from "./webmcp-tab.ts";
 
 // One session for the life of the panel, which is the life of the document. The
 // session forgets its choices with the document unless a host asks for more, and
 // a panel that asked nothing would ask for the key every time it opens. It keeps
 // its conversations in that same store, so the panel opens on the last one and
 // lists the rest on its own history page.
+// `page` is the one thing the panel passes that a page does not: its own
+// document carries no tools, so the source reads the tab in front instead.
 render(
   <ChatPanel
-    session={createPiSession({ history: true, storage: browserStorage() })}
+    session={createPiSession({
+      history: true,
+      page: activeTabTools(),
+      storage: browserStorage(),
+    })}
     style={u.fill}
   />,
   document.querySelector("#root")!,

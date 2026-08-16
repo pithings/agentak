@@ -18,6 +18,8 @@ session: AgentSnapshot + providers + models + title -> ChatSnapshot -> Chat
 | `create-agent.ts`  | the `Agent`, the stream function, the system prompt       |
 | `free-models.ts`   | the hand-written catalogs of the four keyless providers   |
 | `approvals.ts`     | the confirmation gate behind `beforeToolCall`             |
+| `webmcp.ts`        | `document.modelContext`, and the tools a page offers      |
+| `page-tools.ts`    | those tools as pi's, named, gated and kept level          |
 | `models.ts`        | catalog filtering, the defaults                           |
 | `providers.ts`     | the provider list, the api modules, `streamFor()`         |
 | `catalog.ts`       | one provider's models, fetched once per page              |
@@ -47,6 +49,33 @@ for a value. Everything comes from a subpath:
 
 wllama goes one further: it is not a dependency of this package at all, so `local.ts`
 imports a CDN url at runtime. See **The sixth runs llama.cpp here** below.
+
+### The catalogs come from esm.sh
+
+pi-ai regenerates its json every release, so a copy a build carries only ages: a model
+published after `pnpm install` is a model the picker does not list. `catalog()` in
+`providers.ts` reads the newest published one instead —
+`https://esm.sh/@earendil-works/pi-ai@latest/providers/<id>.models`, a url and not a
+package, so no bundler follows it and none of it ships. `PI_AI_VERSION` is the one place
+to write a version and pin it. The export is named from the module — `<id>.models` exports
+`<ID>_MODELS` — and a module that carries none throws, which the settings page shows and
+its retry runs again.
+
+This is the whole of the keyed providers' loading. There is no bundled copy behind it, so
+the five catalog chunks a build used to carry — 220 KB, OpenRouter's 136 KB of it — are
+gone from `playground/dist` and `extension/dist` alike, and `dist/` names the subpath
+nowhere.
+
+The cost is that a runtime with no network, or one whose policy allows no remote module,
+has no catalog at all. `useCatalogSource()` is the seam for both: a host passes its own
+import and pins the models it ships, the way `useWllamaModule()` takes wllama from
+somewhere else. **The MV3 panel is in that position and is not yet handled** — its content
+security policy blocks the url, so the five keyed providers fail to load there until the
+panel passes a source of its own.
+
+`catalog.ts` caches per provider for the life of the page, so this is one request per
+provider at most, and only for a provider that is picked. Node imports no url, so
+`test/setup.ts` installs the installed pi-ai as the source and the tests reach no network.
 
 Only `free-models.ts`, `on-device.ts` and `local.ts` are imported statically — the first
 in `models.ts`, so `DEFAULT_MODEL` exists and an agent can be built before any chunk lands,
@@ -276,6 +305,15 @@ chat template of the model, and is what both of those depend on. The thinking le
 reaches a Qwen through `chat_template_kwargs.enable_thinking`; a template that does not
 read it ignores it.
 
+**The turn is counted three ways down.** A streamed turn carries usage only where the
+request asks for it, so `stream_options.include_usage` goes with every one — without it
+llama.cpp streams the answer and no count at all, and the context meter reads zero for a
+window of 4096. The `timings` of the runtime are read where usage is still absent:
+`prompt_n` is what the turn read, `cache_n` what it kept from the turn before, and the two
+are the prompt. Where neither arrives the turn is estimated — one streamed chunk is one
+token, and four characters is about one — because a meter that is roughly right is worth
+more than an exact zero on a window this small. Nothing is billed either way.
+
 **One model is held at a time.** The weights sit in memory and a second set beside them is
 what a tab has no room for, so picking another model exits the first. The first turn on a
 model waits for hundreds of MB, which is told as a thinking block on a timer, the way the
@@ -287,6 +325,74 @@ no `WebAssembly`, no `Worker`, or the document is an MV3 page — an extension m
 remote script, so the panel is offered the providers that answer over the network instead.
 The second gate is the machine: a laptop answers a 0.6B model at a readable speed, and a
 phone may not.
+
+## The page's tools
+
+`page: true` on `createPiSession()`, and the model is offered whatever the current page
+publishes on `document.modelContext` — WebMCP. Off by default, like the history: the loop
+carries no tools of its own, and a surface offers the model nothing nobody asked for.
+[`../.agents/webmcp.md`](webmcp.md) is the spec side; this is the pi side.
+
+| File            | What                                                          |
+| --------------- | ------------------------------------------------------------- |
+| `webmcp.ts`     | the api as typescript sees it, and `documentTools()`          |
+| `page-tools.ts` | `PageTools`, the naming, the `AgentTool` wrapper, the toolset |
+
+**Only data crosses.** A WebMCP `RegisteredTool` carries a live `Window`, so it cannot be
+serialised: a `PageTool` is the name, the schema, the origin and the two hints, and the
+source is what turns one back into a call. That is the whole reason `PageTools` exists as
+an interface. `documentTools()` is the page's implementation — the chat is in the document
+the tools are in, so it holds the list and matches by name and origin. The panel's is
+`extension/webmcp-tab.ts`, which runs both calls in the tab instead.
+
+**A name is cut to what a provider takes.** WebMCP allows a period and 128 characters;
+no provider here does. `cart.add` reaches the model as `cart_add`, anything longer is cut
+to 64, and a name already claimed — by a host tool, or by the same tool in a second frame
+— gets a `_2`. The site's own name is what the model sees otherwise: it named the tool for
+a model to read.
+
+**The site's own word gates its own tools.** `approvalFor` is the second argument to
+`createApprovalGate()` — a policy for one tool, `undefined` for the rest — and the toolset
+answers it from `readOnlyHint`:
+
+| The page said        | Policy   | Why                                                |
+| -------------------- | -------- | -------------------------------------------------- |
+| `readOnlyHint: true` | `never`  | it changes nothing, so there is nothing to confirm |
+| anything else        | `always` | one allow must not cover a session                 |
+| not a page tool      | —        | the session's own policy stands                    |
+
+A page tool is one the visitor never installed, acting on a site they are signed in to, so
+a tool that acts is confirmed every time and no allow is remembered for it. A tool that
+only reads is taken at the site's word: the alternative is asking about every search of a
+documentation page, which teaches the reader to click through the question.
+`approvals: "never"` outranks all of it — a host that turned the gate off meant it.
+
+**`untrustedContentHint` reaches both readers.** A site that says it does not vouch for a
+result — a review, a comment, another user's message — gets a line ahead of the output
+naming the origin and saying to treat it as data. That is the model's warning, and the
+person needs one too: what reads as an answer may be an instruction somebody else wrote.
+`details` carries the origin and the flag to `transcript.ts`, which puts them on the tool
+part as `untrustedFrom`, and `chat/message.tsx` notes it above the output it applies to.
+
+**The list follows the page.** A site registers per screen, so `toolchange` is subscribed
+to and the source read again; a list that came back the same tells nobody. `refresh()`
+rebuilds the `AgentTool[]` and the session reassigns `agent.state.tools` — the host's
+tools, then the page's — so a screen that dropped a tool drops it here too. The empty
+state reads `agent.state.tools`, so the panel of tools follows on its own.
+
+**A source that will not answer has no tools.** `list()` is caught: a page that offers
+none and a tab that cannot be reached come to the same thing for the turn about to run,
+and neither is worth an error row over the composer.
+
+**The api is looked for more than once.** `document.modelContext` read at construction is
+one moment of a page's life. A host that mounts the chat early — at module scope, or ahead
+of a shim — would read `undefined`, bind no `toolchange` listener, and stay deaf for the
+whole session, which is a feature that silently does nothing rather than a failure anybody
+sees. So `documentTools()` holds its listeners itself and attaches to the api whenever one
+first appears; a subscriber that finds none waits for it, every 500ms and ten times over.
+Finding it is news of its own — nothing has read that api's list — so the listeners are
+told as if it had changed. Past five seconds the answer is no and no timer is left
+running: a browser that carries no WebMCP must not pay for one that does.
 
 ## Where the choices go
 

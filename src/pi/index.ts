@@ -48,14 +48,38 @@ export {
 } from "./history.ts";
 export { describeFailure, failureStatus } from "./errors.ts";
 export {
+  createPageToolset,
+  type PageTool,
+  type PageToolDetails,
+  type PageTools,
+  type PageToolset,
+  type PageToolsetOptions,
+  pageToolName,
+  toToolContent,
+} from "./page-tools.ts";
+export {
+  documentTools,
+  type DocumentToolsOptions,
+  type ExecuteToolOptions,
+  type GetToolsOptions,
+  type ModelContext,
+  modelContext,
+  type RegisteredTool,
+  toPageTool,
+  type WebmcpAnnotations,
+  webmcpSupported,
+} from "./webmcp.ts";
+export {
   type AnyModel,
   availableProviders,
+  type CatalogSource,
   corsFree,
   findProvider,
   type Provider,
   PROVIDERS,
   streamFor,
   SUPPORTED_APIS,
+  useCatalogSource,
 } from "./providers.ts";
 export {
   findLocalModel,

@@ -75,7 +75,13 @@ interface Chunk {
     };
     finish_reason?: "stop" | "length" | "tool_calls" | "content_filter" | null;
   }[];
-  usage?: { prompt_tokens?: number; completion_tokens?: number } | null;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    prompt_tokens_details?: { cached_tokens?: number };
+  } | null;
+  /** llama.cpp's own count, which the last chunk carries whatever was asked. */
+  timings?: { cache_n?: number; prompt_n?: number; predicted_n?: number };
 }
 
 interface WllamaInstance {
@@ -206,6 +212,33 @@ const toArguments = (args: string): Record<string, any> => {
     return {};
   }
 };
+
+/**
+ * What the turn cost, in either shape llama.cpp says it: the usage of the
+ * OpenAI protocol, and the timings the runtime keeps of its own. Both arrive on
+ * the last chunk, and a build may send one, the other or neither.
+ */
+function toCount(chunk: Chunk): { input: number; cacheRead: number; output: number } | undefined {
+  if (chunk.usage) {
+    // `prompt_tokens` counts the whole prompt, the cached part included.
+    const cacheRead = chunk.usage.prompt_tokens_details?.cached_tokens ?? 0;
+    return {
+      input: Math.max(0, (chunk.usage.prompt_tokens ?? 0) - cacheRead),
+      cacheRead,
+      output: chunk.usage.completion_tokens ?? 0,
+    };
+  }
+
+  // `prompt_n` is what this turn read, `cache_n` what it kept from the turn
+  // before. Together they are the prompt.
+  const timings = chunk.timings;
+  if (timings?.prompt_n === undefined) return undefined;
+  return {
+    input: timings.prompt_n,
+    cacheRead: timings.cache_n ?? 0,
+    output: timings.predicted_n ?? 0,
+  };
+}
 
 const failure = (error: unknown): string => {
   switch ((error as { type?: string })?.type) {
@@ -363,10 +396,14 @@ async function* run(
 
     const wllama = await loading;
 
+    const messages = toMessages(context);
     const stream = await wllama.createChatCompletion({
-      messages: toMessages(context),
+      messages,
       ...(tools.length ? { tools } : {}),
       stream: true,
+      // A streamed turn is counted only where it is asked for, which is the
+      // protocol. Without this the last chunk carries no usage at all.
+      stream_options: { include_usage: true },
       max_tokens: options?.maxTokens ?? model.maxTokens,
       ...(options?.temperature === undefined ? {} : { temperature: options.temperature }),
       // Qwen and the templates that follow it read this; the rest ignore it.
@@ -377,16 +414,29 @@ async function* run(
     });
 
     let finish: string | null | undefined;
+    /** Whether the runtime counted the turn, and what was streamed if not. */
+    let counted = false;
+    let produced = 0;
     for await (const chunk of stream) {
-      if (chunk.usage) {
-        output.usage.input = chunk.usage.prompt_tokens ?? 0;
-        output.usage.output = chunk.usage.completion_tokens ?? 0;
-        output.usage.totalTokens = output.usage.input + output.usage.output;
+      const count = toCount(chunk);
+      if (count) {
+        counted = true;
+        output.usage.input = count.input;
+        output.usage.cacheRead = count.cacheRead;
+        output.usage.output = count.output;
+        output.usage.totalTokens = count.input + count.cacheRead + count.output;
       }
 
       const choice = chunk.choices?.[0];
       if (!choice) continue;
       finish = choice.finish_reason ?? finish;
+
+      if (
+        choice.delta?.content ||
+        choice.delta?.reasoning_content ||
+        choice.delta?.tool_calls?.length
+      )
+        produced += 1;
 
       const reasoning = choice.delta?.reasoning_content;
       if (reasoning) yield* say("thinking", reasoning);
@@ -428,6 +478,15 @@ async function* run(
         toolCall: block,
         partial: output,
       };
+    }
+
+    // An estimate, where the runtime counted nothing: one streamed chunk is one
+    // token, and four characters is about one. The context meter of a window
+    // this small is worth more than an exact zero.
+    if (!counted) {
+      output.usage.input = Math.ceil(JSON.stringify(messages).length / 4);
+      output.usage.output = produced;
+      output.usage.totalTokens = output.usage.input + produced;
     }
 
     const reason = calls.size ? "toolUse" : finish === "length" ? "length" : "stop";

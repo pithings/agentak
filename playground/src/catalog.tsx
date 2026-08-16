@@ -609,12 +609,7 @@ const surface: CatalogEntry[] = [
     name: "tool",
     render: () => (
       <Tool defaultOpen>
-        <ToolHeader
-          input={{ maxChars: 8000 }}
-          state="output-available"
-          toolName="read_page"
-          type="dynamic-tool"
-        />
+        <ToolHeader input={{ maxChars: 8000 }} name="read_page" state="output-available" />
         <ToolContent>
           <ToolInput input={{ maxChars: 8000 }} />
           <ToolOutput

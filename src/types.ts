@@ -12,6 +12,13 @@ export type ViewPart =
       output?: string;
       /** Set once the call passed a confirmation gate, so the outcome can show. */
       approval?: ToolApproval;
+      /**
+       * The origin of a result its own site does not vouch for — WebMCP's
+       * `untrustedContentHint`. The model is told in words; this is so the
+       * reader is told too, because the words in the output may be an
+       * instruction aimed at the model rather than an answer to the question.
+       */
+      untrustedFrom?: string;
     }
   // A ported AI element, rendered inline. `name` selects the renderer from
   // `components/elements.tsx`; props are checked there, not here, so a new

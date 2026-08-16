@@ -4,6 +4,7 @@ import type { ImageContent, TextContent, Usage } from "@earendil-works/pi-ai";
 
 import type { ApprovalRequest } from "./approvals.ts";
 import { describeFailure } from "./errors.ts";
+import type { PageToolDetails } from "./page-tools.ts";
 import type { AnyModel } from "./providers.ts";
 import type { ContextCosts } from "../components/ai-elements/context.tsx";
 import type {
@@ -120,6 +121,10 @@ export function toViewMessages(
             : "error"
           : "done";
         part.output = textOf(message.content);
+        // A page tool the site flagged: the model is warned in the content
+        // itself, and the reader is warned here.
+        const details = message.details as PageToolDetails | undefined;
+        if (details?.untrusted) part.untrustedFrom = details.origin;
         owner.parts.splice(owner.parts.indexOf(part) + 1, 0, ...imageParts(message.content));
         break;
       }
