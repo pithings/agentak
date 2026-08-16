@@ -163,6 +163,78 @@ describe("vercelFetch", () => {
   it("is the fetch the gateway provider runs on", () => {
     expect(findProvider("vercel-ai-gateway")?.fetch).toBe(vercelFetch);
   });
+
+  it("answers a refused key with the status the models endpoint gives", async () => {
+    // `/v1/messages` sends no cors header with its 401, so the browser rejects;
+    // `/v1/models` answers the same key with a 401 a page can read.
+    const sent = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/v1/models")) {
+        return new Response('{"error":{"message":"Authentication failed."}}', { status: 401 });
+      }
+      throw new TypeError("Failed to fetch");
+    });
+    const original = globalThis.fetch;
+    globalThis.fetch = sent as unknown as typeof fetch;
+
+    try {
+      const answer = await vercelFetch("https://ai-gateway.vercel.sh/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": "vck_key" },
+      });
+
+      expect(answer.status).toBe(401);
+      expect(await answer.text()).toContain("Authentication failed.");
+      // The probe carries the same key, and asks for nothing else.
+      expect(sent.mock.calls[1][0]).toStrictEqual(
+        new URL("https://ai-gateway.vercel.sh/v1/models"),
+      );
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  it("lets a key the gateway takes fail as it failed", async () => {
+    const sent = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/v1/models")) return new Response("{}");
+      throw new TypeError("Failed to fetch");
+    });
+    const original = globalThis.fetch;
+    globalThis.fetch = sent as unknown as typeof fetch;
+
+    try {
+      await expect(
+        vercelFetch("https://ai-gateway.vercel.sh/v1/messages", {
+          method: "POST",
+          headers: { "x-api-key": "vck_key" },
+        }),
+      ).rejects.toThrow("Failed to fetch");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  it("leaves a stopped turn alone", async () => {
+    const stop = new AbortController();
+    stop.abort();
+    const sent = vi.fn(async () => {
+      throw new DOMException("Aborted", "AbortError");
+    });
+    const original = globalThis.fetch;
+    globalThis.fetch = sent as unknown as typeof fetch;
+
+    try {
+      await expect(
+        vercelFetch("https://ai-gateway.vercel.sh/v1/messages", {
+          method: "POST",
+          headers: { "x-api-key": "vck_key" },
+          signal: stop.signal,
+        }),
+      ).rejects.toThrow("Aborted");
+      expect(sent).toHaveBeenCalledTimes(1);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
 });
 
 describe("streamFor", () => {

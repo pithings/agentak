@@ -118,6 +118,32 @@ const catalog = (module: string): CatalogLoader => {
 const VERCEL_HEADERS = new Set(["accept", "anthropic-beta", "authorization", "content-type"]);
 
 /**
+ * What the gateway would have said, asked of the endpoint that answers.
+ *
+ * `POST /v1/messages` sends no `Access-Control-Allow-Origin` with a 401, so a
+ * refused key reaches the page as an unreadable network error and the chat can
+ * only say that the provider was not reached. `GET /v1/models` takes the same
+ * key, answers a bad one with the same 401, and does send the header — so it is
+ * asked, and its answer stands in for the one the browser would not read.
+ *
+ * Only the key is settled this way. A gateway that took the key and failed the
+ * turn for another reason answers this 200, and the original error stands.
+ */
+const vercelRefusal = async (url: string, authorization: string): Promise<Response | undefined> => {
+  const answer = await fetch(new URL("/v1/models", url), { headers: { authorization } }).catch(
+    () => undefined,
+  );
+  if (!answer || answer.ok) return undefined;
+
+  // A status the sdk can read is a status the chat can act on: pi puts it at
+  // the head of the failure, and the session opens the settings page on a 4xx.
+  return new Response(await answer.text(), {
+    status: answer.status,
+    headers: { "content-type": answer.headers.get("content-type") ?? "application/json" },
+  });
+};
+
+/**
  * The same request with only those headers left. The key moves to
  * `Authorization`, which the gateway takes in place of `x-api-key`, and the
  * version header goes: the gateway asks for none.
@@ -125,7 +151,8 @@ const VERCEL_HEADERS = new Set(["accept", "anthropic-beta", "authorization", "co
  * The extension needs none of this — its fetch is not gated by a preflight —
  * but the rewrite costs it nothing and one path is easier to reason about.
  */
-export const vercelFetch: FetchFunction = (input, init) => {
+export const vercelFetch: FetchFunction = async (input, init) => {
+  const url = input instanceof Request ? input.url : input.toString();
   const sent = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
 
   const headers = new Headers();
@@ -136,7 +163,18 @@ export const vercelFetch: FetchFunction = (input, init) => {
   const key = sent.get("x-api-key");
   if (key && !headers.has("authorization")) headers.set("authorization", `Bearer ${key}`);
 
-  return fetch(input, { ...init, headers });
+  try {
+    return await fetch(input, { ...init, headers });
+  } catch (error) {
+    // A turn the person stopped is not a failure to explain, and neither is a
+    // request that carried no key at all.
+    const authorization = headers.get("authorization");
+    if (init?.signal?.aborted || !authorization) throw error;
+
+    const refusal = await vercelRefusal(url, authorization);
+    if (!refusal) throw error;
+    return refusal;
+  }
 };
 
 export const PROVIDERS: Provider[] = [
@@ -198,7 +236,7 @@ export const PROVIDERS: Provider[] = [
     label: "Vercel AI Gateway",
     gateway: true,
     fetch: vercelFetch,
-    keyUrl: "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%2Fapi-keys",
+    keyUrl: "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway%2Fapi-keys",
     keyPlaceholder: "vck_…",
     defaultModelId: "anthropic/claude-sonnet-5",
     load: catalog("vercel-ai-gateway"),

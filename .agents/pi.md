@@ -160,13 +160,33 @@ does not ask for. `streamFor()` hands it to the api module as `options.fetch`; a
 passes its own fetch keeps it.
 
 The allow list, and not the four names, because the list is the server's own answer and so
-the whole of what a page may send — a header a later sdk adds is refused there first. Read
-it back with the same preflight:
+the whole of what a page may send — a header a later sdk adds is refused there first.
+
+**The gateway then hides its own 401.** `POST /v1/messages` sends no
+`Access-Control-Allow-Origin` with a refused key, though it sends one with a 200 and with
+a 400, so a wrong key reaches the page as a network error with no status in it and the
+chat could only say the provider was not reached. `GET /v1/models` takes the same key,
+answers a bad one with the same 401, and does send the header. `vercelFetch()` asks it
+when the turn fails and hands that answer back in its place: pi reads the status, and the
+session opens the settings page on a 4xx as it does for any other provider. A stopped turn
+and a key the gateway takes are both left to fail as they failed. The key itself comes
+from the gateway's own key page — a token from elsewhere on Vercel is one of these 401s.
+
+Read the allow list back with the same preflight, and the two 401s with a bad key:
 
 ```sh
 curl -sI -X OPTIONS https://ai-gateway.vercel.sh/v1/messages \
   -H 'Origin: http://localhost:4050' -H 'Access-Control-Request-Method: POST' \
   -H 'Access-Control-Request-Headers: authorization,content-type'
+
+# 401 with the header, then 401 without it. The day both carry it, the fallback
+# in `vercelFetch()` is dead code to delete.
+curl -sD- -o/dev/null https://ai-gateway.vercel.sh/v1/models \
+  -H 'Origin: http://localhost:4050' -H 'Authorization: Bearer vck_bad'
+curl -sD- -o/dev/null -X POST https://ai-gateway.vercel.sh/v1/messages \
+  -H 'Origin: http://localhost:4050' -H 'Authorization: Bearer vck_bad' \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"anthropic/claude-sonnet-5","max_tokens":16,"messages":[{"role":"user","content":"hi"}]}'
 ```
 
 A key is stored per provider, so switching back to one already set up asks nothing.
