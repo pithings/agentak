@@ -14,7 +14,7 @@ import {
   ArtifactDescription,
   ArtifactHeader,
   ArtifactTitle,
-} from "@/components/ai-elements/artifact.tsx";
+} from "@/components/_parked/ai-elements/artifact.tsx";
 import { CodeBlock, type CodeLanguage } from "@/components/ai-elements/code-block.tsx";
 import {
   Sandbox,
@@ -25,7 +25,7 @@ import {
   SandboxTabsBar,
   SandboxTabsList,
   SandboxTabsTrigger,
-} from "@/components/ai-elements/sandbox.tsx";
+} from "@/components/_parked/ai-elements/sandbox.tsx";
 import {
   WebPreview,
   WebPreviewBody,
@@ -33,7 +33,7 @@ import {
   WebPreviewNavigation,
   WebPreviewNavigationButton,
   WebPreviewUrl,
-} from "@/components/ai-elements/web-preview.tsx";
+} from "@/components/_parked/ai-elements/web-preview.tsx";
 import { CopyIcon, DownloadIcon, RotateCcwIcon } from "@/lib/icons.tsx";
 import type { ToolState } from "@/types.ts";
 

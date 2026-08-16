@@ -3,10 +3,14 @@
 `components/ui/` replaces every radix package. Read the limits before you build on one:
 they are deliberate, and a caller that needs more must add the layer itself.
 
+Seven of them are in `components/_parked/ui/` — `avatar`, `card`, `carousel`, `command`,
+`hover-card`, `switch` and `tabs` — each parked with the only element that reached it.
+The limits below hold either way; the path is the only difference.
+
 ## `popover` and `hover-card`
 
-`ui/hover-card.tsx` is a thin layer on `ui/popover.tsx` — the same panel, opened by
-pointer and focus after a delay.
+`_parked/ui/hover-card.tsx` is a thin layer on `ui/popover.tsx` — the same panel, opened
+by pointer and focus after a delay. It is parked: `inline-citation` is its only caller.
 
 - `open`/`defaultOpen`/`onOpenChange` through `useControllableState`; `side` and
   `align` are plain CSS against the `Popover` root, which is the anchor.
@@ -39,6 +43,18 @@ pointer and focus after a delay.
   is the edge the panel stops at. It is always written, `none` where nothing constrains
   the panel — a custom property inherits, so a panel inside a panel would otherwise
   read the outer one's room as its own.
+- **A scrolled visual viewport is reported two ways, and `origin()` picks one.** Where
+  the visual viewport sits inside the layout one — a phone keyboard scrolls it, a
+  desktop pinch scrolls it — client rects are meant to be layout-viewport coordinates,
+  and on a desktop pinch they are: the band runs `offsetTop` to `offsetTop + height`.
+  iOS with a keyboard up shifts the rects instead, so the offset is counted in them
+  already; a `fixed` full-height sheet reads as `-offsetTop`. Adding the offset to
+  those puts the band below everything on screen — a phone reported a 344px viewport at
+  offset 321 against an anchor at 295, an intersection of 23px, and a picker stuck at
+  `FLOOR` with half a screen free. The anchor settles it: it is the control the panel
+  opened from, so it is on screen, and a band that misses it is a band in the wrong
+  coordinates. Where `offsetTop` is 0 — every browser that shrinks its layout viewport
+  rather than scrolling it — the two readings are the same and nothing changes.
 - **No portal, no arrow, no `collisionBoundary`/`collisionPadding`/`sticky`, no exit
   animation** — the panel unmounts when closed.
 - **No menu semantics.** The panel is a `dialog`. That layer is `dropdown-menu`.
@@ -84,6 +100,15 @@ under the filter. A group reads its own items from the rendered tree and hides i
 when all of them are hidden, because a caller can wrap `CommandItem` in a component of
 its own. Both the filter text and the chosen value go through `useControllableState`;
 `useCommand()` is exported for compound elements.
+
+**`CommandList` caps itself at `18rem`, and gives the cap up while a virtual keyboard
+is up** — `useKeyboardOpen()` in `lib/use-keyboard-inset.ts`. The cap keeps a long list
+from running the height of the screen; a keyboard has already taken most of that screen,
+so a panel over one is capped by the room it has left (`--popover-available`) and a
+second cap under that only leaves rows unread. The cap is written as
+`var(--command-room, 18rem)` and the list sets `--command-room: none` on itself, so a
+caller with a cap of its own — `model-selector.tsx` — reads the same variable instead of
+writing a height the list can no longer give up.
 
 Not there: cmdk's fuzzy scorer — filtering is a case-insensitive substring test over
 the item's value, its `textValue` and its keywords, replaceable with one `filter` prop.

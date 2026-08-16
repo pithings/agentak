@@ -2,6 +2,7 @@
 import {
   type Component,
   computed,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
@@ -9,7 +10,6 @@ import {
   watchEffect,
 } from "vue";
 import type { PiSession } from "../../../src/pi/index.ts";
-// import type { PiSession } from "agentak/pi";
 
 /**
  * The chat button of the documentation site, and the chat it opens.
@@ -27,36 +27,58 @@ import type { PiSession } from "../../../src/pi/index.ts";
  * The chat is never a box over the page. It is mounted once and only ever
  * restyled, so the transcript survives a resize:
  *
- * - **`lg` and up — a docked rail** on the right, full height. It is chrome of
- *   the site: the page shifts to make room, so the rail covers nothing.
- * - **Below `lg` — a sheet** over the whole screen. A small screen has no room
- *   beside the page, so the chat takes all of it and the page holds still
- *   underneath.
+ * - **`lg` and up — a docked rail** on the right, full height, open with the
+ *   page. It is chrome of the site rather than a dialog: the page gives up the
+ *   room, so the rail covers nothing.
+ * - **Below `lg` — a sheet** over the whole screen, opened by the button. A
+ *   small screen has no room beside the page, so the chat takes all of it and
+ *   the page holds still underneath. It grows out of the button: the morph is a
+ *   `clip-path` circle centred on it.
  *
- * The button opens both, and the panel grows out of it: the morph is a
- * `clip-path` circle centred on the button, so the chat unfolds from the round
- * button rather than appearing over it. Both layouts reach the bottom-right
- * corner, so that centre is the same one for each.
+ * Either way the button is the way back once the chat is minimised.
+ *
+ * ## The stylesheet holds both defaults
+ *
+ * The panel, the room it takes and the button are placed by CSS alone, with no
+ * class from this component: the rail is docked and the page is padded above
+ * `lg`, the sheet is folded away below it. That is what the server renders and
+ * what the browser paints first, so the page is served at the width it keeps —
+ * the rail lands in room that was always there, and nothing shifts when the
+ * script arrives.
+ *
+ * `html:has(.chat-panel …)` is what pads the page. The rule reaches the root
+ * element, but only while this component is on the page, so a layout without
+ * the chat keeps its full width.
+ *
+ * Script only says what the READER changed: `is-open` and `is-closed` are added
+ * once this is mounted, and each one moves the panel away from the default its
+ * layout carries.
  */
-
-/** The rail width, and therefore the room the page gives up for it. */
-const RAIL = "clamp(20rem, 26vw, 28rem)";
-const DURATION = 260;
-
 const open = ref(false);
 const wide = ref(false);
+const mounted = ref(false);
+
+const panel = ref<HTMLElement>();
+const button = ref<HTMLButtonElement>();
 
 const Panel = shallowRef<Component>();
 const session = shallowRef<PiSession>();
 const ui = shallowRef<{ Button: unknown; h: typeof import("preact").h }>();
 
 /**
- * Nothing loads until the button is taken.
+ * What the reader has done with the chat, and nothing before that: the
+ * stylesheet owns the state the page is served in, so no class of ours may
+ * describe it. Hydration therefore changes no attribute the first paint set.
+ */
+const state = computed(() => (mounted.value ? (open.value ? "is-open" : "is-closed") : undefined));
+
+/**
+ * The chat loads with the rail, and not before.
  *
  * The docs are server rendered and the chat is a browser widget, so every
- * import here is dynamic — the server never loads them, and a reader who never
- * opens the chat never downloads the chat. Once mounted the panel is only
- * hidden, so minimising it keeps the transcript.
+ * import here is dynamic — the server loads none of them. A small screen loads
+ * nothing at all until the button is taken. Once mounted the panel is only
+ * folded away, so minimising it keeps the transcript.
  */
 async function load() {
   if (session.value) return;
@@ -71,13 +93,50 @@ async function load() {
   Panel.value = ChatPanel;
 }
 
-const close = () => {
-  open.value = false;
-};
+/**
+ * Focus something a class change is about to reveal.
+ *
+ * Both states are held by the stylesheet, and a folded-away panel is
+ * `visibility: hidden` — which takes no focus at all. So the element is asked
+ * one frame after the class lands, when the style it is placed by has been
+ * applied.
+ */
+function focusLater(pick: () => HTMLElement | null | undefined) {
+  // `preventScroll` because the page may still be on its way to an anchor: the
+  // panel is fixed and already in view, so it needs no scrolling to reach.
+  void nextTick(() => requestAnimationFrame(() => pick()?.focus({ preventScroll: true })));
+}
 
-function toggle() {
+/** The composer, by the name the library's own code reads it under. */
+const input = () => panel.value?.querySelector<HTMLTextAreaElement>('textarea[name="message"]');
+
+/**
+ * The composer takes the focus whenever the chat opens — with the page on a
+ * desktop, and on the button everywhere else. It is where a reader starts.
+ *
+ * A touch screen is the one exception: the focus would raise the virtual
+ * keyboard over the transcript that has just opened.
+ */
+function focusComposer() {
+  if (globalThis.matchMedia?.("(pointer: coarse)").matches) return;
+  focusLater(input);
+}
+
+function close() {
+  // The chat is about to become `inert`, so a focus inside it would be dropped
+  // on the document. The button it folds into takes it instead — and a reader
+  // whose focus is out on the page keeps it where it is.
+  const inside = panel.value?.contains(document.activeElement);
+  open.value = false;
+  if (inside) focusLater(() => button.value);
+}
+
+/** Opening the chat is asking to say something, so the composer is ready for it. */
+async function toggle() {
   open.value = !open.value;
-  if (open.value) void load();
+  if (!open.value) return;
+  await load();
+  focusComposer();
 }
 
 /**
@@ -85,11 +144,11 @@ function toggle() {
  *
  * The surface heads itself, so the site adds no second title bar: `actions`
  * goes at the end of that header, beside the chat's own buttons. It is a preact
- * child, whatever renders the page around it — `Button` from
- * `agentak/components` is the one the buttons beside it use, so they match.
+ * child, whatever renders the page around it — `Button` is the one the buttons
+ * beside it use, so they match.
  *
- * The chevron points at where the chat goes: down to the button below the box,
- * out to the right edge for the rail.
+ * The chevron points at where the chat goes: out to the right edge for the
+ * rail, down to the button for the sheet.
  */
 const actions = computed(() => {
   if (!ui.value) return undefined;
@@ -119,35 +178,12 @@ const actions = computed(() => {
 });
 
 /**
- * The page gives the rail its room.
- *
- * Padding on the root element rather than a wrapper: the header, the content
- * and the footer are all inside it, so the whole site narrows and the rail
- * covers none of it. The rail itself is fixed, so it stays out of that padding.
- */
-watchEffect((onCleanup) => {
-  if (!open.value || !wide.value) return;
-  const { style } = document.documentElement;
-  const before = { padding: style.paddingRight, transition: style.transition };
-  const still = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  if (!still) style.transition = `padding-right ${DURATION}ms ease-out`;
-  style.paddingRight = RAIL;
-  onCleanup(() => {
-    style.paddingRight = before.padding;
-    // The site keeps its width back at the same speed, and the inline
-    // transition goes once it has.
-    setTimeout(() => {
-      if (style.paddingRight === before.padding) style.transition = before.transition;
-    }, DURATION);
-  });
-});
-
-/**
  * The page holds still under the sheet.
  *
  * The sheet covers the screen, so the document behind it must not scroll: the
  * chat contains its own scroll chain, but a drag on any part of it that does
- * not scroll would otherwise move the page under a panel that hides it.
+ * not scroll would otherwise move the page under a panel that hides it. The
+ * rail takes room rather than covering the page, so it leaves the scroll alone.
  */
 watchEffect((onCleanup) => {
   if (!open.value || wide.value) return;
@@ -175,6 +211,15 @@ const measure = () => {
 
 onMounted(() => {
   measure();
+  mounted.value = true;
+  // The rail is already docked, and the page already carries its room: this
+  // only agrees with the stylesheet, and fetches the chat that goes in it. The
+  // composer takes the focus once it is there, so the page opens ready to be
+  // asked something.
+  if (wide.value) {
+    open.value = true;
+    void load().then(focusComposer);
+  }
   desktop?.addEventListener("change", measure);
   globalThis.addEventListener("keydown", onKey);
 });
@@ -189,90 +234,265 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Transition name="morph">
-    <!-- Hidden rather than unmounted, so the transcript survives a minimise.
-         `inert` is what keeps the hidden chat out of the tab order. -->
-    <section
-      v-if="session"
-      v-show="open"
-      :inert="!open"
-      :style="wide ? { width: RAIL } : undefined"
-      aria-label="Assistant"
-      :class="[
-        'fixed inset-y-0 right-0 z-[60] flex flex-col overflow-hidden bg-background',
-        wide ? 'border-l border-border' : 'left-0 w-full',
-      ]"
-    >
-      <component :is="Panel" :actions="actions" :session="session" class="min-h-0 flex-1" />
-    </section>
-  </Transition>
+  <!-- Rendered by the server, empty: the room and the panel in it are on the
+       page before the chat is, so nothing moves when the chat arrives. -->
+  <section ref="panel" :class="['chat-panel', state]" :inert="!open" aria-label="Assistant">
+    <component
+      :is="Panel"
+      v-if="Panel && session"
+      :actions="actions"
+      :session="session"
+      class="chat-surface"
+    />
 
-  <Transition
-    enter-active-class="transition duration-150 ease-out motion-reduce:transition-none"
-    leave-active-class="transition duration-150 ease-in motion-reduce:transition-none"
-    enter-from-class="scale-50 opacity-0"
-    leave-to-class="scale-50 opacity-0"
+    <!-- The chat before it arrives: the lines it draws, at the sizes it draws
+         them, so it takes this one's place without moving anything. -->
+    <div v-else class="chat-ghost" aria-hidden="true">
+      <div class="chat-ghost-head"></div>
+      <div class="chat-ghost-body"></div>
+      <div class="chat-ghost-foot"><div></div></div>
+    </div>
+  </section>
+
+  <!-- The way back to a minimised chat, and the way into it on a small screen.
+       It says what it does, so it needs no label of its own. -->
+  <button
+    ref="button"
+    :class="['chat-button', state]"
+    :aria-expanded="open"
+    type="button"
+    @click="toggle"
   >
-    <!-- The button goes as the chat grows out of it, and comes back when the
-         chat folds away. -->
-    <button
-      v-show="!open"
-      type="button"
-      :aria-expanded="open"
-      aria-label="Open the assistant"
-      class="fixed right-4 bottom-4 z-[60] grid size-12 place-items-center rounded-full bg-brand text-brand-foreground shadow-modal transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-      @click="toggle"
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
     >
-      <svg
-        viewBox="0 0 24 24"
-        class="size-5"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <path
-          d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-4-.8L3 21l1.9-4.6A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"
-        />
-      </svg>
-    </button>
-  </Transition>
+      <!-- `BrainIcon`, the one the chat marks its own thinking with. -->
+      <path d="M12 18V5" />
+      <path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4" />
+      <path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5" />
+      <path d="M17.997 5.125a4 4 0 0 1 2.526 5.77" />
+      <path d="M18 18a4 4 0 0 0 2-7.464" />
+      <path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517" />
+      <path d="M6 18a4 4 0 0 1-2-7.464" />
+      <path d="M6.003 5.125a4 4 0 0 0-2.526 5.77" />
+    </svg>
+    Ask AI
+  </button>
 </template>
 
-<style scoped>
-/* The morph: a circle the size of the button, at the button, opening into the
-   whole panel. Both layouts reach the bottom-right corner, so one centre
-   serves them both. `clip-path` only applies while the transition runs, so the
-   chat's own popovers are never clipped by it. */
-.morph-enter-active,
-.morph-leave-active {
+<!-- Not scoped: the padding that makes room for the rail belongs to the root
+     element, which is nobody's child. -->
+<style>
+:root {
+  --chat-rail: clamp(20rem, 26vw, 28rem);
+  --chat-move: 260ms;
+  /* The middle of the button, which is where the sheet grows from: the pill is
+     `2.5rem` tall at `1rem`, and about `6rem` wide from the same edge. */
+  --chat-origin: calc(100% - 4rem) calc(100% - 2.25rem);
+}
+
+.chat-panel {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--background);
+}
+
+.chat-surface {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* The placeholder, which is the panel the server can draw: three hairlines at
+   the chat's own measurements — the header rule (`2rem` of buttons in
+   `0.375rem` of padding), the rule the composer sits above, and the box a
+   message is typed into. Nothing else; the transcript between them is what the
+   chat has yet to say. */
+.chat-ghost {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.chat-ghost-head {
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-ghost-body {
+  flex: 1 1 auto;
+}
+
+.chat-ghost-foot {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 0.5rem;
+}
+
+.chat-ghost-foot > div {
+  height: 6rem;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-md);
+}
+
+/* A pill that says what it opens, rather than a circle the reader must read an
+   icon out of. The brain is the mark the chat gives its own thinking. */
+.chat-button {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 60;
+  display: inline-flex;
+  height: 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.875rem;
+  border-radius: 9999px;
+  background: var(--brand);
+  color: var(--brand-foreground);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  box-shadow: var(--shadow-modal);
+  cursor: pointer;
   transition:
-    clip-path 260ms ease-out,
-    opacity 200ms ease-out;
+    opacity 150ms ease-out,
+    transform 150ms ease-out,
+    visibility 0s;
 }
 
-.morph-enter-from,
-.morph-leave-to {
-  clip-path: circle(1.5rem at calc(100% - 2.5rem) calc(100% - 2.5rem));
-  opacity: 0;
+.chat-button:hover {
+  opacity: 0.9;
 }
 
-.morph-enter-to,
-.morph-leave-from {
-  clip-path: circle(150% at calc(100% - 2.5rem) calc(100% - 2.5rem));
-  opacity: 1;
+.chat-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .morph-enter-active,
-  .morph-leave-active {
-    transition: opacity 100ms linear;
+.chat-button > svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* The sheet, below `lg`: the whole screen, folded into the button until the
+   reader takes it. `clip-path` is the morph — a circle the size of the button,
+   at the button, opening into the whole panel. */
+@media (max-width: 63.999rem) {
+  .chat-panel {
+    inset: 0;
+    visibility: hidden;
+    clip-path: circle(1.25rem at var(--chat-origin));
+    transition:
+      clip-path var(--chat-move) ease-out,
+      visibility 0s var(--chat-move);
   }
 
-  .morph-enter-from,
-  .morph-leave-to {
+  .chat-panel.is-open {
+    visibility: visible;
+    clip-path: circle(150% at var(--chat-origin));
+    transition: clip-path var(--chat-move) ease-out;
+  }
+
+  .chat-button.is-open {
+    visibility: hidden;
+    opacity: 0;
+    transform: scale(0.5);
+    transition:
+      opacity 150ms ease-in,
+      transform 150ms ease-in,
+      visibility 0s 150ms;
+  }
+}
+
+/* The rail, `lg` and up: docked to the right edge and open with the page, so
+   the button is away until the reader minimises it. */
+@media (min-width: 64rem) {
+  /* The room the rail takes, reserved by the stylesheet: the page is SERVED
+     narrowed, so the rail needs none of it back on hydration. `:has` is what
+     keeps the rule to the pages this component is on. */
+  html:has(.chat-panel:not(.is-closed)) {
+    padding-right: var(--chat-rail);
+  }
+
+  /* The page moves only for the READER: the width is animated once one of the
+     state classes is on the panel, and those arrive with the first minimise.
+     A page that reaches this rule late — the dev server injects its styles from
+     script — therefore lands at its width rather than sliding into it. */
+  html:has(.chat-panel.is-open),
+  html:has(.chat-panel.is-closed) {
+    transition: padding-right var(--chat-move) ease-out;
+  }
+
+  .chat-panel {
+    inset: 0 0 0 auto;
+    width: var(--chat-rail);
+    border-left: 1px solid var(--border);
+    clip-path: none;
+    transition:
+      transform var(--chat-move) ease-out,
+      visibility 0s;
+  }
+
+  .chat-panel.is-closed {
+    visibility: hidden;
+    transform: translateX(100%);
+    transition:
+      transform var(--chat-move) ease-out,
+      visibility 0s var(--chat-move);
+  }
+
+  .chat-button:not(.is-closed) {
+    visibility: hidden;
+    opacity: 0;
+    transform: scale(0.5);
+    transition:
+      opacity 150ms ease-in,
+      transform 150ms ease-in,
+      visibility 0s 150ms;
+  }
+}
+
+/* The button stands where the rail's own header was, so minimising and opening
+   again happen at the same corner of the screen. Only on a screen wide enough
+   to hold it beside the header: below that the top-right corner is the site's
+   navigation, so the button keeps to the bottom, out of its way. */
+@media (min-width: 90.625rem) {
+  .chat-button {
+    top: 1rem;
+    bottom: auto;
+  }
+}
+
+/* Each state is named again, so that the rules above are matched on specificity
+   rather than left to win it. */
+@media (prefers-reduced-motion: reduce) {
+  html,
+  html:has(.chat-panel.is-open),
+  html:has(.chat-panel.is-closed),
+  .chat-panel,
+  .chat-panel.is-open,
+  .chat-panel.is-closed,
+  .chat-button,
+  .chat-button.is-open,
+  .chat-button:not(.is-closed) {
+    transition: none;
+  }
+
+  .chat-panel,
+  .chat-panel.is-open {
     clip-path: none;
   }
 }

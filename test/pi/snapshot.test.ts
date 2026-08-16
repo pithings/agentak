@@ -4,7 +4,8 @@ import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { createPiSession } from "../../src/pi/session.ts";
+import { createPiSession, type PiSessionOptions } from "../../src/pi/session.ts";
+import { memoryStorage } from "../../src/pi/storage.ts";
 import {
   PI_SNAPSHOT_FIELDS,
   PI_SNAPSHOT_VERSION,
@@ -84,7 +85,15 @@ const snapshot = (fields: Partial<PiSnapshot> = {}): PiSnapshot => ({
   ...fields,
 });
 
-beforeEach(() => localStorage.clear());
+/**
+ * One store per test, shared by the sessions in it: what a session picks is
+ * there for the next one, and no test opens on what another left.
+ */
+let storage = memoryStorage();
+beforeEach(() => {
+  storage = memoryStorage();
+});
+const piSession = (options: PiSessionOptions = {}) => createPiSession({ storage, ...options });
 
 describe("usablePiMessages", () => {
   it("keeps a transcript that ends where a model can answer", () => {
@@ -121,7 +130,7 @@ describe("readPiSnapshot", () => {
 
 describe("a pi session over a snapshot", () => {
   it("brings back every field it saved", async () => {
-    const first = createPiSession({
+    const first = piSession({
       generateTitle: true,
       provider: THINKS,
       streamFn: scripted([answer, named]).streamFn,
@@ -144,8 +153,8 @@ describe("a pi session over a snapshot", () => {
     );
 
     // A second browser session, on nothing but what was stored.
-    localStorage.clear();
-    const again = createPiSession({ snapshot: saved, streamFn: scripted([answer]).streamFn });
+    storage = memoryStorage();
+    const again = piSession({ snapshot: saved, streamFn: scripted([answer]).streamFn });
     await waitFor(() => expect(again.snapshot().modelId).toBe(REASONING_MODEL));
 
     expect(again.snapshot().messages).toHaveLength(2);
@@ -158,7 +167,7 @@ describe("a pi session over a snapshot", () => {
 
   it("does not buy the title a second time", async () => {
     const model = scripted([named]);
-    const session = createPiSession({
+    const session = piSession({
       generateTitle: true,
       snapshot: snapshot({
         messages: [asked("what is this page?"), turn([{ type: "text", text: "Two." }], "stop")],
@@ -175,11 +184,11 @@ describe("a pi session over a snapshot", () => {
   });
 
   it("opens on the conversation's own model rather than the browser's", async () => {
-    const before = createPiSession({ provider: THINKS, streamFn: scripted([answer]).streamFn });
+    const before = piSession({ provider: THINKS, streamFn: scripted([answer]).streamFn });
     await waitFor(() => expect(before.snapshot().models?.length).toBeGreaterThan(0));
     before.selectModel?.(PLAIN_MODEL);
 
-    const session = createPiSession({
+    const session = piSession({
       snapshot: snapshot({ model: REASONING_MODEL, provider: THINKS, thinkingLevel: "medium" }),
       streamFn: scripted([answer]).streamFn,
     });
@@ -192,7 +201,7 @@ describe("a pi session over a snapshot", () => {
   });
 
   it("restores a model of the provider the agent already starts on", async () => {
-    const session = createPiSession({
+    const session = piSession({
       snapshot: snapshot({ model: OTHER_DEFAULT_MODEL, provider: DEFAULT_PROVIDER }),
       streamFn: scripted([answer]).streamFn,
     });
@@ -200,7 +209,7 @@ describe("a pi session over a snapshot", () => {
   });
 
   it("opens on the transcript a stored conversation can still be continued from", async () => {
-    const session = createPiSession({
+    const session = piSession({
       snapshot: snapshot({
         messages: [asked("what is this page?"), called("t1")],
         model: REASONING_MODEL,

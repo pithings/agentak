@@ -6,6 +6,16 @@ are ports of the [AI SDK Elements](https://elements.ai-sdk.dev) registry, and
 needs no new npm dependency is ported; the rest is in
 [components/porting.md](components/porting.md).
 
+`_parked/` holds what nothing renders. `_parked/ai-elements/` and `_parked/ui/` are ports
+still waiting on a source the chat does not have — a tool, a message role — and
+`_parked/chat/picker.tsx` is the composer popover the settings page replaced. The ports
+stay exported from `components/index.ts` and stay in the playground catalog, so parking
+costs a host nothing; the split only keeps what the chat draws apart from what is merely
+finished. `picker.tsx` was never exported and stays that way. A parked file moves back
+the day something renders it, and its `ui/` primitive travels with it when nothing else
+uses that primitive. What is registered in `elements.tsx` is a narrower set again — see
+[`pi.md`](pi.md).
+
 Read this page first — the rules below hold everywhere. Then read the one page in
 `components/` for the job at hand.
 
@@ -62,6 +72,13 @@ its own, the inset is 0, and the same code does nothing.
 A lifted foot is nowhere near the home bar, so `Chat` sets `--chat-safe-bottom: 0px`
 there; the composer's `padding-bottom` reads that var with `env(safe-area-inset-bottom)`
 as its fallback, so a composer used on its own still clears the bar.
+
+`useKeyboardOpen()` sits beside it, in the same file, and answers the other question: not
+where the keyboard is, but whether there is one. It is the inset **or** a focused text
+field, because the inset is 0 on every browser that shrinks its own layout viewport and
+there is then nothing left to measure — on a phone a focused field means a keyboard
+either way. Anything that should spend the room a keyboard leaves asks this;
+`CommandList` is the first, and gives up its height cap while one is up.
 
 ## Exports
 

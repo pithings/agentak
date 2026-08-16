@@ -14,7 +14,7 @@ import {
   OpenInT3,
   OpenInTrigger,
   OpenInv0,
-} from "../../src/components/ai-elements/open-in-chat.tsx";
+} from "../../src/components/_parked/ai-elements/open-in-chat.tsx";
 
 afterEach(cleanup);
 

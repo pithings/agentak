@@ -12,10 +12,12 @@ import { ChatEmpty } from "./chat/empty.tsx";
 import { ChatHeader } from "./chat/header.tsx";
 import { ChatMessage, type ChatRespond } from "./chat/message.tsx";
 import { ChatQueue } from "./chat/queue.tsx";
+import { ChatSettings } from "./chat/settings.tsx";
 import type { ChatAgent, ChatQueueItem } from "./chat/types.ts";
 import { Button } from "./ui/button.tsx";
 import type { ViewMessage } from "../types.ts";
 import { RotateCcwIcon, XIcon } from "../lib/icons.tsx";
+import { useControllableState } from "../lib/use-controllable-state.ts";
 import { useKeyboardInset } from "../lib/use-keyboard-inset.ts";
 import { reset, u } from "../styles/base.ts";
 import { sx, type Sx } from "../styles/sx.ts";
@@ -157,11 +159,22 @@ export function Chat({
   onRespond,
   actions,
   emptyActions,
+  pickerOpen,
+  onPickerOpenChange,
   ...composer
 }: ChatProps) {
   const last = messages.at(-1);
   // Nothing has come back yet: the turn is still the user's, or it is empty.
   const waiting = isStreaming && (last?.role !== "assistant" || last.parts.length === 0);
+
+  // The settings page takes the transcript's place, so the surface holds the
+  // flag rather than the composer's trigger — the trigger only toggles it. A
+  // session that owns the flag controls it from outside; see `agent-chat.tsx`.
+  const [settingsOpen, setSettingsOpen] = useControllableState({
+    defaultProp: false,
+    onChange: onPickerOpenChange,
+    prop: pickerOpen,
+  });
 
   const inset = useKeyboardInset();
   const [foot, footRef] = useFootHeight();
@@ -171,26 +184,54 @@ export function Chat({
 
   return (
     <div className={className} style={sx(S.chat, style)}>
-      <ChatHeader actions={actions} onReset={onReset} title={title} />
+      <ChatHeader
+        actions={actions}
+        onBack={settingsOpen ? () => setSettingsOpen(false) : undefined}
+        onReset={onReset}
+        // Nothing to choose is nothing to open — the same test the composer puts
+        // its own trigger behind.
+        onSettings={
+          !settingsOpen && (composer.providers?.length || composer.models?.length)
+            ? () => setSettingsOpen(true)
+            : undefined
+        }
+        title={settingsOpen ? "Settings" : title}
+      />
 
-      <Conversation pin={last?.id}>
-        <ConversationContent style={{ paddingBottom: `calc(1rem + ${clear})` }}>
-          {messages.length === 0 ? (
-            <ChatEmpty agent={agent}>{emptyActions}</ChatEmpty>
-          ) : (
-            messages.map((message) => (
-              <ChatMessage
-                isStreaming={isStreaming && message === last}
-                key={message.id}
-                message={message}
-                onRespond={onRespond}
-              />
-            ))
-          )}
-          {waiting ? <Shimmer>Working…</Shimmer> : null}
-        </ConversationContent>
-        <ConversationScrollButton style={{ bottom: `calc(1rem + ${clear})` }} />
-      </Conversation>
+      {settingsOpen ? (
+        // The page ends above the floating foot, exactly as the transcript does.
+        <ChatSettings
+          {...composer}
+          // The model is the last of the four choices and the only one nothing
+          // follows, so choosing it is done: the page steps back out of the
+          // transcript's way and the composer takes the focus — see its own
+          // effect on this flag.
+          onModelChange={(id) => {
+            composer.onModelChange?.(id);
+            setSettingsOpen(false);
+          }}
+          style={{ paddingBottom: `calc(1rem + ${clear})` }}
+        />
+      ) : (
+        <Conversation pin={last?.id}>
+          <ConversationContent style={{ paddingBottom: `calc(1rem + ${clear})` }}>
+            {messages.length === 0 ? (
+              <ChatEmpty agent={agent}>{emptyActions}</ChatEmpty>
+            ) : (
+              messages.map((message) => (
+                <ChatMessage
+                  isStreaming={isStreaming && message === last}
+                  key={message.id}
+                  message={message}
+                  onRespond={onRespond}
+                />
+              ))
+            )}
+            {waiting ? <Shimmer>Working…</Shimmer> : null}
+          </ConversationContent>
+          <ConversationScrollButton style={{ bottom: `calc(1rem + ${clear})` }} />
+        </Conversation>
+      )}
 
       <div ref={footRef} style={sx(S.foot, inset > 0 && S.footLifted, { bottom: `${inset}px` })}>
         {error ? (
@@ -219,7 +260,18 @@ export function Chat({
 
         <ChatQueue items={queued} onDequeue={onDequeue} />
 
-        <ChatComposer isStreaming={isStreaming} {...composer} />
+        <ChatComposer
+          isStreaming={isStreaming}
+          {...composer}
+          // Saying something is done choosing: the answer is in the transcript,
+          // which the page is standing in front of.
+          onPickerOpenChange={setSettingsOpen}
+          onSend={(text) => {
+            setSettingsOpen(false);
+            composer.onSend(text);
+          }}
+          pickerOpen={settingsOpen}
+        />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { h } from "preact";
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from "vue";
 
 import { createPiSession, type PiSession } from "@/pi/session.ts";
+import { browserStorage } from "@/pi/storage.ts";
 import { u } from "@/styles/base.ts";
 import { ChatPanel } from "@/vue/index.ts";
 import { ChatActions, StartDemo } from "../chat-actions.tsx";
@@ -133,7 +134,9 @@ function open(id: string | undefined) {
     session.value = undefined;
     return;
   }
-  const live = createPiSession({ snapshot: storedConversation(id) });
+  // The session keeps its choices in memory unless a host asks for more. This
+  // page asks: the key and the model are typed once, not once a reload.
+  const live = createPiSession({ snapshot: storedConversation(id), storage: browserStorage() });
   session.value = live;
   untrack = live.subscribe(() => {
     if (pending) clearTimeout(pending);

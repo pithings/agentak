@@ -84,6 +84,6 @@ Each needs a new npm dependency. Restore deliberately, not by default.
 | `jsx-preview`                                                          | `react-jsx-parser`, react-only                                                                             |
 | `audio-player`                                                         | `media-chrome` (web components, so framework-neutral) plus `button-group`                                  |
 
-`attachments`, `voice-selector` and `mic-selector` need no dependency — `ui/hover-card`
-and `ui/command` cover what blocked them, so only the port is left. `model-selector` is
-the worked example for the last two.
+`attachments`, `voice-selector` and `mic-selector` need no dependency —
+`_parked/ui/hover-card` and `ui/command` cover what blocked them, so only the port is
+left. `model-selector` is the worked example for the last two.

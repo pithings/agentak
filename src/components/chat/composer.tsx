@@ -1,4 +1,4 @@
-import { useRef } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 
 import {
   Context,
@@ -12,7 +12,7 @@ import {
   ContextReasoningUsage,
   ContextTrigger,
 } from "../ai-elements/context.tsx";
-import { ChatPicker, type ChatPickerProps } from "./picker.tsx";
+import { ChatSettingsTrigger, type ChatSettingsProps } from "./settings.tsx";
 import type { ChatUsage } from "./types.ts";
 import {
   PromptInput,
@@ -64,7 +64,7 @@ const S = {
   },
 } satisfies Record<string, Sx>;
 
-export interface ChatComposerProps extends ChatPickerProps {
+export interface ChatComposerProps extends ChatSettingsProps {
   isStreaming: boolean;
   onSend: (text: string) => void;
   onStop: () => void;
@@ -73,18 +73,29 @@ export interface ChatComposerProps extends ChatPickerProps {
 }
 
 /** The last row of the surface: what to say, which model says it, and send. */
-export function ChatComposer({ isStreaming, onSend, onStop, usage, ...picker }: ChatComposerProps) {
+export function ChatComposer({
+  isStreaming,
+  onSend,
+  onStop,
+  usage,
+  ...settings
+}: ChatComposerProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   // The textarea is uncontrolled and preact forwards no ref through a component,
   // so it is read from the DOM by the name the form submits it under.
   const input = () => ref.current?.querySelector<HTMLTextAreaElement>('textarea[name="message"]');
 
-  // A chosen model closes the panel, which hands the focus back to the trigger —
-  // but the reason to pick one is to then say something. Taken here, while the
-  // panel still stands, so its own restore sees the focus already gone and
-  // leaves it.
-  const focusInput = () => input()?.focus();
+  // Leaving the settings page hands the focus here: the reason to open it was to
+  // choose a model, and the reason to choose one is to then say something. Not
+  // on a phone, where the focus is a keyboard over half the surface and the
+  // field is one tap away anyway.
+  const wasOpen = useRef(false);
+  const settingsOpen = settings.pickerOpen === true;
+  useEffect(() => {
+    if (wasOpen.current && !settingsOpen && !isTouch()) input()?.focus();
+    wasOpen.current = settingsOpen;
+  }, [settingsOpen]);
 
   const handleSubmit = (text: string) => {
     if (!text.trim()) return;
@@ -106,14 +117,8 @@ export function ChatComposer({ isStreaming, onSend, onStop, usage, ...picker }: 
         </PromptInputBody>
         <PromptInputFooter>
           <PromptInputTools style={S.tools}>
-            {Boolean(picker.providers?.length || picker.models?.length) && (
-              <ChatPicker
-                {...picker}
-                onModelChange={(id) => {
-                  picker.onModelChange?.(id);
-                  focusInput();
-                }}
-              />
+            {Boolean(settings.providers?.length || settings.models?.length) && (
+              <ChatSettingsTrigger {...settings} />
             )}
           </PromptInputTools>
           {usage && (

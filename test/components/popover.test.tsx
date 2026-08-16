@@ -5,7 +5,7 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "../../src/components/ui/hover-card.tsx";
+} from "../../src/components/_parked/ui/hover-card.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "../../src/components/ui/popover.tsx";
 
 afterEach(cleanup);
@@ -135,6 +135,116 @@ describe("Popover", () => {
     });
     expect(panel.style.getPropertyValue("--popover-available")).toBe(`${band - 16}px`);
     expect(panel.dataset.side).toBe("top");
+  });
+
+  // A phone with the keyboard up, reported by one: a 344px visual viewport at
+  // an offset of 321 inside a 665px layout viewport, with the client rects
+  // shifted by that offset already — the root reads -321 against no scroll at
+  // all, and so does the surface. Counting the offset twice left an
+  // intersection of 23px and the panel at its floor with half a screen free.
+  it("does not count the visual viewport offset twice", async () => {
+    const view = globalThis as unknown as {
+      innerHeight: number;
+      visualViewport: VisualViewport | null;
+    };
+    const height = view.innerHeight;
+    const viewport = view.visualViewport;
+    const root = document.documentElement.getBoundingClientRect;
+    view.innerHeight = 665;
+    view.visualViewport = {
+      height: 344,
+      offsetLeft: 0,
+      offsetTop: 321,
+      width: 320,
+    } as VisualViewport;
+    document.documentElement.getBoundingClientRect = () =>
+      ({ bottom: 344, height: 665, left: 0, right: 320, top: -321, width: 320 }) as DOMRect;
+
+    try {
+      render(
+        // The chat surface: `overflow: hidden`, the full layout viewport tall,
+        // and shifted with the rest of them — the clipping ancestor the panel
+        // is measured against.
+        <div style={{ overflowX: "hidden", overflowY: "hidden" }}>
+          <Popover defaultOpen>
+            <PopoverTrigger>Open</PopoverTrigger>
+            <PopoverContent fill side="top">
+              body
+            </PopoverContent>
+          </Popover>
+        </div>,
+      );
+
+      const surface = document.querySelector("div[style]") as HTMLElement;
+      surface.getBoundingClientRect = () =>
+        ({ bottom: 344, height: 665, left: 0, right: 320, top: -321, width: 320 }) as DOMRect;
+
+      const root = document.querySelector('[data-slot="popover"]') as HTMLElement;
+      root.getBoundingClientRect = () =>
+        ({ bottom: 319, height: 24, left: 0, right: 100, top: 295, width: 100 }) as DOMRect;
+
+      const panel = screen.getByRole("dialog");
+      // The band is the visual viewport itself, 0..344: room over the anchor,
+      // plus the rows `fill` takes back, less an edge. Not the 128px floor.
+      await waitFor(() => {
+        expect(panel.style.getPropertyValue("--popover-available")).toBe("328px");
+      });
+    } finally {
+      view.innerHeight = height;
+      view.visualViewport = viewport;
+      document.documentElement.getBoundingClientRect = root;
+    }
+  });
+
+  // The other half of the same rule: a visual viewport scrolled inside the
+  // layout one with the rects left where they were — a desktop pinch. Nothing
+  // drifted, so the offset is the band's own start and the panel opens into
+  // `[321, 665]`, not into the top of the screen.
+  it("keeps the offset where the rects did not move", async () => {
+    const view = globalThis as unknown as {
+      innerHeight: number;
+      visualViewport: VisualViewport | null;
+    };
+    const height = view.innerHeight;
+    const viewport = view.visualViewport;
+    view.innerHeight = 665;
+    view.visualViewport = {
+      height: 344,
+      offsetLeft: 0,
+      offsetTop: 321,
+      width: 320,
+    } as VisualViewport;
+
+    try {
+      render(
+        <div style={{ overflowX: "hidden", overflowY: "hidden" }}>
+          <Popover defaultOpen>
+            <PopoverTrigger>Open</PopoverTrigger>
+            <PopoverContent fill side="top">
+              body
+            </PopoverContent>
+          </Popover>
+        </div>,
+      );
+
+      const surface = document.querySelector("div[style]") as HTMLElement;
+      surface.getBoundingClientRect = () =>
+        ({ bottom: 665, height: 665, left: 0, right: 320, top: 0, width: 320 }) as DOMRect;
+
+      const root = document.querySelector('[data-slot="popover"]') as HTMLElement;
+      root.getBoundingClientRect = () =>
+        ({ bottom: 624, height: 24, left: 0, right: 100, top: 600, width: 100 }) as DOMRect;
+
+      // `fill` pulls the panel to `EDGE` off the foot of the band — 665 here,
+      // and 344 if the offset had been dropped as it is for a shifted rect.
+      const panel = screen.getByRole("dialog");
+      await waitFor(() => {
+        expect(panel.style.getPropertyValue("--popover-offset")).toBe(`${8 - (665 - 600)}px`);
+      });
+    } finally {
+      view.innerHeight = height;
+      view.visualViewport = viewport;
+    }
   });
 });
 

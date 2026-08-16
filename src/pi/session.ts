@@ -11,16 +11,7 @@ import {
   usablePiMessages,
   type WholePiSnapshot,
 } from "./snapshot.ts";
-import {
-  storeApiKey,
-  storedApiKey,
-  storedModelId,
-  storedProviderId,
-  storedThinkingLevel,
-  storeModelId,
-  storeProviderId,
-  storeThinkingLevel,
-} from "./storage.ts";
+import { createChoices, type PiChoices, type PiStorage } from "./storage.ts";
 import { createAgentStore } from "./store.ts";
 import { generateTitle, titleRequest } from "./title.ts";
 import type { ChatAgent, ChatProvider } from "../components/chat/types.ts";
@@ -30,15 +21,20 @@ import type { ChatSession, ChatSessionOptions, ChatSnapshot } from "../session.t
 export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "messages" | "model"> {
   /**
    * A key for the provider named by `provider`, or one per provider id. Without
-   * one the picker asks, and keeps what it is given in `localStorage`; the
-   * extension passes one from `chrome.storage` instead. A free provider asks for
-   * none.
+   * one the picker asks, and keeps what it is given in memory; the extension
+   * passes one from `chrome.storage` instead. A free provider asks for none.
    */
   apiKey?: string | Record<string, string>;
   /**
-   * Which provider to open on. Default: the snapshot's, then the one this
-   * browser stored, then none — a fresh session chooses nothing, and the picker
-   * asks with the first message.
+   * Where the picker's choices go: the keys, the provider, the model and the
+   * level. Default: memory shared by the page, so they go with the page. Pass
+   * `browserStorage()` for `localStorage`, or a store of your own.
+   */
+  storage?: PiStorage;
+  /**
+   * Which provider to open on. Default: the snapshot's, then the one the store
+   * holds, then none — a fresh session chooses nothing, and the picker asks
+   * with the first message.
    */
   provider?: string;
   /**
@@ -73,15 +69,16 @@ export interface PiSession extends ChatSession {
   save(): PiSnapshot;
 }
 
-/** Keys already in hand: what a host passed, over what the browser stored. */
+/** Keys already in hand: what a host passed, over what the store holds. */
 function seedKeys(
+  choices: PiChoices,
   providers: Provider[],
   apiKey: PiSessionOptions["apiKey"],
   providerId?: string,
 ): Record<string, string> {
   const keys: Record<string, string> = {};
   for (const provider of providers) {
-    const stored = storedApiKey(provider.id);
+    const stored = choices.storedApiKey(provider.id);
     if (stored) keys[provider.id] = stored;
   }
   if (typeof apiKey === "string" && providerId) keys[providerId] = apiKey;
@@ -118,15 +115,18 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     provider: openOn,
     generateTitle: named,
     snapshot: stored,
+    storage,
     ...agentOptions
   } = options;
+
+  const choices = createChoices(storage);
 
   // Where the surface runs decides the list: a page drops the providers that
   // answer no preflight. Fixed for the life of the session.
   const available = availableProviders();
-  const wanted = openOn ?? stored?.provider ?? storedProviderId();
+  const wanted = openOn ?? stored?.provider ?? choices.storedProviderId();
 
-  let keys = seedKeys(available, apiKey, wanted);
+  let keys = seedKeys(choices, available, apiKey, wanted);
   let providerId = openingProvider(available, keys, wanted);
   let preferences: ChatSessionOptions = { generateTitle: named };
   /**
@@ -189,7 +189,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   const followThinking = () => {
     if (!providerId) return;
     const restore = restoring();
-    const kept = restore?.thinkingLevel ?? storedThinkingLevel(providerId, model().id);
+    const kept = restore?.thinkingLevel ?? choices.storedThinkingLevel(providerId, model().id);
     const offered = levels();
     const known = offered.find((level) => level === kept);
     const wanted = known ?? runtime.agent.state.thinkingLevel;
@@ -226,7 +226,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       followThinking();
       return;
     }
-    const next = findModel(models, restore?.model ?? storedModelId(providerId));
+    const next = findModel(models, restore?.model ?? choices.storedModelId(providerId));
     // Its model may be gone from the catalog. The level is still the
     // conversation's, and the snapshot is spent either way.
     if (next) chooseModel(next);
@@ -416,7 +416,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
 
     selectProvider(id) {
       providerId = id;
-      storeProviderId(id);
+      choices.storeProviderId(id);
       load(id);
     },
 
@@ -424,7 +424,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       const next = findModel(models, id);
       if (!next || !providerId) return;
       chooseModel(next);
-      storeModelId(providerId, id);
+      choices.storeModelId(providerId, id);
       flush();
     },
 
@@ -435,12 +435,12 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     setThinkingLevel(level) {
       if (!ready() || !providerId) return;
       store.setThinkingLevel(level);
-      storeThinkingLevel(providerId, model().id, level);
+      choices.storeThinkingLevel(providerId, model().id, level);
     },
 
     saveKey(id, key) {
       keys = { ...keys, [id]: key };
-      storeApiKey(id, key);
+      choices.storeApiKey(id, key);
       notify();
     },
 

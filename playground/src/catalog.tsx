@@ -7,7 +7,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion.tsx";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar.tsx";
+import { Avatar, AvatarFallback } from "@/components/_parked/ui/avatar.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button, buttonSx } from "@/components/ui/button.tsx";
 import {
@@ -18,7 +18,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card.tsx";
+} from "@/components/_parked/ui/card.tsx";
 import {
   Carousel,
   CarouselContent,
@@ -26,7 +26,7 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@/components/ui/carousel.tsx";
+} from "@/components/_parked/ui/carousel.tsx";
 import {
   Collapsible,
   CollapsibleContent,
@@ -40,7 +40,7 @@ import {
   CommandItem,
   CommandList,
   CommandShortcut,
-} from "@/components/ui/command.tsx";
+} from "@/components/_parked/ui/command.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,7 +50,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card.tsx";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/_parked/ui/hover-card.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import {
   InputGroup,
@@ -68,8 +72,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
-import { Switch } from "@/components/ui/switch.tsx";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
+import { Switch } from "@/components/_parked/ui/switch.tsx";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/_parked/ui/tabs.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 
 import {
@@ -105,7 +109,7 @@ import {
 } from "@/components/ai-elements/reasoning.tsx";
 import { Shimmer } from "@/components/ai-elements/shimmer.tsx";
 import { Context } from "@/components/ai-elements/context.tsx";
-import { Terminal } from "@/components/ai-elements/terminal.tsx";
+import { Terminal } from "@/components/_parked/ai-elements/terminal.tsx";
 import {
   InlineCitation,
   InlineCitationCard,
@@ -121,7 +125,7 @@ import {
   InlineCitationQuote,
   InlineCitationSource,
   InlineCitationText,
-} from "@/components/ai-elements/inline-citation.tsx";
+} from "@/components/_parked/ai-elements/inline-citation.tsx";
 import {
   ModelSelector,
   ModelSelectorContent,
@@ -133,7 +137,7 @@ import {
   ModelSelectorName,
   ModelSelectorShortcut,
   ModelSelectorTrigger,
-} from "@/components/ai-elements/model-selector.tsx";
+} from "@/components/_parked/ai-elements/model-selector.tsx";
 import {
   OpenIn,
   OpenInChatGPT,
@@ -145,7 +149,7 @@ import {
   OpenInT3,
   OpenInTrigger,
   OpenInv0,
-} from "@/components/ai-elements/open-in-chat.tsx";
+} from "@/components/_parked/ai-elements/open-in-chat.tsx";
 import {
   Tool,
   ToolContent,

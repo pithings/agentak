@@ -13,9 +13,9 @@ import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core"
  * "switch conversations by switching sessions" costs.
  *
  * More than the transcript rides along, because the transcript alone comes back
- * under whatever model the browser last used rather than the one that wrote it.
- * The choices below are the conversation's own, and they win over the
- * per-browser defaults `storage.ts` keeps.
+ * under whatever model was last used rather than the one that wrote it. The
+ * choices below are the conversation's own, and they win over the defaults
+ * `storage.ts` keeps.
  */
 export interface PiSnapshot {
   /** `PI_SNAPSHOT_VERSION` when written. A stored one from an older shape is dropped. */

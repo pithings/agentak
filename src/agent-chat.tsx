@@ -1,14 +1,33 @@
 import type { ComponentChildren } from "preact";
+import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
 
 import { Chat } from "./components/chat.tsx";
+import { Button } from "./components/ui/button.tsx";
+import { SlidersIcon } from "./lib/icons.tsx";
 import {
   CHAT_SESSION_OPTIONS,
   type ChatSession,
   type ChatSessionOptions,
   useSession,
 } from "./session.ts";
-import type { Sx } from "./styles/sx.ts";
+import { reset } from "./styles/base.ts";
+import { sx, type Sx } from "./styles/sx.ts";
+
+const S = {
+  hint: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "0.5rem",
+    textAlign: "center",
+  },
+  hintNote: {
+    margin: "0",
+    color: "var(--muted-foreground)",
+    fontSize: "0.75rem",
+  },
+} satisfies Record<string, Sx>;
 
 export interface AgentChatProps extends ChatSessionOptions {
   /**
@@ -75,6 +94,19 @@ export function AgentChat({
   const pickerOpen = session.setPickerOpen ? (snapshot.pickerOpen ?? false) : held;
   const onPickerOpenChange = session.setPickerOpen ?? setHeld;
 
+  // Nothing can answer yet: the first message would only open the settings page,
+  // so the empty state says so first. It leads the host's own content, because
+  // choosing a model comes before whatever a launcher offers to do with one.
+  const unset = Boolean(snapshot.providers?.length) && !snapshot.providerId;
+  const empty = unset ? (
+    <Fragment>
+      <PickHint onOpen={() => onPickerOpenChange(true)} />
+      {emptyActions}
+    </Fragment>
+  ) : (
+    emptyActions
+  );
+
   // The callbacks go through the session rather than out of it as bare
   // functions, so a session written as a class keeps its `this`. An absent one
   // stays absent: the surface leaves out what nothing answers.
@@ -83,7 +115,7 @@ export function AgentChat({
       {...snapshot}
       actions={actions}
       className={className}
-      emptyActions={emptyActions}
+      emptyActions={empty}
       onDequeue={session.dequeue && ((id) => session.dequeue?.(id))}
       onDismissError={session.dismissError && (() => session.dismissError?.())}
       onModelChange={session.selectModel && ((id) => session.selectModel?.(id))}
@@ -104,5 +136,18 @@ export function AgentChat({
       pickerOpen={pickerOpen}
       style={style}
     />
+  );
+}
+
+/** The empty state's way to the settings page, before any provider is set. */
+function PickHint({ onOpen }: { onOpen: () => void }) {
+  return (
+    <div style={S.hint}>
+      <Button onClick={onOpen} size="sm" type="button" variant="outline">
+        <SlidersIcon />
+        Select a model
+      </Button>
+      <p style={sx(reset.text, S.hintNote)}>Choose a provider and a model to start.</p>
+    </div>
   );
 }

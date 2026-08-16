@@ -391,6 +391,15 @@ export const PlugIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const SlidersIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M20 7h-9" />
+    <path d="M14 17H5" />
+    <circle cx="17" cy="17" r="3" />
+    <circle cx="7" cy="7" r="3" />
+  </Icon>
+);
+
 /**
  * Runtime marker for the icons above. A component that renders `children` can
  * then size and colour a caller-passed icon without a prop reaching this
@@ -444,6 +453,7 @@ const ICONS: ((props: IconProps) => JSX.Element)[] = [
   TrashIcon,
   KeyIcon,
   PlugIcon,
+  SlidersIcon,
 ];
 for (const component of ICONS) (component as IconComponent).isIcon = true;
 

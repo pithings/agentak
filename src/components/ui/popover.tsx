@@ -145,6 +145,32 @@ function clipper(panel: HTMLElement, view: Window): Element | null {
 }
 
 /**
+ * Where the visual viewport starts, in the coordinates `getBoundingClientRect`
+ * is speaking — `offset`, or 0.
+ *
+ * A visual viewport that sits somewhere inside the layout one — a phone keyboard
+ * scrolls it, a desktop pinch scrolls it — leaves two ways to report a rect, and
+ * browsers do not agree. Client rects are meant to be layout-viewport
+ * coordinates, and on a desktop pinch they are: the band runs `offset` to
+ * `offset + size`. iOS, with a keyboard up, shifts every rect by that offset
+ * instead, so the band starts at 0 and the offset is already counted in. Adding
+ * it again puts the band below everything the page has on screen, which is what
+ * left this panel at `FLOOR` with a keyboard open: room for two rows out of a
+ * screen half empty.
+ *
+ * `drift` is the tell, and it is the root element measured against the scroll it
+ * has been given — 0 where the rects are layout-viewport coordinates, and the
+ * whole offset back where they are not. It is read rather than guessed: a rule
+ * from the anchor's own position is a rule about where a composer happens to
+ * sit, and this one is about which coordinates the browser speaks. The two
+ * readings only differ while the offset is non-zero, so every browser that
+ * shrinks its layout viewport for the keyboard takes the same path it always did.
+ */
+function origin(drift: number, offset: number) {
+  return offset > 0 && drift < -offset / 2 ? 0 : offset;
+}
+
+/**
  * What the panel opens into: the visible band of the viewport, narrowed to the
  * clipping ancestor.
  *
@@ -153,17 +179,20 @@ function clipper(panel: HTMLElement, view: Window): Element | null {
  * viewport would size itself to open behind the keyboard. The clipping ancestor
  * matters just as much: the chat surface is `overflow: hidden`, so a corner box
  * cuts a panel off long before the viewport does.
+ *
+ * Which coordinates the rects are in is read off the root element first — see
+ * `origin`, and the drift below.
  */
 function bounds(clip: Element | null, view: Window) {
   const viewport = view.visualViewport;
-  const top = viewport?.offsetTop ?? 0;
-  const left = viewport?.offsetLeft ?? 0;
-  const box = {
-    bottom: top + (viewport?.height ?? view.innerHeight),
-    left,
-    right: left + (viewport?.width ?? view.innerWidth),
-    top,
-  };
+  const height = viewport?.height ?? view.innerHeight;
+  const width = viewport?.width ?? view.innerWidth;
+  // The root pinned back to the layout viewport: its own rect, less the scroll
+  // that moved it. What is left is the shift the browser adds to every rect.
+  const root = view.document.documentElement.getBoundingClientRect();
+  const top = origin(root.top + view.scrollY, viewport?.offsetTop ?? 0);
+  const left = origin(root.left + view.scrollX, viewport?.offsetLeft ?? 0);
+  const box = { bottom: top + height, left, right: left + width, top };
 
   if (!clip) return box;
 

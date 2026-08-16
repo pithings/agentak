@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ChatPicker } from "../../src/components/chat/picker.tsx";
+import { ChatPicker } from "../../src/components/_parked/chat/picker.tsx";
 
 afterEach(cleanup);
 
@@ -32,7 +32,7 @@ describe("ChatPicker", () => {
     const { container, rerender } = render(picker());
     fireEvent.click(screen.getByText("Select a provider"));
     expect(screen.getByText("Providers")).toBeTruthy();
-    expect(screen.getByText("Needs key")).toBeTruthy();
+    expect(screen.getByText("BYOK")).toBeTruthy();
     expect(screen.queryByText("400K")).toBeNull();
 
     // A free provider is taken at once, and the panel goes on to its models.

@@ -1,26 +1,21 @@
 import type { ComponentChildren } from "preact";
 
 import { Checkpoint, CheckpointIcon, CheckpointTrigger } from "./ai-elements/checkpoint.tsx";
-import { EnvironmentVariables } from "./ai-elements/environment-variables.tsx";
 import { Image } from "./ai-elements/image.tsx";
-import { PackageInfo } from "./ai-elements/package-info.tsx";
-import { SchemaDisplay } from "./ai-elements/schema-display.tsx";
-import { SpeechInput } from "./ai-elements/speech-input.tsx";
-import { StackTrace } from "./ai-elements/stack-trace.tsx";
-import { TestResults } from "./ai-elements/test-results.tsx";
-import { Transcription } from "./ai-elements/transcription.tsx";
 
 /**
  * Renderers for `{ kind: "element" }` transcript parts, by name.
  *
  * Props are unchecked at the call site — a transcript carries plain data, so
- * the cast happens once, here. Every ported element registers one line.
+ * the cast happens once, here.
  *
- * Registered here are the elements a transcript can reach today: `image` and
- * `checkpoint` from the loop, plus the ones whose props are already plain data.
- * A compound element needs a data-driven wrapper to pass its children; those
- * live with whoever emits them — the playground registers its own through
- * `registerElements()`.
+ * Only the two names `toViewMessages()` can produce are registered: `image` for
+ * `ImageContent`, `checkpoint` for a compaction or branch summary. A renderer
+ * reaches the chat bundle by being listed here, so registering an element no
+ * source emits costs every host its bytes — the nine-name map cost 7.6 kB
+ * gzipped for seven names nothing could reach. Register a renderer when the
+ * tool that emits it lands, not before. A host adds its own through
+ * `registerElements()`; the playground does that in `demo-elements.tsx`.
  */
 export type ElementRenderer = (props: Record<string, unknown>) => ComponentChildren;
 
@@ -36,14 +31,7 @@ const CheckpointPart = ({ label, tooltip }: { label: string; tooltip?: string })
 
 export const ELEMENTS: Record<string, ElementRenderer> = {
   checkpoint: as(CheckpointPart),
-  "environment-variables": as(EnvironmentVariables),
   image: as(Image),
-  "package-info": as(PackageInfo),
-  "schema-display": as(SchemaDisplay),
-  "speech-input": as(SpeechInput),
-  "stack-trace": as(StackTrace),
-  "test-results": as(TestResults),
-  transcription: as(Transcription),
 };
 
 /** Add renderers for names this library does not emit itself. */

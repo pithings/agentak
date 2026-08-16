@@ -13,7 +13,7 @@ import {
   ModelSelectorSeparator,
   ModelSelectorShortcut,
   ModelSelectorTrigger,
-} from "../../src/components/ai-elements/model-selector.tsx";
+} from "../../src/components/_parked/ai-elements/model-selector.tsx";
 
 afterEach(cleanup);
 

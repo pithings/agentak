@@ -104,10 +104,13 @@ import-graph tests make sure each framework is only imported by its own wrapper.
 minimize button. `emptyActions` appears below the greeting and is only shown before the
 first message.
 
-The provider, model, thinking level, and API key are all selected in the composer picker.
-These choices come from the Pi session. A custom session without providers does not show
-the provider level. A model without reasoning support does not show a thinking-level
-choice. The chat has no separate setup page.
+The provider, model, thinking level, and API key are all selected on the settings page,
+`components/chat/settings.tsx`. Two controls open it: a button in the header, and the
+composer's trigger, which also names the model that is running. The page then replaces the
+transcript. Choosing a model closes it again, as do sending a message and the header's
+back arrow. These choices come from the Pi
+session. A custom session without providers shows no provider section and no key section.
+A model without reasoning support shows no thinking-level choice.
 
 The first user message becomes the default conversation title. If `generateTitle` is
 true, the model creates a title after the first answer. This uses one extra request and is
@@ -147,8 +150,9 @@ src/
   preact/ react/ vue/           `AgentakChat` wrappers for each framework
   components/ui/                shadcn primitives ported to Preact
   components/ai-elements/       AI SDK Elements ported to Preact
+  components/_parked/           Ports nothing renders yet; exported all the same
   components/chat.tsx           Chat UI with transcript input and callbacks
-  components/chat/              Header, empty state, messages, queue, composer, picker
+  components/chat/              Header, empty state, messages, queue, composer, settings
   components/elements.tsx       Renderer map for `{ kind: "element" }` parts
   components/markdown.tsx       md4x AST rendered with Preact
   styles/base.ts                `tokens`, reset presets, `u`, and animation settings
@@ -166,7 +170,7 @@ extension/                      MV3 side panel, package name `@agentak/extension
 
 The agent works end to end with 9 providers and the page tools. Four providers are free
 and do not need an API key. A new chat starts without a provider. The first message opens
-the picker, and a free provider can be selected with one click.
+the settings page, and a free provider can be selected with one click.
 
 Kilo and OpenCode Zen do not answer CORS preflight requests. Regular web pages therefore
 show 7 providers, while the extension shows all 9. See

@@ -53,7 +53,7 @@ visitor came for, so `chat-store.ts` starts minimised and unmounted and the laun
 waits. There is no shadow root between the page and the agent — the `--*` tokens reach
 it by inheritance, and so does tailwind preflight. That makes the widget the real
 host-page integration, and the one place to check the surface before the extension
-ships it. A visitor chooses nothing up front: the first message opens the picker, and
+ships it. A visitor chooses nothing up front: the first message opens the settings page, and
 the free providers need no key.
 
 The demo is the other `ChatMode`, and not a state anything starts in: it is one

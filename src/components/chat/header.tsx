@@ -1,7 +1,7 @@
 import type { ComponentChildren } from "preact";
 
 import { Button } from "../ui/button.tsx";
-import { PlusIcon } from "../../lib/icons.tsx";
+import { ArrowLeftIcon, PlusIcon, SlidersIcon } from "../../lib/icons.tsx";
 import { reset } from "../../styles/base.ts";
 import { sx, type Sx } from "../../styles/sx.ts";
 
@@ -38,12 +38,30 @@ export interface ChatHeaderProps {
   title?: string;
   /** Host buttons for the end of the bar — one title bar, not two. */
   actions?: ComponentChildren;
+  /**
+   * The way out of the settings page. With it the bar leads with a back arrow
+   * and drops the new-conversation button — the page is not a conversation, and
+   * one title bar serves both.
+   */
+  onBack?: () => void;
+  /**
+   * The way in. Absent where there is nothing to choose — a session with one
+   * fixed model — and while the page is already up, where `onBack` is the pair
+   * of this.
+   */
+  onSettings?: () => void;
 }
 
-/** The chat's title bar: the title, the new conversation button, and the host's. */
-export function ChatHeader({ onReset, title, actions }: ChatHeaderProps) {
+/** The chat's title bar: the title, the chat's own buttons, and the host's. */
+export function ChatHeader({ onReset, title, actions, onBack, onSettings }: ChatHeaderProps) {
   return (
     <header style={S.header}>
+      {onBack ? (
+        <Button aria-label="Back" onClick={onBack} size="icon-sm" title="Back" variant="ghost">
+          <ArrowLeftIcon />
+        </Button>
+      ) : null}
+
       {title ? (
         // The full text is the tooltip, because the bar is narrow and cuts it.
         <h2 style={sx(reset.text, S.title)} title={title}>
@@ -51,15 +69,31 @@ export function ChatHeader({ onReset, title, actions }: ChatHeaderProps) {
         </h2>
       ) : null}
 
-      <Button
-        aria-label="New conversation"
-        onClick={onReset}
-        size="icon-sm"
-        title="New conversation"
-        variant="ghost"
-      >
-        <PlusIcon />
-      </Button>
+      {onBack ? null : (
+        <Button
+          aria-label="New conversation"
+          onClick={onReset}
+          size="icon-sm"
+          title="New conversation"
+          variant="ghost"
+        >
+          <PlusIcon />
+        </Button>
+      )}
+
+      {/* After the chat's own buttons and before the host's: the page belongs to
+          the chat, and whatever chrome the host owns stays at the end. */}
+      {onSettings ? (
+        <Button
+          aria-label="Settings"
+          onClick={onSettings}
+          size="icon-sm"
+          title="Settings"
+          variant="ghost"
+        >
+          <SlidersIcon />
+        </Button>
+      ) : null}
 
       {actions}
     </header>

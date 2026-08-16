@@ -31,7 +31,7 @@ import {
   CommitMetadata,
   CommitSeparator,
   CommitTimestamp,
-} from "@/components/ai-elements/commit.tsx";
+} from "@/components/_parked/ai-elements/commit.tsx";
 import {
   Confirmation,
   ConfirmationAccepted,
@@ -55,7 +55,7 @@ import {
   QueueSectionLabel,
   QueueSectionTrigger,
 } from "@/components/ai-elements/queue.tsx";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion.tsx";
+import { Suggestion, Suggestions } from "@/components/_parked/ai-elements/suggestion.tsx";
 import { XIcon } from "@/lib/icons.tsx";
 import type { ToolApproval, ToolState } from "@/types.ts";
 

@@ -1,3 +1,4 @@
+import type { ComponentProps } from "preact";
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -12,7 +13,7 @@ const MODELS = [
 
 const PROVIDERS = [{ id: "openai", label: "OpenAI" }];
 
-const composer = () => (
+const composer = (props: Partial<ComponentProps<typeof ChatComposer>> = {}) => (
   <ChatComposer
     isStreaming={false}
     modelId="gpt-5"
@@ -21,26 +22,30 @@ const composer = () => (
     onStop={() => {}}
     providerId="openai"
     providers={PROVIDERS}
+    {...props}
   />
 );
 
 describe("ChatComposer", () => {
-  it("gives the focus to the textarea when a model is chosen by click", async () => {
-    render(composer());
-    fireEvent.click(screen.getByRole("button", { name: /GPT-5/ }));
-    fireEvent.click(screen.getByText("GPT-5 mini"));
+  it("names the model and asks the surface for the settings page", () => {
+    const opened: boolean[] = [];
+    render(composer({ onPickerOpenChange: (open) => opened.push(open) }));
 
-    await Promise.resolve();
-    expect((document.activeElement as HTMLElement)?.tagName).toBe("TEXTAREA");
+    // A model id says nothing about where it runs, so the provider comes with it.
+    const trigger = screen.getByRole("button", { name: /GPT-5/ });
+    expect(trigger.textContent).toBe("GPT-5 (OpenAI)");
+
+    // The trigger opens nothing itself — the page stands where the transcript
+    // is, which only `Chat` can answer for.
+    fireEvent.click(trigger);
+    expect(opened).toEqual([true]);
   });
 
-  it("gives the focus to the textarea when a model is chosen by Enter", async () => {
-    render(composer());
-    fireEvent.click(screen.getByRole("button", { name: /GPT-5/ }));
-    const search = screen.getByPlaceholderText("Search models…");
-    fireEvent.keyDown(search, { key: "ArrowDown" });
-    fireEvent.keyDown(search, { key: "Enter" });
+  it("gives the focus to the textarea when the settings page closes", async () => {
+    const { rerender } = render(composer({ pickerOpen: true }));
+    expect((document.activeElement as HTMLElement)?.tagName).not.toBe("TEXTAREA");
 
+    rerender(composer({ pickerOpen: false }));
     await Promise.resolve();
     expect((document.activeElement as HTMLElement)?.tagName).toBe("TEXTAREA");
   });

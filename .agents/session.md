@@ -39,7 +39,7 @@ forwards options by.
 `reset` — plus optional ones for the parts of the surface that answer back:
 `respondToTool`, `dequeue`, `dismissError`, `retry`, `selectProvider`, `selectModel`,
 `setThinkingLevel`, `saveKey`, `setPickerOpen`, `setOptions`. **Absent means gone, not broken.** A harness with one
-fixed model carries no `providers`, and `picker.tsx` then heads its own model list under
+fixed model carries no `providers`, and `settings.tsx` then heads its own model list under
 `providerLabel`; one with no token accounting carries no `usage`, and the composer shows
 no meter; one with no `dismissError` shows an error row with nothing to close it.
 
@@ -50,7 +50,7 @@ method nothing calls.
 
 **`thinkingLevels` is what the chosen model offers, not the scale.** pi's scale is
 `off | minimal | low | medium | high | xhigh | max`, but a model takes only part of it
-and one that cannot reason takes `off` alone — one level is no choice, so the picker then
+and one that cannot reason takes `off` alone — one level is no choice, so the page then
 shows no level at all. The list travels rather than a `reasoning` flag, because only the
 harness knows which of the seven a given model answers to. pi keeps the choice per
 provider **and** model: one provider carries reasoning models beside models that take no
@@ -80,10 +80,11 @@ Two rules a harness must keep:
    during the render and re-checks identity once the subscription lands, so an event in
    that gap is not lost — but it cannot recover a change nobody announced.
 
-**`pickerOpen` is one piece of state, and `setPickerOpen` decides who holds it.** A
-session that implements it owns both halves, and the surface reads `snapshot.pickerOpen`
-alone; one that does not leaves both here. Implementing the setter and forgetting the
-field would otherwise leave the picker shut for good.
+**`pickerOpen` is one piece of state, and `setPickerOpen` decides who holds it.** It is
+the settings page — provider, key, thinking level and model, shown in place of the
+transcript. A session that implements the setter owns both halves, and the surface reads
+`snapshot.pickerOpen` alone; one that does not leaves both here. Implementing the setter
+and forgetting the field would otherwise leave the page shut for good.
 
 **One session is one conversation.** Nothing here loads, lists or names a stored
 transcript. A host that keeps several switches between them by switching sessions, which

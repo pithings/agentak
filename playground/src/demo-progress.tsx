@@ -21,7 +21,7 @@ import {
   ChainOfThoughtSearchResult,
   ChainOfThoughtSearchResults,
   ChainOfThoughtStep,
-} from "@/components/ai-elements/chain-of-thought.tsx";
+} from "@/components/_parked/ai-elements/chain-of-thought.tsx";
 import {
   Plan,
   PlanAction,
@@ -31,7 +31,7 @@ import {
   PlanSteps,
   PlanTitle,
   PlanTrigger,
-} from "@/components/ai-elements/plan.tsx";
+} from "@/components/_parked/ai-elements/plan.tsx";
 import {
   Task,
   TaskContent,

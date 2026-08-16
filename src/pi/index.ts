@@ -32,6 +32,13 @@ export {
   findModel,
 } from "./models.ts";
 export { cachedCatalog, loadCatalog } from "./catalog.ts";
+export {
+  browserStorage,
+  createChoices,
+  memoryStorage,
+  type PiChoices,
+  type PiStorage,
+} from "./storage.ts";
 export { describeFailure } from "./errors.ts";
 export {
   type AnyModel,

@@ -46,3 +46,70 @@ export function useKeyboardInset(): number {
 
   return inset;
 }
+
+/** An input a virtual keyboard opens for. Cross-document, so no `instanceof`. */
+const NO_KEYBOARD = new Set([
+  "button",
+  "checkbox",
+  "color",
+  "file",
+  "hidden",
+  "image",
+  "radio",
+  "range",
+  "reset",
+  "submit",
+]);
+
+function isField(node: Element | null): boolean {
+  if (!node) return false;
+  if ((node as HTMLElement).isContentEditable) return true;
+  if (node.tagName === "TEXTAREA") return true;
+  return node.tagName === "INPUT" && !NO_KEYBOARD.has((node as HTMLInputElement).type);
+}
+
+/**
+ * Whether a virtual keyboard is up. Touch only, false everywhere else.
+ *
+ * Two signals, because neither covers both kinds of browser. The inset is the
+ * measured one and the better one, but it is 0 wherever the browser shrinks the
+ * layout viewport for the keyboard itself — there is nothing left over to
+ * measure. The focus is what is left: on a phone the only thing that opens a
+ * keyboard is a field taking the focus, so a focused field means a keyboard,
+ * whether or not it moved a viewport this code can see.
+ *
+ * Use it for what a keyboard costs rather than where it sits — `use-keyboard-inset`
+ * is the one that answers where. A panel that should spend the room it has left
+ * asks this; `chat/picker.tsx` is the first, for its model list and its key field.
+ */
+export function useKeyboardOpen(): boolean {
+  const inset = useKeyboardInset();
+  const [field, setField] = useState(false);
+
+  useEffect(() => {
+    const doc = globalThis.document;
+    if (!doc || !isTouch()) return;
+
+    let frame = 0;
+    const read = () => setField(isField(doc.activeElement));
+    // `focusout` lands before the next field has the focus, so a move from one
+    // field to the next reads as no field at all — and anything measured
+    // against it would collapse and grow back in the same breath. A frame later
+    // the focus has landed, and one read serves both events.
+    const later = () => {
+      frame = globalThis.requestAnimationFrame(read);
+    };
+
+    doc.addEventListener("focusin", read, true);
+    doc.addEventListener("focusout", later, true);
+    read();
+
+    return () => {
+      globalThis.cancelAnimationFrame(frame);
+      doc.removeEventListener("focusin", read, true);
+      doc.removeEventListener("focusout", later, true);
+    };
+  }, []);
+
+  return inset > 0 || field;
+}
