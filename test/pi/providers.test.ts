@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   catalogModels,
@@ -15,6 +15,7 @@ import {
   PROVIDERS,
   streamFor,
   SUPPORTED_APIS,
+  vercelFetch,
 } from "../../src/pi/providers.ts";
 
 const model = (over: Partial<AnyModel>): AnyModel =>
@@ -118,6 +119,49 @@ describe("PROVIDERS", () => {
         expect(Object.values(entry.cost), `${provider.id}/${entry.id}`).toEqual([0, 0, 0, 0]);
       }
     }
+  });
+});
+
+describe("vercelFetch", () => {
+  it("sends only the headers the gateway's preflight allows", async () => {
+    const sent = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) => new Response("{}"),
+    );
+    const original = globalThis.fetch;
+    globalThis.fetch = sent as unknown as typeof fetch;
+
+    try {
+      await vercelFetch("https://ai-gateway.vercel.sh/v1/messages", {
+        method: "POST",
+        headers: {
+          "anthropic-beta": "fine-grained-tool-streaming-2025-05-14",
+          "anthropic-dangerous-direct-browser-access": "true",
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+          "x-api-key": "vck_key",
+          "x-stainless-os": "MacOS",
+          "x-stainless-retry-count": "0",
+        },
+        body: "{}",
+      });
+    } finally {
+      globalThis.fetch = original;
+    }
+
+    const init = sent.mock.calls[0][1]!;
+    expect([...(init.headers as Headers).keys()].sort()).toEqual([
+      "anthropic-beta",
+      "authorization",
+      "content-type",
+    ]);
+    // The key the sdk put in `x-api-key`, in the header the gateway takes.
+    expect((init.headers as Headers).get("authorization")).toBe("Bearer vck_key");
+    expect(init.method).toBe("POST");
+    expect(init.body).toBe("{}");
+  });
+
+  it("is the fetch the gateway provider runs on", () => {
+    expect(findProvider("vercel-ai-gateway")?.fetch).toBe(vercelFetch);
   });
 });
 

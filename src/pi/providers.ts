@@ -1,5 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import type { Api, AssistantMessageEventStream, Model } from "@earendil-works/pi-ai";
+import type { Api, AssistantMessageEventStream, FetchFunction, Model } from "@earendil-works/pi-ai";
 
 import { KILO_MODELS, LLM7_MODELS, OPENCODE_ZEN_MODELS, OVHCLOUD_MODELS } from "./free-models.ts";
 import { WLLAMA_MODEL_ID, WLLAMA_MODELS, WLLAMA_PROVIDER_ID, wllamaSupported } from "./local.ts";
@@ -46,6 +46,12 @@ export interface Provider {
    * list a row that cannot answer.
    */
   supported?: () => boolean;
+  /**
+   * The request, rewritten before it is sent. For a provider whose preflight
+   * takes fewer headers than the sdk sets — see `vercelFetch`. Omitted leaves
+   * the request as the api module built it.
+   */
+  fetch?: FetchFunction;
   /** Where the key comes from. A free provider has none. */
   keyUrl?: string;
   keyPlaceholder?: string;
@@ -95,6 +101,42 @@ const catalog = (module: string): CatalogLoader => {
     if (!models) throw new Error(`This pi-ai carries no ${exportName}.`);
     return models;
   };
+};
+
+/**
+ * What Vercel's gateway lets a page send. Its preflight answers with a fixed
+ * list, and the anthropic sdk sets four names outside it: `x-api-key`,
+ * `anthropic-version`, `anthropic-dangerous-direct-browser-access`, and the
+ * `x-stainless-*` telemetry. Any one of them fails the check and the browser
+ * drops the request before it leaves — which is the `x-stainless-os is not
+ * allowed by Access-Control-Allow-Headers` error the console shows.
+ *
+ * The list, and not the four names, because it is the server's own answer to
+ * `OPTIONS /v1/messages` and so the whole of what a page may send. A header the
+ * sdk adds later is refused the same way, and refused here first.
+ */
+const VERCEL_HEADERS = new Set(["accept", "anthropic-beta", "authorization", "content-type"]);
+
+/**
+ * The same request with only those headers left. The key moves to
+ * `Authorization`, which the gateway takes in place of `x-api-key`, and the
+ * version header goes: the gateway asks for none.
+ *
+ * The extension needs none of this — its fetch is not gated by a preflight —
+ * but the rewrite costs it nothing and one path is easier to reason about.
+ */
+export const vercelFetch: FetchFunction = (input, init) => {
+  const sent = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+
+  const headers = new Headers();
+  for (const [name, value] of sent) {
+    if (VERCEL_HEADERS.has(name)) headers.set(name, value);
+  }
+
+  const key = sent.get("x-api-key");
+  if (key && !headers.has("authorization")) headers.set("authorization", `Bearer ${key}`);
+
+  return fetch(input, { ...init, headers });
 };
 
 export const PROVIDERS: Provider[] = [
@@ -155,6 +197,7 @@ export const PROVIDERS: Provider[] = [
     id: "vercel-ai-gateway",
     label: "Vercel AI Gateway",
     gateway: true,
+    fetch: vercelFetch,
     keyUrl: "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%2Fapi-keys",
     keyPlaceholder: "vck_…",
     defaultModelId: "anthropic/claude-sonnet-5",
@@ -252,5 +295,8 @@ export const streamFor: StreamFn = async (model, context, options) => {
   const load = APIS[model.api];
   if (!load) throw new Error(`This build does not carry the ${model.api} api.`);
   const { streamSimple } = await load();
-  return streamSimple(model, context, options);
+  // A provider's own fetch is the last word on its headers; a host that passes
+  // one has already replaced the transport, so that one stands.
+  const fetch = options?.fetch ?? findProvider(model.provider)?.fetch;
+  return streamSimple(model, context, fetch ? { ...options, fetch } : options);
 };

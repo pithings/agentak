@@ -147,6 +147,28 @@ curl -sI -X OPTIONS https://opencode.ai/zen/v1/chat/completions \
 A consumer embedding the chat in their own page is in the same position as the
 playground: the seven, unless they proxy the rest themselves.
 
+**The origin header is not the only one a preflight refuses.** A provider that answers
+one still names which request headers it takes, and **Vercel AI Gateway** takes a short
+list: `Content-Type`, `Authorization`, `anthropic-beta`, and its own `ai-*` names. The
+anthropic sdk sets four outside it — `x-api-key`, `anthropic-version`,
+`anthropic-dangerous-direct-browser-access`, and the `x-stainless-*` telemetry — so every
+turn failed with `x-stainless-os is not allowed by Access-Control-Allow-Headers` and no
+request left the browser. `Provider.fetch` is where that is put right: `vercelFetch()` in
+`pi/providers.ts` keeps only the allowed names, moves the key to `Authorization: Bearer`,
+which the gateway takes in place of `x-api-key`, and drops the version header, which it
+does not ask for. `streamFor()` hands it to the api module as `options.fetch`; a host that
+passes its own fetch keeps it.
+
+The allow list, and not the four names, because the list is the server's own answer and so
+the whole of what a page may send — a header a later sdk adds is refused there first. Read
+it back with the same preflight:
+
+```sh
+curl -sI -X OPTIONS https://ai-gateway.vercel.sh/v1/messages \
+  -H 'Origin: http://localhost:4050' -H 'Access-Control-Request-Method: POST' \
+  -H 'Access-Control-Request-Headers: authorization,content-type'
+```
+
 A key is stored per provider, so switching back to one already set up asks nothing.
 `getApiKey(provider)` is how pi asks for the right one.
 
