@@ -2,7 +2,7 @@
 
 > First published August 28, 2025
 >
-> Brandon Walderman <code>&lt;brwalder@microsoft.com>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code><br>
+> Brandon Walderman <code>&lt;brwalder@microsoft.com>>>>>>>>>>>>>>>>>>>>>>>>>>&gt;</code><br>
 
 This is a supplemental explainer for the main WebMCP explainer at https://github.com/webmachinelearning/webmcp.
 
