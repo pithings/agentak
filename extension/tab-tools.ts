@@ -1,5 +1,13 @@
 /**
- * The active tab's WebMCP tools, for the side panel.
+ * The tools of the tab in front, for the side panel.
+ *
+ * Two things are offered, and the panel hands both over as one `PageTools`:
+ *
+ * 1. `read_page`, the panel's own — see `read-page.ts`. It is listed on every
+ *    tab, because it is what makes the agent worth opening on an ordinary site.
+ * 2. Whatever the page publishes on `document.modelContext` — WebMCP. Almost no
+ *    page publishes any, so this half is usually empty and must never be what
+ *    decides whether the model gets tools at all.
  *
  * The panel document is `chrome-extension:` and its own `document.modelContext`
  * is empty, so it reads the tab instead. A `RegisteredTool` carries a live
@@ -7,17 +15,22 @@
  * `getTools()` there, `executeTool()` there, and only names, schemas and JSON
  * strings come back. That is the whole of what `PageTools` asks for.
  *
- * Injected in the `MAIN` world, where `document.modelContext` is certainly the
- * one the page registered on. That world has no `chrome.runtime`, so the
- * `toolchange` event is relayed out in two steps: the page posts a message to
- * itself, and a listener in the isolated world forwards it to the panel.
+ * WebMCP is injected in the `MAIN` world, where `document.modelContext` is
+ * certainly the one the page registered on. That world has no `chrome.runtime`,
+ * so the `toolchange` event is relayed out in two steps: the page posts a
+ * message to itself, and a listener in the isolated world forwards it to the
+ * panel. The reader needs none of that and runs in the isolated world, which
+ * sees the same dom and touches none of the page's own globals.
  *
- * `activeTab` is granted for the tab the toolbar button was clicked on. Another
- * tab answers nothing until the button is clicked there — a manifest with wider
- * `host_permissions` is what lifts that, and that is the reader's call, not
- * ours.
+ * The manifest asks for every http origin, so the tab in front answers whether
+ * or not the toolbar button was clicked on it. `activeTab` alone was the other
+ * choice, and it costs the panel its point: the side panel outlives the tab it
+ * was opened from, so a person who opens it and then browses would find the
+ * agent blind to everything but the one tab it started on.
  */
 import type { PageTool, PageTools } from "@/pi/page-tools.ts";
+
+import { PAGE_LIMIT, readPageInTab, readPageTool } from "./read-page.ts";
 
 /** What the page posts to itself, and what the panel hears. */
 const RELAY = "agentak:webmcp-toolchange";
@@ -93,22 +106,37 @@ function relayOutOfPage(relay: string) {
   });
 }
 
-const activeTabId = async (): Promise<number | undefined> => {
+const activeTab = async (): Promise<chrome.tabs.Tab | undefined> => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  return tab?.id;
+  return tab;
+};
+
+/**
+ * Where a result came from, for the model and for the transcript. The url is
+ * there because the manifest asks for the origin; a tab that has none — the new
+ * tab page, a settings screen — is named rather than left blank.
+ */
+const tabOrigin = (tab: chrome.tabs.Tab): string => {
+  try {
+    return new URL(tab.url ?? "").origin;
+  } catch {
+    return "the current tab";
+  }
 };
 
 /** One injected call, with the page's own failure turned back into a throw. */
-async function inPage<T, A extends unknown[]>(
+async function inTab<T, A extends unknown[]>(
   tabId: number,
-  func: (...args: A) => Promise<Answered<T>>,
+  func: (...args: A) => Answered<T> | Promise<Answered<T>>,
   args: A,
+  // The string form: `executeScript` takes the enum's values, not the enum.
+  world: `${chrome.scripting.ExecutionWorld}` = "MAIN",
 ): Promise<T> {
   const [injected] = await chrome.scripting.executeScript({
     args,
     func,
     target: { tabId },
-    world: "MAIN",
+    world,
   });
   const answered = injected?.result as Answered<T> | undefined;
   if (!answered) throw new Error("The page did not answer.");
@@ -121,6 +149,14 @@ async function inPage<T, A extends unknown[]>(
  * the `page` option of `createPiSession()`.
  */
 export function activeTabTools(): PageTools {
+  /**
+   * The readers this source handed out. A site may publish a tool named
+   * `read_page` too — `pageToolName()` would rename that one, since ours is
+   * listed first, but `call` is given the tool as the page named it. So the two
+   * are told apart by which object it is, and never by what it is called.
+   */
+  const readers = new WeakSet<PageTool>();
+
   /** Attach the relay once per page, on the way past. */
   const listen = async (tabId: number) => {
     const target = { tabId };
@@ -135,21 +171,34 @@ export function activeTabTools(): PageTools {
 
   return {
     async list() {
-      const tabId = await activeTabId();
-      if (tabId === undefined) return [];
-      const tools = await inPage(tabId, readTools, []);
+      const tab = await activeTab();
+      if (tab?.id === undefined) return [];
+
+      // The reader is listed first and listed always. A page that publishes no
+      // WebMCP — which is nearly every page — must still leave the model able
+      // to see it, and a tab that refuses injection altogether, such as the web
+      // store or a `chrome:` screen, says so when the tool is called.
+      const reader = readPageTool(tabOrigin(tab));
+      readers.add(reader);
+
+      const published = await inTab(tab.id, readTools, []).catch(() => []);
       // Only worth relaying from a page that has any.
-      if (tools.length > 0) await listen(tabId).catch(() => {});
-      return tools;
+      if (published.length > 0) await listen(tab.id).catch(() => {});
+      return [reader, ...published];
     },
 
     async call(tool, args, signal) {
       if (signal?.aborted) throw new Error("The run was stopped.");
-      const tabId = await activeTabId();
-      if (tabId === undefined) throw new Error("There is no page to run this on.");
+      const tab = await activeTab();
+      if (tab?.id === undefined) throw new Error("There is no page to run this on.");
       // An injected call cannot be recalled, so the signal only guards the start
       // of it. A tool that takes an `AbortSignal` gets none through here.
-      return inPage(tabId, runTool, [tool.name, tool.origin, args]);
+      if (readers.has(tool)) {
+        // The isolated world: the reader needs the dom and nothing the page put
+        // on its own window.
+        return inTab(tab.id, readPageInTab, [PAGE_LIMIT], "ISOLATED");
+      }
+      return inTab(tab.id, runTool, [tool.name, tool.origin, args]);
     },
 
     subscribe(listener) {

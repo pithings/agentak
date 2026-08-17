@@ -388,7 +388,7 @@ serialised: a `PageTool` is the name, the schema, the origin and the two hints, 
 source is what turns one back into a call. That is the whole reason `PageTools` exists as
 an interface. `documentTools()` is the page's implementation — the chat is in the document
 the tools are in, so it holds the list and matches by name and origin. The panel's is
-`extension/webmcp-tab.ts`, which runs both calls in the tab instead.
+`extension/tab-tools.ts`, which runs both calls in the tab instead.
 
 **A name is cut to what a provider takes.** WebMCP allows a period and 128 characters;
 no provider here does. `cart.add` reaches the model as `cart_add`, anything longer is cut

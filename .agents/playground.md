@@ -192,25 +192,60 @@ library and the extension stay on the root's 7.
 
 ## extension/ — `@agentak/extension`
 
-WIP MV3 side panel. `pnpm build:extension` writes `extension/dist`; load it unpacked.
+MV3 side panel. `pnpm build:extension` writes `extension/dist`; load it unpacked. Nothing
+here has been opened in a browser yet.
 
-| File             | What                                                         |
-| ---------------- | ------------------------------------------------------------ |
-| `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported |
-| `sidepanel.html` | the panel document — one full-height `#root` to render into  |
-| `panel.tsx`      | `ChatPanel` from `agentak/preact`, over `createPiSession()`  |
-| `webmcp-tab.ts`  | the active tab's WebMCP tools, as the session's `page`       |
-| `background.ts`  | the service worker — opens the panel on the action click     |
-| `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`        |
+| File             | What                                                               |
+| ---------------- | ------------------------------------------------------------------ |
+| `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported       |
+| `sidepanel.html` | the panel document — one full-height `#root` to render into        |
+| `panel.tsx`      | `ChatPanel` from `agentak/preact`, over `createPiSession()`        |
+| `tab-tools.ts`   | the tools of the tab in front, as the session's `page`             |
+| `read-page.ts`   | `read_page` — the panel's own tool, and the half injected in a tab |
+| `catalogs.ts`    | the bundled model catalogs, through `useCatalogSource()`           |
+| `storage.ts`     | keys, choices and conversations in `chrome.storage.local`          |
+| `background.ts`  | the service worker — opens the panel on the action click           |
+| `icons/`         | the toolbar icons, copied beside the bundle                        |
+| `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`              |
 
-`page` is the one option the panel passes that a page does not. Its own document carries
-no tools, and a WebMCP tool cannot be serialised, so `webmcp-tab.ts` runs `getTools()` and
-`executeTool()` inside the tab through `chrome.scripting.executeScript` and only names and
-JSON strings come back. See [`webmcp.md`](webmcp.md).
+The panel is the surface a page hosts, plus three things a page does not need.
 
-Not built yet: key storage in `chrome.storage` instead of `localStorage`, and any tool
-that reads the page's own text. `activeTab` is granted for the tab the toolbar button was
-clicked on, so the tools of another tab answer nothing until it is clicked there.
+**The tools of the tab.** `page` is the option a page rarely passes and the panel always
+does. Two tools reach the model through it, as one `PageTools`:
 
-The manifest asks for `sidePanel`, `activeTab`, `scripting` and `storage`. The CSP
-blocks third-party requests, which is one reason no component fetches a remote asset.
+- `read_page`, the panel's own — the rendered text of the tab in front, with its title and
+  url. It is what makes the agent worth opening on an ordinary site, because WebMCP ships
+  behind an origin trial and nearly no page publishes any tool at all. Read-only, so it
+  runs unasked; untrusted, so the model is told in front of every result that the page is
+  data and not instructions. It is injected in the isolated world, which sees the same dom
+  and touches none of the page's own globals.
+- whatever the page publishes on `document.modelContext`. Its own document carries none,
+  and a WebMCP tool cannot be serialised, so `tab-tools.ts` runs `getTools()` and
+  `executeTool()` inside the tab through `chrome.scripting.executeScript` in the `MAIN`
+  world, and only names and JSON strings come back. See [`webmcp.md`](webmcp.md).
+
+The manifest asks for every http origin rather than `activeTab`. `activeTab` is granted
+for the tab the toolbar button was clicked on, and the side panel outlives that tab: a
+person who opens the panel and then browses would find the agent blind to everything but
+the one tab it started on, which is the whole of what it is for. The cost is the install
+warning that names every site, and it is the honest one — this agent reads pages.
+
+**The catalogs.** The five keyed providers read theirs from esm.sh, and an MV3 content
+security policy allows no remote module, so the panel would list no model for any of them.
+`catalogs.ts` passes its own source to `useCatalogSource()`: one `import()` per provider,
+written out rather than built from the name, because a bundler follows a literal and
+nothing else. Each is its own chunk, so a catalog is still only read when its provider is
+picked — OpenRouter's alone is 136 KB. They are as old as the build, which is the price of
+a panel that lists anything at all. The free providers are unaffected; their models are in
+`pi/free-models.ts`, which the panel already bundles.
+
+**The store.** `chrome.storage.local` rather than `localStorage`: it is one area per
+extension rather than one per document, and it survives what clearing browsing data takes
+away. `PiStorage` reads synchronously and `chrome.storage` does not, so the area is read
+in full before anything mounts — a chat that mounted first would show every choice
+forgotten, then change it under the reader — and after that the map is the answer while
+every write goes both places. The panel keeps its conversations there too.
+
+The CSP blocks third-party requests, which is one reason no component fetches a remote
+asset. wllama is not offered here for the same reason: `wllamaSupported()` answers no on
+a `chrome-extension:` document.

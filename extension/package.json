@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@earendil-works/pi-ai": "^0.84.1",
     "agentak": "workspace:*",
     "preact": "^10.29.8"
   },

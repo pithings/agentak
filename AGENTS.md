@@ -257,8 +257,10 @@ Chrome's own, where it is there, and without wllama. See
 yet been tested in a real browser.
 
 The five keyed providers read their catalogs from esm.sh at the version published now,
-so a model released after this build is still offered and no catalog json ships. The
-panel cannot import that url — see the next tasks below.
+so a model released after this build is still offered and no catalog json ships. The panel
+cannot import that url — an MV3 policy allows no remote module — so it passes its own
+source through `useCatalogSource()` and ships the catalogs of the pi-ai it was built
+against, one lazy chunk each. See [`.agents/playground.md`](.agents/playground.md).
 
 `ChatSession` keeps the chat UI separate from the agent implementation. Pi is only
 available through `agentak/pi`, and a host can provide a different session. See
@@ -272,6 +274,14 @@ runs unasked, and anything else is confirmed on every call. Discovery has been t
 browser and a call has not, and WebMCP itself only ships in Chrome 149 and Edge 150 behind
 an origin trial. See [`.agents/webmcp.md`](.agents/webmcp.md).
 
+Because nearly no page publishes any, the panel adds one tool of its own: `read_page`
+hands the model the rendered text of the tab in front, with its title and url. It is
+listed on every tab, marked read-only so it runs unasked, and marked untrusted, so the
+model is told in front of every result that a page is data and not instructions. The
+manifest asks for every http origin, because a side panel outlives the tab it was opened
+from and `activeTab` would leave the agent blind to every other one. See
+[`.agents/playground.md`](.agents/playground.md).
+
 A conversation can be stored and opened again. `PiSession.save()` returns a `PiSnapshot` —
 the transcript with the provider, model, thinking level and title it ran under —
 `restore()` puts one back into the running session, and the `snapshot` option opens on one.
@@ -279,33 +289,30 @@ the transcript with the provider, model, thinking level and title it ran under �
 A session can also keep the conversations itself: `createPiSession({ history: true })`
 stores them in the same `PiStorage` as the keys, lists them on the chat's history page, and
 opens on the newest one. Picking one replaces the session state in place. The playground
-does this with `browserStorage()` and keeps no list of its own. A host that stores
+does this with `browserStorage()` and keeps no list of its own; the panel does it with a
+store of its own over `chrome.storage.local`, read once before it mounts, because
+`PiStorage` answers synchronously and `chrome.storage` does not. A host that stores
 conversations elsewhere still uses `save()` and `restore()`. See
 [`.agents/pi.md`](.agents/pi.md).
 
 ### Next tasks
 
-1. **Give the agent the page itself.** The WebMCP tools are wired, but a page that
-   publishes none leaves the model with nothing to read. A tool that returns the visible
-   text of the current document is the missing half, and in the panel it runs through the
-   same `chrome.scripting.executeScript` path as `extension/webmcp-tab.ts`. That file also
-   uses `activeTab`, so only the tab the toolbar button was clicked on answers — decide
-   whether wider `host_permissions` is worth it while you are there.
-2. **Give the panel its catalogs back.** The keyed providers import
-   `esm.sh/@earendil-works/pi-ai@latest/providers/<id>.models`, which an MV3 content
-   security policy blocks, so all five fail to load in the side panel. `useCatalogSource()`
-   in `pi/providers.ts` is the seam: the panel passes an import of its own and pins the
-   models it ships. Decide there whether the panel bundles the json again, or reaches the
-   url through the background worker.
-3. **Store extension keys with Chrome storage.** Replace `localStorage` with
-   `chrome.storage`, then pass the stored keys through the same `apiKey` option.
-4. **Test the UI in a real browser.** Test the chat inside a host page and test the agent
+1. **Test the UI in a real browser.** Test the chat inside a host page and test the agent
    with a real API key. The playground uses `agentak/vue`, just like a consumer would. It
    tests the Vue wrapper and chat UI together, including how Tailwind's preflight styles
    reach the chat without a shadow root. Nothing has been run against a real
    `document.modelContext` either — see the end of [`.agents/webmcp.md`](.agents/webmcp.md).
-5. **Add conversation compaction.** Pi exports `compact()`, but it needs a `Models` store
+   The panel is the other half: load `extension/dist` unpacked and check the five things
+   only a browser can answer — that the bundled catalogs list models, that a key survives
+   the panel being closed, that `read_page` returns the tab the person is looking at and
+   follows them to the next one, that a `chrome:` screen fails as a tool error rather than
+   a broken turn, and that the toolbar icon reads on a light and a dark toolbar.
+2. **Add conversation compaction.** Pi exports `compact()`, but it needs a `Models` store
    and the session's own `Entry[]`. Long conversations can still reach the context limit.
    The warning is already implemented: the context meter turns amber when
    `shouldCompact()` returns true. This helper needs neither dependency. See
    `pi/transcript.ts`.
+3. **Give the panel more of the browser.** `read_page` is one tool and the model can only
+   read with it. Opening a url, following a link, or reading a second tab are each another
+   tool on the same bridge, and each one is a thing the model does to a person's browser
+   rather than in it — so the gate matters more than the plumbing does.

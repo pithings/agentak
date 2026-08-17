@@ -1,4 +1,4 @@
-import { copyFileSync } from "node:fs";
+import { cpSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import preact from "@preact/preset-vite";
 import { defineConfig, type Plugin } from "vite";
@@ -14,7 +14,7 @@ const outDir = fileURLToPath(new URL("./dist", import.meta.url));
  * panel hosts the surface itself, and is not a consumer of `dist`.
  */
 export default defineConfig({
-  plugins: [preact({ reactAliasesEnabled: false }), copyManifest()],
+  plugins: [preact({ reactAliasesEnabled: false }), copyStatic()],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("../src", import.meta.url)),
@@ -35,12 +35,16 @@ export default defineConfig({
   },
 });
 
-/** The manifest is not an import, so vite never sees it. Copy it beside the bundle. */
-function copyManifest(): Plugin {
+/**
+ * The manifest and the icons are read by chrome, not imported by anything, so
+ * vite never sees them. Copy them beside the bundle.
+ */
+function copyStatic(): Plugin {
   return {
-    name: "copy-manifest",
+    name: "copy-static",
     closeBundle() {
-      copyFileSync(`${root}manifest.json`, `${outDir}/manifest.json`);
+      cpSync(`${root}manifest.json`, `${outDir}/manifest.json`);
+      cpSync(`${root}icons`, `${outDir}/icons`, { recursive: true });
     },
   };
 }

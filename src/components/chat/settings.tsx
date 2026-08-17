@@ -549,10 +549,14 @@ export function ChatSettings({
   );
 }
 
-/** What a provider costs to use, in two words on the far side of its row. */
+/**
+ * What a provider costs to use, in two words on the far side of its row. Plain
+ * words and not the trade's: a person choosing here reads "needs key", where
+ * "BYOK" is something they would have to already know.
+ */
 function providerState(provider: ChatProvider): string {
   if (!provider.keyed) return "Free";
-  return provider.hasKey ? "Configured" : "BYOK";
+  return provider.hasKey ? "Key saved" : "Needs key";
 }
 
 /**

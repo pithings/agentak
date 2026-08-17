@@ -116,11 +116,14 @@ Four things the wiring had to answer, and how each one is answered:
    naming the origin and saying to treat it as data; the person gets a note above the
    output, from `untrustedFrom` on the tool part. `details` carries the origin and the
    flag from the tool to the transcript.
-4. **The extension.** `extension/webmcp-tab.ts` runs both calls in the tab through
+4. **The extension.** `extension/tab-tools.ts` runs both calls in the tab through
    `chrome.scripting.executeScript`, in the `MAIN` world, so it is certainly the model
    context the page registered on. Names and JSON cross; the tool objects never do. That
    world has no `chrome.runtime`, so `toolchange` is relayed out in two steps — the page
-   posts a message to itself and a listener in the isolated world forwards it.
+   posts a message to itself and a listener in the isolated world forwards it. The same
+   file lists `read_page` in front of whatever the page published, which is why a tab that
+   publishes nothing still leaves the model something to call — see
+   [`playground.md`](playground.md).
 
 A page is the easy half: the chat is in the document the tools are in, so `getTools()`
 answers directly. That asymmetry is why the source is an option on `createPiSession()`
@@ -131,9 +134,9 @@ rather than something the loop reaches for on its own.
 Nothing here has run against a real `document.modelContext`. Three things to look at
 first:
 
-- Whether the tools of the tab come back at all. `activeTab` is granted for the tab the
-  toolbar button was clicked on, so another tab answers nothing until it is clicked there.
-  Wider `host_permissions` is what lifts that, and it is a real decision, not a default.
+- Whether the tools of the tab come back at all. The manifest now asks for every http
+  origin, so any tab in front should answer — `activeTab` would have answered for one tab
+  only, and a side panel outlives the tab it was opened from.
 - Whether a site's result is MCP shaped. `toToolContent()` reads `{ content: [...] }` and
   hands anything else over as it stands, which is a guess about what sites will return.
 - Whether `executeScript` reports a page's own throw. The injected halves answer

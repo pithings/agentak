@@ -42,6 +42,18 @@ When the user sends their first message, Agentak asks them to choose a provider 
 usable provider and model are already saved. Free providers need no API key. Keys entered
 in the picker stay in the browser and are sent directly to the selected provider.
 
+## Side panel
+
+The repository also builds a Chrome side panel over the same UI. It adds one tool of its
+own: the agent can read the text of the page you are looking at.
+
+```sh
+pnpm build:extension
+```
+
+Open `chrome://extensions`, turn on developer mode, then load `extension/dist` unpacked.
+Click the toolbar button to open the panel.
+
 ## Documentation
 
 1. [Getting started](https://agentak.dev/getting-started)
