@@ -21,7 +21,7 @@ import { useChatShell } from "../chat-widget/use-chat-shell.ts";
  * custom `.docs/pages/index.vue` renders it beside the landing page.
  *
  * The parts are in `.docs/chat-widget/`: the session and its lazy imports, the
- * state the reader drives, the close button, the prompt and the stylesheet.
+ * state the reader drives, the collapse button, the prompt and the stylesheet.
  * That folder is beside `components/` rather than inside it because Nuxt scans
  * `components/` for `.ts` as well, and would take each file there for a
  * component.
@@ -40,7 +40,13 @@ import { useChatShell } from "../chat-widget/use-chat-shell.ts";
  *   `clip-path` circle centred on it.
  *
  * Either way the button is the way in, and the way back once the chat is
- * minimised. Neither layout opens by itself.
+ * minimised. Neither layout opens by itself on a first visit.
+ *
+ * The rail is the one state that is remembered: a cookie says what the reader
+ * left, and a reader who left it out gets it back on the next page they load —
+ * it is chrome of the site, and chrome does not fold itself away between pages.
+ * The sheet is not restored, because it is the whole screen over a page the
+ * reader has just asked for. See `chat-widget/use-chat-shell.ts`.
  *
  * Both layouts are the stylesheet's own defaults, and the classes here only say
  * what the reader changed. `chat-widget/chat-widget.css` holds the rules and the
@@ -53,6 +59,15 @@ const { load, Panel, session, ui } = useChatAgent();
 const shell = useChatShell({ button, load, panel });
 const { open, state, toggle } = shell;
 const actions = closeAction(ui, shell);
+
+/**
+ * The one thing the empty chat offers to say. The site's own tools answer it on
+ * whatever page the reader opened the chat from — `get_current_page` and then
+ * `read_page` — so it is both a way in and a demonstration of what the chat
+ * reads before it answers. Declared once, so a re-render passes the same array
+ * and the surface is not redrawn for it.
+ */
+const prompts = ["Summarize this page"];
 </script>
 
 <template>
@@ -63,6 +78,7 @@ const actions = closeAction(ui, shell);
       :is="Panel"
       v-if="Panel && session"
       :actions="actions"
+      :prompts="prompts"
       :session="session"
       class="chat-surface"
     />
@@ -73,6 +89,7 @@ const actions = closeAction(ui, shell);
       <div class="chat-ghost-head"></div>
       <div class="chat-ghost-body"></div>
       <div class="chat-ghost-foot"><div></div></div>
+      <div class="chat-ghost-bar"></div>
     </div>
   </section>
 

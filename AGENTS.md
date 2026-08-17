@@ -100,18 +100,69 @@ import-graph tests make sure each framework is only imported by its own wrapper.
 
 ### Chat behavior
 
-`AgentChat` receives `actions` and `emptyActions` with its required `session` prop.
-`actions` appears at the end of the chat header. Use it for host controls such as a
-close button. `emptyActions` appears below the greeting and is only shown before the
-first message.
+`AgentChat` receives `actions`, `emptyActions` and `prompts` with its required `session`
+prop. `actions` appears at the end of the status bar under the composer. Use it for host
+controls such as a collapse button. `emptyActions` appears below the greeting and is only
+shown before the first message. `prompts` is what an empty chat offers to say, in a row
+at the foot of that same empty state.
 
-The header reads in one direction: what the bar is, then what the bar does. The title
-leads it, and every button follows in the order it is reached for — a new conversation,
-the stored ones, the settings, and the host's `actions` last. Only the back arrow of a
-page comes before the title, because it is the way out of the page the title names, and
-that page also takes the buttons it replaces off the bar. The title is drawn as a heading
-— headed word by word and not selectable — while the stored name and the tooltip stay the
-words the person or the model wrote.
+The surface has two rows of chrome, and the split between them is a question of what each
+row is about. The title bar over the transcript is about **the conversation**: the title
+leads it, and the two buttons that change which conversation this is follow — a new one,
+then the stored ones. Only the back arrow of a page comes before the title, because it is
+the way out of the page the title names, and that page also takes those two buttons off
+the bar until it is closed. The title is drawn as a heading — headed word by word and not
+selectable — while the stored name and the tooltip stay the words the person or the model
+wrote.
+
+The bar under the composer is about **what is running**, and it is read from both ends.
+The leading edge is what the next turn runs on and what a click changes: the model that
+answers, and then whether a tool call is confirmed before it runs. The trailing edge is
+what the turns so far have cost — the context meter — and then the host's `actions`. The
+meter goes there because it is a number that only grows, and a reading that widens must
+not push the controls beside it along. These are readings rather than questions, so they
+sit under the field they apply to, and the composer above them is a field and a send
+button and nothing else. The model doubles as the way to the settings page and closes the
+page it opened, so one control says what is running and changes it. This row is the last
+one on the surface, so it carries the safe area a phone leaves at the bottom of the
+screen; the settings page hides the composer above it, and the bar then ends the page
+against a line. See `components/chat/header.tsx` and `components/chat/bar.tsx`.
+
+The gate in front of the tools is that same one control twice over: **Ask** is the
+harness's own confirmation — every call, or the first of each tool — and **Bypass** is
+that gate off, and the button both says which one is standing and swaps it. Two words and
+not the loop's three, because this is a switch and not a scale: the one thing decided here
+is whether the reader is asked. Both states carry the word, since a shield alone is a
+picture of a gate and not of a gate that is up, and only the state that runs unasked
+carries the amber — a gate that is down is worth seeing across a room. The switch is shown
+only where something is gated: a session reports no `toolPolicy` while the loop carries no
+tools, and the bar then grows no button. The Pi session opens on **Bypass**, because this
+surface is the one that carries the way back up, and it stores nothing: a new session opens
+bypassing again. Turning the gate off answers a call already waiting at it, allowed;
+turning it back on forgets what one allow had covered. See `pi/tools/approvals.ts`.
+
+Those two are one box while what is being said is one line: a pill the height of a line of
+text, with the field in it and the send button at the round end. A second line is a second
+shape — the pill becomes a box with a corner, and the button leaves the row for one of its
+own under the field, which is where a message being written wants the whole width. The
+reading is the field's box and not its text, because a line ends where the surface is
+wide: a side panel wraps what a page would keep on one line, and the field is watched with
+a `ResizeObserver` so a surface that narrows is read the same as a key that was pressed.
+The field keeps the width the button had when the button goes, as padding — a field that
+widened would unwrap the line that had just wrapped, and the box would then swap on every
+frame. Nothing is drawn over the composer: the box is its own frame, and a rule the width
+of the surface above a rounded one says the same thing twice.
+
+The three numbers in that box are one number. The field is 2.25rem tall and the padding
+around it is 2px over a 1px border, so the pill is 42px and its end is a 21px curve. The
+send button is the height of the field, not the smaller one a prompt input takes by
+default, so it fills what the padding leaves and is inset 3px on every side — which makes
+its own radius 21px less that inset, and the two curves run together instead of apart. The
+box a second line turns into keeps the 21px, because the corner is the pill's corner and
+not a shape the field grew into; the button's row under the field is padded by the same
+2px, so it sits in that corner the way it sat in the pill's end. Changing any one of the
+four — the field's height, the padding, the border, the button's size — moves the other
+three. See `components/chat/composer.tsx`.
 
 Each finished answer carries a row of two buttons under it: copy, and read aloud. Both
 take the text parts of that turn and leave out the thinking and the tool calls. Copy puts
@@ -171,10 +222,24 @@ extension does not have. `linkBase` says what the base is instead, an url on `Ag
 and `Chat`, and the panel passes the tab in front and passes it again when the reader
 moves. A link that names its own scheme is untouched, and one that resolves to a url no
 click could open — a `chrome:` base — drops back to its own text like any other unsafe
-one. See `lib/links.ts` and [`.agents/components/markdown.md`](.agents/components/markdown.md).
+one.
+
+Where such a link lands on the document the chat is in, the click is answered here rather
+than in a tab: the entry goes through `history.pushState` and a `popstate` is raised
+behind it, which is what a client-side router listens on. A chat on a documentation site
+is beside the page it is talking about, so a link to that page moves the page and leaves
+the conversation standing — a second tab of a site the reader is already on is the one
+thing the answer did not offer. The test is the origin of the resolved url and not the
+shape of the href, because that is what says where a click lands: under the panel's
+`linkBase` every link is another site by the time it is read, and a full url of this one
+is not. A fragment of the page already open is left to the browser, which scrolls to it
+better than a pushed entry would, and a click carrying a modifier is left to the browser
+too — that one was asked for. See `lib/links.ts` and
+[`.agents/components/markdown.md`](.agents/components/markdown.md).
 
 The composer takes two slash commands: `/model` opens the settings page, and `/new` starts
-a conversation — the header's two buttons, reached from the keyboard. A field holding one
+a conversation — the bar's model trigger and the title bar's plus button, reached from the
+keyboard. A field holding one
 slash word lists what it can be above the composer, a row per command. The list is walked
 without leaving the field: the arrows move a cursor that wraps at either end, Tab writes the
 rest of the name and stops there, Enter runs the row the cursor is on, and Escape puts the
@@ -187,6 +252,30 @@ rest of the time. Each command is only offered where the surface can answer it: 
 with no providers and no models carries no `/model`, and `Chat` is what passes the composer
 its `onReset`.
 
+Under the two commands the same list names the agent's tools, one row each, from the
+`agent` prop the empty state's card is drawn from — because the card goes with the greeting
+and the names do not, and a name is the one thing about a tool that has to be spelt right.
+Enter on one of those rows runs the tool. The session's `callTool` is what runs it — the
+harness calls it, writes the call and the result into the transcript, and carries on, so
+the model reads what came back and says something about it. That is what makes the row
+worth a keystroke: a tool result nobody reads is a person reading raw output. It is given
+the name and nothing else, because nothing here types arguments; a tool that wants some
+fails, and the model reads the failure and asks for it properly, which is a better answer
+than a row that refuses to run. The gate the model's own calls go through is not asked —
+it stands in front of the model, and this call has the one thing the model's never has:
+the person choosing it. A session with no `callTool` writes the name into the message
+instead, caret after it, the slash left behind with the list it opened — the most a
+surface can do about a tool it cannot call. A tool named after a command keeps nothing:
+the command owns the name, since it is the row this surface runs itself. The list
+scrolls once it is long enough, and the arrows keep the lit row in view.
+
+A hand-run tool is a turn like any other while it lasts: the store reports it as
+streaming, so nothing is sent into a transcript that holds a call with no result yet, and
+the stop button ends it — the result is still written, because a call without one is a
+transcript no provider accepts. A conversation swapped mid-call drops the result on the
+floor rather than filing it under the wrong conversation. See `pi/chat.ts` and
+[`.agents/session.md`](.agents/session.md).
+
 The composer takes the focus when a conversation is started or a stored one is opened, and
 when the settings page closes — each ends with a transcript and nothing to do but say
 something. Mounting is not one of those, because a chat on a page would pull the caret off
@@ -195,19 +284,46 @@ that is the whole document: the side panel sets it, and the composer takes the f
 mounts. Never on a phone, where the focus is a keyboard over half the surface.
 
 The provider, model, thinking level, and API key are all selected on the settings page,
-`components/chat/settings.tsx`. Two controls open it: a button in the header, and the
-composer's trigger, which also names the model that is running. The page then takes the
-whole surface under the header: it replaces the transcript, and the composer is hidden
-under it, because there is nothing to say to a provider that is still being chosen. The
-composer is hidden and not unmounted, so a half-typed message is still there on the way
-back. Choosing a model closes the page again, as do sending a message and the header's
-back arrow. The Pi session also opens the page itself when a turn fails with a 401, 402,
-403 or 404: the provider refused the key, the account, or the model, and the answer is on
-that page. A rate limit, a timeout and a full context window are answered by waiting, so
-those leave the transcript where it is and offer the retry button instead.
-These choices come from the Pi
-session. A custom session without providers shows no provider section and no key section.
+`components/chat/settings.tsx`. One control opens it: the status bar's model trigger,
+which also names the model that is running and shuts the page again on a second click. The
+page then takes the whole surface under the title bar: it replaces the transcript, and the
+composer is hidden under it, because there is nothing to say to a provider that is still
+being chosen. The composer is hidden and not unmounted, so a half-typed message is still
+there on the way back. Choosing a model closes the page again, as do sending a message and
+the title bar's back arrow. The keyboard says that arrow as Escape — and as Backspace or
+Delete, which are only a way out where nothing is being typed into. Either page answers
+them, because either one is a page standing over the transcript, and a key another surface
+has already answered arrives marked and is left to it. The listener is on the document
+rather than the surface, since a click on the page lands on a box that takes no focus; a
+target outside this chat is somebody else's. See `useCloseKey` in `components/chat.tsx`.
+The Pi session also opens the page itself when a turn fails
+with a 401, 402, 403 or 404: the provider refused the key, the account, or the model, and
+the answer is on that page. A rate limit, a timeout and a full context window are answered
+by waiting, so those leave the transcript where it is and offer the retry button instead.
+These choices come from the Pi session. A custom session without providers shows no
+provider section and no key section.
 A model without reasoning support shows no thinking-level choice.
+
+The model section is the one list that can run to hundreds of rows, so it is read as a
+recommendation until it is asked to be a catalog. What it opens on is the newest model of
+each line a person asks for by name — `LINES` in that file, Claude's four sizes and then
+GPT, Gemini, Grok, Qwen, DeepSeek, Kimi, GLM, Llama, Mistral, MiniMax, Gemma — and one row
+at the foot of the list says how many are behind it and opens them. A catalog short enough
+to read is left alone, and so is one where those names are the exception: the free
+providers list what they have, since a short list of models nobody has heard of is still
+the whole of what that provider offers. The search field is the other question and reads
+every model, because a name typed in is a name being looked for.
+
+Order and grouping come from the version in the id and not from the catalog, which is
+sorted as words — and as words `5.10` reads under `5.2` and a family's newest is at the
+foot of it. So the rows are grouped: one run per model with the newest release at its head,
+Sonnet 4.5 under Sonnet 5, and only that head is shown while the list is collapsed. What
+counts as one model is the id with the release taken out of it. A variant is its own model,
+because `mini`, `pro` and `codex` are things to choose between; a codename after the version
+is not, because "GPT 5.6 Luna" is a GPT and belongs over GPT 5.5. Two names of one release
+are both rows, since neither is older than the other, and the model running is always a row
+whatever its version — a list that hides it hides the tick as well. See `family()`,
+`version()` and `wellKnown()`.
 
 A saved key can be replaced or removed. The key section then shows both buttons, and
 "Remove" drops the key through the session's `forgetKey`. The Pi session takes it out of
@@ -240,6 +356,23 @@ exactly as the page's own row does, and the row under them opens the page for th
 The block goes with the greeting once the first message is sent. It is left out where the
 session answers no `openConversation`, because a shortcut to nowhere is noise, and where
 nothing is stored yet.
+
+What that empty state ends with is what to say, as `prompts` on `AgentChat` and `Chat`: a
+row of buttons, one message each, under the recent chats. Everything above it says what
+this chat is and what it has been — the greeting, the host's `emptyActions`, the agent
+card, the conversations already had — and this is the one thing on the page that starts a
+turn, so it goes last, which is also nearest the composer. A string is the whole of one —
+the words on the button are the words sent — and `{ label, prompt }` is a button that is
+the short of a longer message, because a row is read at a glance and what the model is
+asked is a sentence. The click sends it rather than typing it into the field: the button is
+the message, and a starter that only filled the field would be a click asking for a second
+one. Nothing is lost by clicking one before a provider is chosen — the Pi session holds the
+message, opens the settings page, and sends it once a model is picked. The row scrolls
+rather than wraps, and is centred while it fits: the surface is often a side panel, where a
+column of wrapped buttons would be a page of chrome in front of an empty chat, and where
+one button against the leading edge reads as the start of a list that was cut off. It is
+the AI SDK Elements `Suggestions` port, which was parked until this rendered it and moved
+back into `ai-elements/` with the prop. See `components/chat/prompts.tsx`.
 
 The first user message becomes the default conversation title. If `generateTitle` is
 true, the model creates a title after the first answer. This uses one extra request and is
@@ -281,7 +414,7 @@ src/
   components/ai-elements/       AI SDK Elements ported to Preact
   components/_parked/           Ports nothing renders yet; exported all the same
   components/chat.tsx           Chat UI with transcript input and callbacks
-  components/chat/              Header, empty state, messages, queue, composer, settings, history
+  components/chat/              Header, empty state, messages, queue, prompts, composer, settings, history
   components/elements.tsx       Renderer map for `{ kind: "element" }` parts
   components/markdown.tsx       md4x AST rendered with Preact
   styles/base.ts                `tokens`, reset presets, `u`, and animation settings
@@ -298,8 +431,15 @@ extension/                      MV3 side panel, package name `@agentak/extension
 ## Current status
 
 The agent works end to end with 8 providers. Six providers are free
-and do not need an API key. A new chat starts without a provider. The first message opens
-the settings page, and a free provider can be selected with one click.
+and do not need an API key. A new chat starts on the head of the picker — the provider a
+stored one is replaced by only where it can no longer answer, and the row the whole list is
+ordered to lead with. It is chosen whether or not this browser holds its key, because the
+head is the recommendation: a chat that opens on it opens on the choice worth making, and
+the settings page then asks for that key. Nothing is chosen only where the runtime carries
+no provider at all. No model is picked with it, so the first message still opens the
+settings page — with the provider list already down, since a row holding no key is a
+question the page has not answered yet, and its models held back until that key is saved. A
+free provider is one click away in the same list.
 
 Only two of the eight take a key, and both are gateways: Vercel AI Gateway and OpenRouter.
 A single-vendor provider is not offered, because a gateway key already reaches that
@@ -345,8 +485,10 @@ available through `agentak/pi`, and a host can provide a different session. See
 The loop carries no tools of its own. `createPiSession({ page: true })` offers the model
 whatever the current page publishes on `document.modelContext` — WebMCP — and the panel
 passes a source that reads the tab in front instead. It is off by default, the names are
-cut to what a provider takes, and `readOnlyHint` decides the gate: a tool that only reads
-runs unasked, and anything else is confirmed on every call. Discovery has been tried in a
+cut to what a provider takes, and `readOnlyHint` decides the gate once the bar's switch
+has put one up: a tool that only reads runs unasked, and anything else is confirmed on
+every call. A session opens bypassing, so that reading is what **Ask** turns on rather
+than what a page tool meets by default. Discovery has been tried in a
 browser and a call has not, and WebMCP itself only ships in Chrome 149 and Edge 150 behind
 an origin trial. See [`.agents/webmcp.md`](.agents/webmcp.md).
 

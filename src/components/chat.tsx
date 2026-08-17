@@ -8,6 +8,7 @@ import {
   ConversationScrollButton,
 } from "./ai-elements/conversation.tsx";
 import { Shimmer } from "./ai-elements/shimmer.tsx";
+import { ChatBar } from "./chat/bar.tsx";
 import { ChatComposer, type ChatComposerProps } from "./chat/composer.tsx";
 import { ChatEmpty } from "./chat/empty.tsx";
 import { ChatHeader } from "./chat/header.tsx";
@@ -15,7 +16,13 @@ import { ChatHistory, type ChatHistoryProps } from "./chat/history.tsx";
 import { ChatMessage, type ChatRespond } from "./chat/message.tsx";
 import { ChatQueue } from "./chat/queue.tsx";
 import { ChatSettings } from "./chat/settings.tsx";
-import type { ChatAgent, ChatQueueItem } from "./chat/types.ts";
+import type {
+  ChatAgent,
+  ChatPrompt,
+  ChatQueueItem,
+  ChatToolPolicy,
+  ChatUsage,
+} from "./chat/types.ts";
 import { Button } from "./ui/button.tsx";
 import type { ViewMessage } from "../types.ts";
 import { RotateCcwIcon, XIcon } from "../lib/icons.tsx";
@@ -29,9 +36,11 @@ export type {
   ChatAgent,
   ChatHistoryEntry,
   ChatModel,
+  ChatPrompt,
   ChatProvider,
   ChatQueueItem,
   ChatThinkingLevel,
+  ChatToolPolicy,
   ChatUsage,
 } from "./chat/types.ts";
 
@@ -73,6 +82,13 @@ const S = {
     bottom: "var(--chat-inset, 0px)",
     left: "0",
     background: "var(--background)",
+  },
+  // Nothing over the composer draws a seam: the box it holds is its own frame.
+  // The settings page is the exception — it is a page that scrolls and it has to
+  // end against a line, and with the composer away the bar is that line.
+  barAlone: {
+    borderTop: "1px solid var(--border)",
+    paddingTop: "0.375rem",
   },
   error: {
     display: "flex",
@@ -144,7 +160,11 @@ export interface ChatProps extends ChatComposerProps, ChatHistoryProps {
   className?: string;
   /** Merged over the chat's own box — how a host sizes the surface. */
   style?: Sx;
-  /** Shown in the empty state, so the tools are visible before the first turn. */
+  /**
+   * Shown in the empty state, so the tools are visible before the first turn —
+   * and named in the composer's slash list, which is where they stay reachable
+   * once the transcript has covered the card.
+   */
   agent?: ChatAgent;
   /** Messages queued behind the current turn. */
   queued?: ChatQueueItem[];
@@ -170,9 +190,18 @@ export interface ChatProps extends ChatComposerProps, ChatHistoryProps {
    * `lib/links.ts`.
    */
   linkBase?: string;
+  /** The context meter, in the bar under the composer. Omitted, there is none. */
+  usage?: ChatUsage;
   /**
-   * Host buttons for the end of the header — minimise, switch, whatever chrome
-   * the page around the chat owns. One title bar, not two.
+   * Whether a tool call is confirmed before it runs, in the same bar. Omitted,
+   * the bar shows no such button: a harness with no tools has nothing to gate.
+   */
+  toolPolicy?: ChatToolPolicy;
+  /** Ask before a tool runs, or let them run. Pairs with `toolPolicy`. */
+  onToolPolicyChange?: (policy: ChatToolPolicy) => void;
+  /**
+   * Host buttons for the end of the bar under the composer — minimise, switch,
+   * whatever chrome the page around the chat owns. One row of it, not two.
    */
   actions?: ComponentChildren;
   /**
@@ -180,6 +209,13 @@ export interface ChatProps extends ChatComposerProps, ChatHistoryProps {
    * the greeting, and only before the first message.
    */
   emptyActions?: ComponentChildren;
+  /**
+   * Messages the empty state offers as a way in, one button each. A click sends
+   * one, so a chat that has never been used still has something to say in it.
+   * A string is both the button and the message; `{ label, prompt }` is for a
+   * button that is the short of a longer one.
+   */
+  prompts?: ChatPrompt[];
 }
 
 /**
@@ -205,8 +241,12 @@ export function Chat({
   onFork,
   onRetryFrom,
   linkBase,
+  usage,
+  toolPolicy,
+  onToolPolicyChange,
   actions,
   emptyActions,
+  prompts,
   pickerOpen,
   onPickerOpenChange,
   history,
@@ -292,6 +332,10 @@ export function Chat({
   const surfaceRef = useRef<HTMLDivElement>(null);
   const footRef = useFootHeight(surfaceRef);
   useKeyboardLift(surfaceRef);
+  useCloseKey(surfaceRef, settingsOpen || historyOpen, () => {
+    setSettingsOpen(false);
+    setHistoryOpen(false);
+  });
 
   return (
     // The base sits over the whole surface rather than beside each message: it
@@ -300,7 +344,6 @@ export function Chat({
     <LinkBase.Provider value={linkBase}>
       <div className={className} ref={surfaceRef} style={sx(S.chat, style)}>
         <ChatHeader
-          actions={actions}
           onBack={
             settingsOpen || historyOpen
               ? () => {
@@ -313,13 +356,6 @@ export function Chat({
           // conversations reports no `history`, and the bar grows no button.
           onHistory={history && !settingsOpen && !historyOpen ? () => showHistory(true) : undefined}
           onReset={startNew}
-          // Nothing to choose is nothing to open — the same test the composer puts
-          // its own trigger behind.
-          onSettings={
-            !settingsOpen && (composer.providers?.length || composer.models?.length)
-              ? () => showSettings(true)
-              : undefined
-          }
           title={historyOpen ? "Conversations" : settingsOpen ? "Settings" : title}
         />
 
@@ -358,7 +394,11 @@ export function Chat({
                   agent={agent}
                   history={history}
                   onOpenConversation={openConversation}
+                  // Sent as the composer sends one: the transcript is what is on
+                  // screen here, so there is no page to close first.
+                  onPrompt={composer.onSend}
                   onShowHistory={history?.length ? () => showHistory(true) : undefined}
+                  prompts={prompts}
                 >
                   {emptyActions}
                 </ChatEmpty>
@@ -408,6 +448,9 @@ export function Chat({
           <ChatQueue items={queued} onDequeue={onDequeue} />
 
           <ChatComposer
+            // The empty state's card and the composer's slash list are the two
+            // places the tools are named, so both read the one prop.
+            agent={agent}
             draft={draft}
             focusKey={focusKey}
             // The settings page is the whole surface under the header: there is
@@ -430,10 +473,83 @@ export function Chat({
             }}
             pickerOpen={settingsOpen}
           />
+
+          <ChatBar
+            {...composer}
+            actions={actions}
+            // The trigger is a toggle here: it names the model on the way to the
+            // page, and closes the page it opened.
+            onPickerOpenChange={showSettings}
+            onToolPolicyChange={onToolPolicyChange}
+            // The flag lives here, not in the props the trigger came with:
+            // without it the toggle reads an open page as shut and reopens it.
+            pickerOpen={settingsOpen}
+            // The composer is away under the settings page, so the bar is the
+            // whole of the foot there and carries the seam the composer drew.
+            style={settingsOpen ? S.barAlone : undefined}
+            toolPolicy={toolPolicy}
+            usage={usage}
+          />
         </div>
       </div>
     </LinkBase.Provider>
   );
+}
+
+/**
+ * The keyboard's way out of a page, which is the header's back arrow said with
+ * a key: Escape, and Backspace or Delete where nothing is being typed.
+ *
+ * Only while a page stands over the transcript — the chat itself has nothing to
+ * back out of. Escape wherever the caret is, because leaving is what the key
+ * means in a field too; Backspace and Delete only outside one, where they are
+ * keys that delete what was typed and nothing else. A key another surface has
+ * already answered arrives marked — a popover closing, the composer's command
+ * list going away — and is left to it.
+ *
+ * On the document rather than the surface, because a click on the page lands on
+ * a box that takes no focus and Escape would then be typed at nothing. The
+ * target still has to be this chat's: inside the surface, or the bare document
+ * of a chat that is the whole of it. A host's own field is somebody else's.
+ */
+function useCloseKey(surface: RefObject<HTMLDivElement>, open: boolean, close: () => void) {
+  // Through a ref: the caller's is a new function every render, and the page is
+  // open across every keystroke typed into it.
+  const latest = useRef(close);
+  latest.current = close;
+
+  useEffect(() => {
+    const host = surface.current;
+    if (!open || !host) return;
+    const doc = host.ownerDocument;
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+
+      const node = event.target as Element | null;
+      const mine =
+        !node || node === doc.body || node === doc.documentElement || host.contains(node);
+      if (!mine) return;
+
+      const back =
+        event.key === "Escape" ||
+        ((event.key === "Backspace" || event.key === "Delete") && !isEditing(node));
+      if (!back) return;
+
+      event.preventDefault();
+      latest.current();
+    };
+
+    doc.addEventListener("keydown", onKey);
+    return () => doc.removeEventListener("keydown", onKey);
+  }, [open, surface]);
+}
+
+/** Where the keys are text. Cross-document, so no `instanceof`. */
+function isEditing(node: Element | null): boolean {
+  if (!node?.tagName) return false;
+  if ((node as HTMLElement).isContentEditable) return true;
+  return node.tagName === "INPUT" || node.tagName === "TEXTAREA" || node.tagName === "SELECT";
 }
 
 /**

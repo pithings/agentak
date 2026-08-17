@@ -74,7 +74,18 @@ Worth knowing before reading a ported file against its registry source.
   `ModelSelectorDialog` does not exist and `ModelSelectorValue` does — a popover trigger
   has to say what is chosen.
 - **`agent`** is a `Collapsible`: the card body is dense reference, so `AgentHeader` is
-  the trigger and the card starts closed. Upstream has no toggle.
+  the trigger and the card starts closed. Upstream has no toggle. A caller that renders
+  no header opens the card instead and leaves the opening to the rows inside it, which is
+  what the chat's empty state does — the greeting above it names the chat and the status
+  bar names the model, so a header would name neither. Inside, upstream heads a tool row
+  with its description and hides the schema under it; here the row is the tool's name as
+  `toolTitle()` reads it — the same words the header of the call itself carries — the
+  description is what opens, and the schema is left to `schema`, off by default.
+  `AgentInstructions` and `AgentTools` are rows of the same kind — a bot and a wrench,
+  "Agent Instructions" and "Tools" with the count, the second opening a list whose own
+  rows open their descriptions — so the card is a list of things to open, all of one
+  kind, and closed it is two lines. A tool row carries no icon of its own: it is indented
+  to where the word above it starts, which is what says whose row it is.
 - **`snippet`** copies on a click anywhere on it, not on the button alone, so the copy
   state lives on `Snippet` — `onCopy`, `onError` and `timeout` are its props, and
   `SnippetCopyButton` only reads them off the context.
@@ -82,6 +93,9 @@ Worth knowing before reading a ported file against its registry source.
   radix carries a bare string for `single`.
 - **`environment-variables`** honours its controlled prop through
   `useControllableState`; upstream ignores it.
+- **`prompt-input`** takes a `groupStyle` beside `style`. The form is the outer element,
+  so a caller's `style` never reaches the `InputGroup` that draws the frame — and the
+  chat composer rounds that frame to a pill. Upstream reaches it with a class.
 
 ## Not ported
 

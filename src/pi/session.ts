@@ -23,7 +23,13 @@ import { createAgentStore } from "./chat.ts";
 import { generateTitle, titleRequest, toTitle } from "./chat/title.ts";
 import { piMessageIndex, piUserText, toViewMessages } from "./chat/transcript.ts";
 import { documentTools } from "./tools/webmcp.ts";
-import type { ChatAgent, ChatKeyLock, ChatProvider } from "../components/chat/types.ts";
+import type { ApprovalPolicy } from "./tools/approvals.ts";
+import type {
+  ChatAgent,
+  ChatKeyLock,
+  ChatProvider,
+  ChatToolPolicy,
+} from "../components/chat/types.ts";
 import type { ChatSession, ChatSessionOptions, ChatSnapshot } from "../session.ts";
 
 /** `AgentOptions`, minus what the picker and the snapshot decide for themselves. */
@@ -81,7 +87,23 @@ export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "message
    * anything else is confirmed on every call.
    */
   page?: boolean | PageTools;
+  /**
+   * How often a tool call is confirmed. Default: `never` — this surface carries
+   * the switch, in the bar under the composer, so it opens on the model's calls
+   * running as they come and a person puts the gate up when they want it.
+   *
+   * `once` or `always` opens on the gate instead, and the switch still takes it
+   * away. A host that names one of those is also naming what "ask" restores;
+   * without one, that is `once`. See `tools/approvals.ts`.
+   */
+  approvals?: ApprovalPolicy;
 }
+
+/**
+ * One thing asked of the agent: a message to send, or a tool to run. What is
+ * held while nothing can answer yet, and what `flush()` then hands the store.
+ */
+type PendingAsk = { text: string } | { tool: string };
 
 /**
  * A session this module made, and so one its caller ends.
@@ -186,22 +208,35 @@ const without = (set: Set<string>, id: string): Set<string> =>
   new Set([...set].filter((entry) => entry !== id));
 
 /**
- * The provider to open on, if any. One that cannot answer counts as none — a
- * stored key may have been dropped, a host may name a provider it passed no key
- * for, and one stored in the panel is out of reach on a page.
+ * Whether this provider can answer as things stand: one that asks for no key, or
+ * one whose key is in hand. A key that is only locked counts — it is a key, and
+ * the click that sends the first message is what unlocks it. The alternative is
+ * a chat that opens on nothing every visit and asks for a key it is holding.
+ */
+const canAnswer = (
+  provider: Provider,
+  // A key that is lost is no key, so this is the two that count.
+  { keys, sealed }: Pick<StoredKeys, "keys" | "sealed">,
+): boolean => Boolean(provider.free || keys[provider.id] || sealed.has(provider.id));
+
+/**
+ * The provider to open on. The one asked for, where it can answer — a stored key
+ * may have been dropped, a host may name a provider it passed no key for, and
+ * one stored in the panel is out of reach on a page — and otherwise the head of
+ * the list, whether or not it holds a key.
  *
- * A provider whose key is locked does open: it has a key, and the click that
- * sends the first message is what unlocks it. The alternative is a chat that
- * opens on nothing every visit and asks for a key it is already holding.
+ * The head is the recommendation and not a fallback: the picker leads with the
+ * choice worth making, so a chat with nothing stored opens on it and the
+ * settings page asks for its key. Nothing at all is chosen only where this
+ * runtime carries no provider.
  */
 const openingProvider = (
   providers: Provider[],
-  // A key that is lost is no key, so this is the two that count.
-  { keys, sealed }: Pick<StoredKeys, "keys" | "sealed">,
+  held: Pick<StoredKeys, "keys" | "sealed">,
   wanted?: string,
 ): string | undefined => {
   const entry = providers.find((provider) => provider.id === wanted);
-  return entry && (entry.free || keys[entry.id] || sealed.has(entry.id)) ? entry.id : undefined;
+  return (entry && canAnswer(entry, held) ? entry : providers[0])?.id;
 };
 
 /**
@@ -297,6 +332,10 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   // and lose the transcript. pi asks per provider, which is the id it passes.
   const runtime = createAgent({
     ...agentOptions,
+    // The gate is down unless a host asked for it. The bar's switch is why: a
+    // surface that carries the way to put it up can open without it, where the
+    // bare loop — which carries no switch at all — still opens asking.
+    approvals: agentOptions.approvals ?? "never",
     // A page tool is gated on the site's own word: read-only changes nothing,
     // so it runs unasked, and anything else is confirmed every time — it is not
     // the host's tool, and it acts on a site the visitor is signed in to.
@@ -305,6 +344,15 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     messages: opened ? usablePiMessages(opened.messages) : [],
   });
   const store = createAgentStore(runtime);
+
+  /**
+   * What "ask" puts back, once somebody has turned the gate off: the policy the
+   * session was built with. A host that built it off is a host that asked for no
+   * gate, and the switch still offers one — a person may be more careful than
+   * the page they are on, and `once` is the gate this loop has by default.
+   */
+  const asking: ApprovalPolicy =
+    agentOptions.approvals && agentOptions.approvals !== "never" ? agentOptions.approvals : "once";
 
   const listeners = new Set<() => void>();
   let cached: ChatSnapshot | undefined;
@@ -322,8 +370,15 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    * overruled by the store answering after it.
    */
   let picked = 0;
-  /** Typed before a provider was chosen. It goes as soon as one can answer. */
-  let pending = "";
+  /**
+   * Asked before a provider was chosen, or before the keys were unlocked. It
+   * goes as soon as something can answer.
+   *
+   * Either of the two ways of asking: a message, or a tool a person picked. A
+   * tool waits for the same thing a message does, because running one is only
+   * half of it — the model is what reads the result, and there is no model yet.
+   */
+  let pending: PendingAsk | undefined;
   let pickerOpen = false;
   let historyOpen = false;
   let titled: { for: string; title: string } | undefined;
@@ -402,9 +457,9 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
 
   const flush = () => {
     if (!pending || !ready() || shut()) return;
-    const text = pending;
-    pending = "";
-    store.send(text);
+    const held = pending;
+    pending = undefined;
+    perform(held);
   };
 
   /** The provider on screen holds a key, and the lock is between here and it. */
@@ -462,33 +517,39 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     return { busy: lockBusy || undefined, error: lockError, state };
   };
 
+  /** What the store does with an ask, once something can answer it. */
+  const perform = (ask: PendingAsk) =>
+    "text" in ask ? store.send(ask.text) : store.callTool(ask.tool);
+
   /**
-   * Say something, or hold it until something can answer. The question is the
-   * menu itself: a message with nothing chosen opens the settings page and
-   * waits, rather than answering from a provider nobody picked.
+   * Ask, or hold it until something can answer. The question is the menu
+   * itself: a message with nothing chosen opens the settings page and waits,
+   * rather than answering from a provider nobody picked.
    *
-   * Both ways of saying something go through here — the composer, and a rewind
-   * running a message again — so a chat that lost its key mid-conversation
-   * holds either one the same way.
+   * Every way of asking goes through here — the composer, a rewind running a
+   * message again, and a tool picked from the composer's own list — so a chat
+   * that lost its key mid-conversation holds any of them the same way.
    */
-  const submit = (text: string) => {
-    // A key that is only locked is a key: the click that sent this message is
-    // the gesture the device wants, so it is spent here rather than sending the
+  const ask = (request: PendingAsk) => {
+    // A key that is only locked is a key: the click behind this ask is the
+    // gesture the device wants, so it is spent here rather than sending the
     // person to a page to click again.
     if (shut()) {
-      pending = text;
+      pending = request;
       notify();
       unlock();
       return;
     }
     if (ready()) {
-      store.send(text);
+      perform(request);
       return;
     }
-    pending = text;
+    pending = request;
     pickerOpen = true;
     notify();
   };
+
+  const submit = (text: string) => ask({ text });
 
   /**
    * Follow the provider, but only as far as this browser has been: the model it
@@ -639,6 +700,18 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     })),
   });
 
+  /**
+   * What stands in front of a tool call, in the two words the bar reads it in.
+   * A loop carrying no tools reports none of it: there is nothing to gate, so
+   * the bar grows no switch for it.
+   */
+  const toolPolicyView = (): ChatToolPolicy | undefined =>
+    runtime.agent.state.tools.length === 0
+      ? undefined
+      : runtime.approvals.policy() === "never"
+        ? "bypass"
+        : "ask";
+
   /** The model's own title, once it names the conversation it was asked about. */
   const generated = (derived?: string) =>
     titled && titled.for === derived ? titled.title : undefined;
@@ -681,11 +754,12 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    * host swaps nothing.
    *
    * The provider is taken the same way it is taken on the first build: the
-   * conversation's own, then this browser's, then none. `opening` holds the
-   * model and the level until the catalog lands, exactly as before.
+   * conversation's own, then this browser's, then the first row that can answer.
+   * `opening` holds the model and the level until the catalog lands, exactly as
+   * before.
    */
   const restore = async (next?: PiSnapshot) => {
-    pending = "";
+    pending = undefined;
     opening = next;
     adoptTitle(next);
     // Before the store is asked anything: the transcript on screen is the one
@@ -728,6 +802,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       thinkingLevel: live ? loop.thinkingLevel : undefined,
       thinkingLevels: live ? levels() : undefined,
       title: generated(derived) ?? derived,
+      toolPolicy: toolPolicyView(),
       usage: live ? loop.usage : undefined,
       // A session that keeps no conversations reports none, and the chat then
       // shows no history button at all.
@@ -814,6 +889,14 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
 
     send: submit,
 
+    /**
+     * Run a tool because a person picked it, and let the model read what came
+     * back. It waits for a provider and for the keys exactly as a message does:
+     * the tool would run without either, but nothing would then say anything
+     * about the result, which is the half that makes it worth running here.
+     */
+    callTool: (name) => ask({ tool: name }),
+
     stop: () => store.stop(),
 
     /**
@@ -826,7 +909,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       conversationId = mintConversationId();
       titled = undefined;
       asked = undefined;
-      pending = "";
+      pending = undefined;
       // A new conversation owes the stored one nothing, catalog landed or not.
       opening = undefined;
       store.reset();
@@ -884,6 +967,20 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     },
 
     respondToTool: (id, approved, reason) => store.respond(id, approved, reason),
+
+    /**
+     * Take the gate away, or put it back — the bar's own switch, and the one
+     * thing on this surface that answers a tool call before it is made.
+     *
+     * `bypass` is the gate off for every tool, the page's own included: a page
+     * tool is confirmed on every call because the site said it acts, and the
+     * session-wide off outranks that, exactly as a host's `approvals: "never"`
+     * does. Nothing stores it, so a new session opens asking again. The gate
+     * itself answers what was already waiting; see `tools/approvals.ts`.
+     */
+    setToolPolicy(policy) {
+      runtime.approvals.setPolicy(policy === "bypass" ? "never" : asking);
+    },
 
     dequeue: (id) => store.dequeue(id),
 

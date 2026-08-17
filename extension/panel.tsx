@@ -59,7 +59,14 @@ useSystemColors();
 void activeOrigin().then(async (origin) => {
   const storage = chromeStorage();
   const history = originHistory(storage, origin);
-  const session = createPiSession({ history, page: activeTabTools(), storage });
+  const session = createPiSession({
+    // The history page lists a site's conversations, so each one is named after
+    // what it was about rather than after the first thing typed.
+    generateTitle: true,
+    history,
+    page: activeTabTools(),
+    storage,
+  });
   // The panel outlives the tab it was opened from, so the chat follows the site
   // in front: another site is another shelf, and another conversation.
   history.follow(session);
@@ -67,6 +74,14 @@ void activeOrigin().then(async (origin) => {
   await session.ready;
   render(<Panel session={session} />, document.querySelector("#root")!);
 });
+
+/**
+ * The one thing the empty panel offers to say. `read_active_tab` is on nearly
+ * every tab and runs unasked, so this is the message the panel can always
+ * answer — and it says what the panel is for on the way: a chat about the page
+ * in front, not another tab of a chat site.
+ */
+const PROMPTS = ["Summarize this page"];
 
 /**
  * The surface, plus the one thing about it that changes with the tab: what a
@@ -85,6 +100,7 @@ function Panel({ session }: { session: ChatSession }) {
       // nothing else here wants the caret, so the composer takes it at once.
       autoFocus
       linkBase={linkBase}
+      prompts={PROMPTS}
       session={session}
       style={u.fill}
     />

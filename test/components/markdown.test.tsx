@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/preact";
+import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Markdown } from "../../src/components/markdown.tsx";
@@ -121,6 +121,42 @@ describe("Markdown", () => {
     const { container } = render(<Markdown>{"[a](/config)"}</Markdown>);
 
     expect(container.querySelector("a")?.getAttribute("href")).toBe("/config");
+  });
+
+  it("opens another site in a tab and this one in place", () => {
+    const { container } = render(
+      <Markdown>{"[a](/config) [b](#section) [c](https://other.test/)"}</Markdown>,
+    );
+
+    const targets = [...container.querySelectorAll("a")].map((link) => link.getAttribute("target"));
+    expect(targets).toEqual([null, null, "_blank"]);
+  });
+
+  it("navigates a link into this document through the history api", () => {
+    const back = location.href;
+    const popped = vi.fn();
+    addEventListener("popstate", popped);
+
+    const { container } = render(<Markdown>{"[a](/config)"}</Markdown>);
+    const link = container.querySelector("a")!;
+
+    // A click the reader hands to the browser is left to the browser — which
+    // is jsdom here, and jsdom says so on stderr rather than navigating.
+    expect(fireEvent.click(link, { ctrlKey: true })).toBe(true);
+    expect(location.pathname).not.toBe("/config");
+
+    expect(fireEvent.click(link)).toBe(false); // taken
+    expect(location.pathname).toBe("/config");
+    expect(popped).toHaveBeenCalledOnce();
+
+    removeEventListener("popstate", popped);
+    history.replaceState(null, "", back);
+  });
+
+  it("leaves a fragment of this page to the browser", () => {
+    const { container } = render(<Markdown>{"[a](#section)"}</Markdown>);
+
+    expect(fireEvent.click(container.querySelector("a")!)).toBe(true);
   });
 
   it("heals markup left open by a stream", () => {

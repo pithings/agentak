@@ -147,6 +147,11 @@ const S = {
   check: { width: "0.875rem", height: "0.875rem", flexShrink: "0" },
   // `visibility`, not `display`: the box stays, so nothing shifts on a tick.
   checkOff: { visibility: "hidden" },
+  // The last row of the list is about the list and not a model, so it is the
+  // one row in a quieter colour. Its chevron stands in the check's column, so
+  // the words still line up with the names above them.
+  moreRow: { color: "var(--muted-foreground)", fontSize: "0.75rem" },
+  moreOpen: { transform: "rotate(180deg)" },
   loading: {
     display: "flex",
     alignItems: "center",
@@ -297,6 +302,9 @@ export function ChatSettings({
 }: ChatSettingsPageProps) {
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
+  // The older generations, asked for. A catalog is mostly models nobody picks
+  // any more, so the list opens on one row per family.
+  const [more, setMore] = useState(false);
   // Whose key field is open: a provider picked that cannot run without one, or
   // one already set up whose key is being replaced.
   const [keying, setKeying] = useState<string | null>(null);
@@ -319,22 +327,51 @@ export function ChatSettings({
   // so that is what the section offers — with the field one click away, because
   // a passkey that is gone leaves typing another key as the only way back.
   const shut = stored && Boolean(target?.locked);
+  // Chosen and unable to answer: a keyed provider this browser holds no key for.
+  // The row just clicked is one, and so is the provider a session opens on where
+  // no key was ever saved — a key is what the page is for either way.
+  const unkeyed = chosen?.keyed && !chosen.hasKey;
+  // Whether this browser holds a key at all. The lock is about the keys and
+  // nothing else on the page, so with none stored it locks nothing — and a
+  // provider that needs no key never puts one there. `keyLost` counts: a key is
+  // stored under it, and the lock is the reason it cannot be read.
+  const keyed = providers?.some((entry) => entry.hasKey || entry.keyLost);
   // One level is no choice — a model with no reasoning offers `off` alone.
   const levels = thinkingLevels && thinkingLevels.length > 1 ? thinkingLevels : undefined;
 
+  // A catalog reads oldest first, so a family's newest model is at the foot of
+  // it — Sonnet 4.5 over Sonnet 5. Reversed and then grouped, the list leads
+  // with the models worth reading, which is what a picker of hundreds of rows
+  // is opened for.
+  const ordered = models && byFamily([...models].reverse());
+
   const query = search.trim().toLowerCase();
   const shown = query
-    ? models?.filter(
+    ? ordered?.filter(
         (entry) =>
           entry.name.toLowerCase().includes(query) || entry.id.toLowerCase().includes(query),
       )
-    : models;
+    : ordered;
+
+  // Collapsed after the filter, so what the field matched is what is collapsed:
+  // a search for one family reads as that family's newest, and the older rows of
+  // it are what the button then offers.
+  const heads = shown && latest(shown, modelId);
+  // With nothing typed the list is a recommendation rather than a catalog, so it
+  // is the lines a person asks for by name — Claude, GPT, Gemini, Qwen — and the
+  // long tail of a gateway's hundreds is behind the button with the older
+  // releases. A search is the other question and reads the whole catalog.
+  const known = !query && heads && wellKnown(heads, modelId);
+  const rows = more ? shown : known || heads;
+  // Counted off the collapsed list either way, so the button says the same
+  // number whichever state it is in.
+  const rest = shown ? shown.length - (known || heads || shown).length : 0;
 
   // A list this long is read by typing at it, so the field takes the focus as
   // soon as a provider has one — on arrival, and again when another provider's
   // catalog lands. Not on a finger, where focus raises the keyboard over the
   // models the field is there to filter, and not while a key is being typed.
-  const searchable = !pending && !!models && models.length > SEARCH_FROM;
+  const searchable = !unkeyed && !!models && models.length > SEARCH_FROM;
 
   // The field is the only thing this section is for, and it is reached by a tap
   // on a provider that needs a key — so it takes the focus, phone or not. Preact
@@ -531,7 +568,7 @@ export function ChatSettings({
         </section>
       )}
 
-      {keyLock && (
+      {keyLock && keyed && (
         <section style={S.section}>
           <h3 style={sx(reset.text, S.heading)}>Device lock</h3>
           <div style={S.keyRow}>
@@ -601,57 +638,319 @@ export function ChatSettings({
         </section>
       )}
 
-      <section ref={searchRef} style={S.section}>
-        {/* Whose models these are, where the provider list is not the answer —
-            a gateway carries the same model names as the vendor. */}
-        <h3 style={sx(reset.text, S.heading)}>{where ? `Model — ${where}` : "Model"}</h3>
+      {/* A provider still waiting on its key has no models to show: what is
+          loaded is either the provider before it, under a heading naming this
+          one, or this one's own catalog — a list to pick from and then fail a
+          turn on. So the section goes rather than standing there saying it is
+          empty, and the key field above it is then the one thing to do next. */}
+      {!unkeyed && (
+        <section ref={searchRef} style={S.section}>
+          {/* Whose models these are, where the provider list is not the answer —
+              a gateway carries the same model names as the vendor. */}
+          <h3 style={sx(reset.text, S.heading)}>{where ? `Model — ${where}` : "Model"}</h3>
 
-        {searchable && (
-          <Input
-            aria-label="Search models"
-            onInput={(event) => setSearch((event.target as HTMLInputElement).value)}
-            placeholder="Search models…"
-            style={noZoom}
-            type="search"
-            value={search}
-          />
-        )}
+          {searchable && (
+            <Input
+              aria-label="Search models"
+              onInput={(event) => setSearch((event.target as HTMLInputElement).value)}
+              placeholder="Search models…"
+              style={noZoom}
+              type="search"
+              value={search}
+            />
+          )}
 
-        {/* The models under a heading naming the provider being set up are the
-            previous provider's — so say what is missing rather than list them. */}
-        {pending ? (
-          <p style={S.note}>Save the key to load {pending.label}’s models.</p>
-        ) : modelsLoading ? (
-          <div style={S.loading}>
-            <Spinner />
-            <span>Loading the models…</span>
-          </div>
-        ) : !models || models.length === 0 ? (
-          <p style={S.note}>
-            {providers && !provider
-              ? "Choose a provider to see its models."
-              : "No models to choose from."}
-          </p>
-        ) : shown && shown.length === 0 ? (
-          <p style={S.note}>No models match “{search.trim()}”.</p>
-        ) : (
-          <div aria-label="Model" role="group" style={S.list}>
-            {shown?.map((entry, index) => (
-              <SettingsRow
-                checked={entry.id === modelId}
-                first={index === 0}
-                key={entry.id}
-                meta={`${compact.format(entry.contextWindow)} ctx`}
-                onClick={() => onModelChange?.(entry.id)}
-              >
-                {entry.name}
-              </SettingsRow>
-            ))}
-          </div>
-        )}
-      </section>
+          {modelsLoading ? (
+            <div style={S.loading}>
+              <Spinner />
+              <span>Loading the models…</span>
+            </div>
+          ) : !models || models.length === 0 ? (
+            <p style={S.note}>
+              {providers && !provider
+                ? "Choose a provider to see its models."
+                : "No models to choose from."}
+            </p>
+          ) : shown && shown.length === 0 ? (
+            <p style={S.note}>No models match “{search.trim()}”.</p>
+          ) : (
+            <div aria-label="Model" role="group" style={S.list}>
+              {rows?.map((entry, index) => (
+                <SettingsRow
+                  checked={entry.id === modelId}
+                  first={index === 0}
+                  key={entry.id}
+                  meta={`${compact.format(entry.contextWindow)} ctx`}
+                  onClick={() => onModelChange?.(entry.id)}
+                >
+                  {entry.name}
+                </SettingsRow>
+              ))}
+              {rest > 0 && (
+                <MoreRow onClick={() => setMore(!more)} open={more}>
+                  {more ? "Show fewer" : `Show ${rest} more model${rest === 1 ? "" : "s"}`}
+                </MoreRow>
+              )}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
+}
+
+/** A token that is only a version: `5`, `4`, `v3`, `4o`. */
+const VERSION = /^(?:v?\d+|\d+[ac-jln-z])$/;
+
+/** What a version is written on, where it is fused to the name: `qwen3`, `o4`. */
+const FUSED = /^([a-z]+?)\d+$/;
+
+/**
+ * A date or a build stamp rather than a version: `2024`, `20241022`, and the
+ * `2603` of `mistral-small-2603`. Nobody writes a version in four digits, so a
+ * run of four, six or eight of them is when a model shipped.
+ */
+const DATE = /^(?:\d{4}|\d{6}|\d{8})$/;
+
+/** Words a catalog puts on a model that carries no version of its own. */
+const NOISE = new Set(["beta", "exp", "experimental", "latest", "preview", "stable"]);
+
+/**
+ * The words a vendor names another model with, rather than another release of
+ * one. Everything a person would choose between: how big it answers, how hard
+ * it thinks, what it was tuned for.
+ */
+const VARIANT = new Set([
+  "air",
+  "chat",
+  "coder",
+  "codex",
+  "fast",
+  "flash",
+  "flex",
+  "haiku",
+  "instruct",
+  "lite",
+  "max",
+  "medium",
+  "mini",
+  "nano",
+  "opus",
+  "plus",
+  "pro",
+  "reasoner",
+  "small",
+  "sonnet",
+  "thinking",
+  "turbo",
+  "ultra",
+  "vision",
+]);
+
+const words = (id: string): string[] =>
+  id
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+
+/**
+ * The family a model belongs to: its id with the release taken out of it, so one
+ * row can stand for every generation of the same model.
+ *
+ * `claude-sonnet-4-5` and `claude-sonnet-5` are one family. `gpt-5` and
+ * `gpt-5-mini` are two, because `mini` is another model and not an older one —
+ * so a word is kept where it names a variant, or where it carries a number of
+ * its own: `70b`, `a3b` and `120b` are what a model is, and `4o` is which
+ * release of it this is.
+ *
+ * A word after the version that names no variant is that release's codename:
+ * "GPT 5.6 Luna" is a GPT, so it belongs with GPT 5.5 rather than beside it.
+ * A word before the version is always kept, because that is where most vendors
+ * write the variant — `mistral-small-3.1`. A name left with nothing is its own
+ * family, since a family of everything would collapse the list to one row.
+ */
+function family(id: string): string {
+  const parts: string[] = [];
+  let versioned = false;
+  for (const word of words(id)) {
+    if (NOISE.has(word)) continue;
+    if (VERSION.test(word)) {
+      versioned = true;
+      continue;
+    }
+    const fused = FUSED.exec(word);
+    if (fused) {
+      versioned = true;
+      parts.push(fused[1]);
+      continue;
+    }
+    if (versioned && !VARIANT.has(word) && !/\d/.test(word)) continue;
+    parts.push(word);
+  }
+  return parts.join("-") || id.toLowerCase();
+}
+
+/**
+ * The version a model id carries, as the numbers it is written with: `gpt-5.10`
+ * is `[5, 10]`, `claude-sonnet-4-5` is `[4, 5]`, `qwen3` is `[3]`.
+ *
+ * A date ends the reading, because an id writes the version before the date it
+ * shipped on and a date read as a version outranks every version there is:
+ * `qwen-plus-2025-07-28` is `[]` and stands under `qwen3.7-plus`.
+ */
+function version(id: string): number[] {
+  const parts: number[] = [];
+  for (const word of words(id)) {
+    // Two parts and no more, because nobody writes a third and the numbers after
+    // them are the model's size: `qwen3.8-2.4t-a95b` is 3.8, and the 2.4T is how
+    // many parameters answer.
+    if (parts.length === 2 || DATE.test(word)) break;
+    if (VERSION.test(word)) parts.push(Number.parseInt(word.replace(/^v/, ""), 10));
+    else if (FUSED.test(word)) parts.push(Number.parseInt(word.replace(/^[a-z]+/, ""), 10));
+  }
+  return parts;
+}
+
+/**
+ * How plain a name is: the words of it that are not numbers. The line is named
+ * after its plainest model, and everything else is that model with a word added —
+ * a size, a codename, a batch endpoint.
+ */
+function plainness(id: string): number {
+  return words(id).filter((word) => !/^\d/.test(word)).length;
+}
+
+/**
+ * Newest first, part by part, where a part nobody wrote is a zero: 5.6 over 5.5
+ * and 5.10 over 5.9, which is the one thing a catalog's own order gets wrong —
+ * it is sorted as words, and as words `5.10` reads under `5.2`.
+ */
+function compare(one: number[], two: number[]): number {
+  for (let index = 0; index < Math.max(one.length, two.length); index++) {
+    const diff = (two[index] ?? 0) - (one[index] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+/**
+ * The generations of one model gathered into one run of rows, newest at the head
+ * of it.
+ *
+ * The families keep the order they arrived in, so a catalog that was curated is
+ * still read the way it was written; only the rows inside a family move, and
+ * they move by version rather than by name. Equal versions keep their order,
+ * because `sort` is stable.
+ */
+function byFamily(models: ChatModel[]): ChatModel[] {
+  const families = new Map<string, ChatModel[]>();
+  for (const entry of models) {
+    const key = family(entry.id);
+    const found = families.get(key);
+    if (found) found.push(entry);
+    else families.set(key, [entry]);
+  }
+  return [...families.values()].flatMap((entries) =>
+    entries.length > 1 ? entries.sort((a, b) => compare(version(a.id), version(b.id))) : entries,
+  );
+}
+
+/**
+ * The model lines a person asks for by name, one row each before anything is
+ * typed. A gateway lists hundreds, and nearly all of them are a name nobody came
+ * here for.
+ *
+ * Each entry is the words that name the line, matched against a family's own
+ * words — so it holds however a provider writes the rest of the id, and Claude's
+ * four sizes are four entries because they are four things to choose between,
+ * where GPT's minis and codexes are one line to pick the newest of. Nothing is
+ * lost by a name missing from here: the search reads the whole catalog, and so
+ * does the button under the list.
+ */
+const LINES = [
+  ["claude", "opus"],
+  ["claude", "sonnet"],
+  ["claude", "haiku"],
+  ["claude", "fable"],
+  ["gpt"],
+  ["gemini"],
+  ["grok"],
+  ["qwen"],
+  ["deepseek"],
+  ["kimi"],
+  ["glm"],
+  ["llama"],
+  ["mistral"],
+  ["minimax"],
+  ["gemma"],
+];
+
+/**
+ * The newest model of each well-known line, or nothing where holding the rest
+ * back would not help.
+ *
+ * A catalog short enough to read is read as it is — a provider offering eight
+ * models is not a catalog to be recommended from. And a list where these names
+ * are the exception, as the free providers' are, keeps every row: a short list of
+ * models nobody has heard of is still the whole of what that provider has.
+ *
+ * Of one line's models the newest wins, and of two the same age the plainer one —
+ * fewest words in its family — because that is the model the line is named after
+ * rather than a variant of it. The rows come back in the list's own order, so
+ * opening the rest adds rows and moves none.
+ */
+function wellKnown(models: ChatModel[], running?: string): ChatModel[] | undefined {
+  if (models.length <= SEARCH_FROM) return undefined;
+
+  const read = models.map((entry) => ({
+    entry,
+    parts: family(entry.id).split("-"),
+    plain: plainness(entry.id),
+    version: version(entry.id),
+  }));
+  const picks = new Set<ChatModel>();
+  for (const line of LINES) {
+    let best: (typeof read)[number] | undefined;
+    for (const model of read) {
+      if (!line.every((word) => model.parts.includes(word))) continue;
+      if (!best) {
+        best = model;
+        continue;
+      }
+      const order = compare(best.version, model.version);
+      if (order > 0 || (order === 0 && model.plain < best.plain)) best = model;
+    }
+    if (best) picks.add(best.entry);
+  }
+
+  // Two rows is not a list to choose from — the whole of what is loaded is a
+  // better answer than a page holding one name back.
+  if (picks.size < 3) return undefined;
+  return models.filter((entry) => picks.has(entry) || entry.id === running);
+}
+
+/**
+ * The newest of each family, of a list already grouped — so the newest is
+ * whichever came first.
+ *
+ * Every model of that same version comes with it, because a release under three
+ * names is three models and not two older ones: GPT 5.6 Luna, Sol and Terra are
+ * all rows, and GPT 5.5 is what goes behind the button. The model running is
+ * kept whatever its version, because a list that hides it hides the tick with
+ * it, and the page would then name a model in the bar that it says nothing
+ * about here.
+ */
+function latest(models: ChatModel[], running?: string): ChatModel[] {
+  const heads = new Map<string, number[]>();
+  return models.filter((entry) => {
+    const key = family(entry.id);
+    const head = heads.get(key);
+    if (!head) {
+      heads.set(key, version(entry.id));
+      return true;
+    }
+    return compare(head, version(entry.id)) === 0 || entry.id === running;
+  });
 }
 
 /**
@@ -731,6 +1030,45 @@ function SettingsRow({ checked = false, first, meta, onClick, title, children }:
       <CheckIcon style={sx(S.check, !checked && S.checkOff)} />
       <span style={S.rowName}>{children}</span>
       {meta ? <span style={S.rowMeta}>{meta}</span> : null}
+    </button>
+  );
+}
+
+/**
+ * The generations behind the list, as its last row.
+ *
+ * A row and not a button under the frame: it belongs to the list it opens, and
+ * the chevron takes the tick's column so the words line up with the names.
+ */
+function MoreRow({
+  onClick,
+  open,
+  children,
+}: {
+  onClick: () => void;
+  open: boolean;
+  children: ComponentChildren;
+}) {
+  const { focusVisible, handlers, hovered } = useInteraction<HTMLButtonElement>();
+
+  return (
+    <button
+      aria-expanded={open}
+      data-slot="chat-settings-more"
+      onClick={onClick}
+      style={sx(
+        reset.button,
+        S.row,
+        S.rowLine,
+        S.moreRow,
+        hovered && S.rowHover,
+        focusVisible && S.rowFocus,
+      )}
+      type="button"
+      {...handlers}
+    >
+      <ChevronDownIcon style={sx(S.check, open && S.moreOpen)} />
+      <span style={S.rowName}>{children}</span>
     </button>
   );
 }

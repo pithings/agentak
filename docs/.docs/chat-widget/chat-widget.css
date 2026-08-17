@@ -43,10 +43,10 @@
 }
 
 /* The placeholder, which is the panel the server can draw: three hairlines at
-   the chat's own measurements — the header rule (`2rem` of buttons in
+   the chat's own measurements — the title bar's rule (`2rem` of buttons in
    `0.375rem` of padding), the rule the composer sits above, and the box a
-   message is typed into. Nothing else; the transcript between them is what the
-   chat has yet to say. */
+   message is typed into, with the status bar's row of its own under it.
+   Nothing else; the transcript between them is what the chat has yet to say. */
 .chat-ghost {
   display: flex;
   min-height: 0;
@@ -67,13 +67,20 @@
 .chat-ghost-foot {
   flex-shrink: 0;
   border-top: 1px solid var(--border);
-  padding: 0.5rem;
+  padding: 0.5rem 0.5rem 0.375rem;
 }
 
 .chat-ghost-foot > div {
   height: 6rem;
   border: 1px solid var(--input);
   border-radius: var(--radius-md);
+}
+
+/* The status bar under the composer: the model, the meter and the collapse
+   button. Only its height is drawn — what it says arrives with the chat. */
+.chat-ghost-bar {
+  height: 1.875rem;
+  flex-shrink: 0;
 }
 
 /* A pill that says what it opens, rather than a circle the reader must read an

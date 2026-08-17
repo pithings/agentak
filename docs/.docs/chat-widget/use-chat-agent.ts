@@ -41,6 +41,9 @@ export function useChatAgent() {
     // `document.modelContext` — the chat is in the document the tools are in, so
     // it reads them directly.
     session.value = createPiSession({
+      // One extra request after the first answer names the conversation, so the
+      // history page lists what each one was about.
+      generateTitle: true,
       history: true,
       page: true,
       storage: browserStorage(),

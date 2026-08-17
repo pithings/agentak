@@ -13,7 +13,7 @@ import {
   CodeBlockHeader,
   CodeBlockTitle,
 } from "./ai-elements/code-block.tsx";
-import { resolveUrl, useLinkBase } from "../lib/links.ts";
+import { linkKind, pushUrl, resolveUrl, useLinkBase } from "../lib/links.ts";
 import { parseMarkdown, useMarkdown } from "../lib/markdown.ts";
 import { animateOnMount, isLowPowerDevice, prefersReducedMotion } from "../lib/use-animation.ts";
 import { fadeInKeyframes, fadeInOptions, reset } from "../styles/base.ts";
@@ -196,18 +196,45 @@ const isSafeUrl = (url: string, allowImageData = false) => {
   return protocol === "http" || protocol === "https" || protocol === "mailto" || protocol === "tel";
 };
 
+/** A click the reader asked the browser for: another tab, a window, a download. */
+const isPlainClick = (event: MouseEvent) =>
+  !event.defaultPrevented &&
+  event.button === 0 &&
+  !event.altKey &&
+  !event.ctrlKey &&
+  !event.metaKey &&
+  !event.shiftKey;
+
+/** A link into this document, taken from the browser and given to the router. */
+const onHereClick = (event: MouseEvent) => {
+  if (!isPlainClick(event)) return;
+  event.preventDefault();
+  pushUrl((event.currentTarget as HTMLAnchorElement).href);
+};
+
 /**
  * A link the model wrote. The host's base is read here rather than threaded
  * through the walk, so a panel that follows another tab redraws its links and
  * nothing else. Resolved first and checked second: a relative link under a
  * `chrome:` or `file:` base becomes an url no click could open, and drops back
  * to its own text like any other unsafe one.
+ *
+ * Where the url lands on the document the chat is in, the click is answered in
+ * place and no tab is opened — see `linkKind()`. A fragment of the open page is
+ * left to the browser, which scrolls to it better than a pushed entry would.
  */
 const MdLink = ({ href, children }: { href: string; children: ComponentChildren }) => {
   const url = resolveUrl(href, useLinkBase());
   if (!isSafeUrl(url)) return <>{children}</>;
+  const kind = linkKind(url);
   return (
-    <a href={url} rel="noreferrer" style={sx(reset.link, S.mdA)} target="_blank">
+    <a
+      href={url}
+      onClick={kind === "here" ? onHereClick : undefined}
+      rel={kind === "away" ? "noreferrer" : undefined}
+      style={sx(reset.link, S.mdA)}
+      target={kind === "away" ? "_blank" : undefined}
+    >
       {children}
     </a>
   );

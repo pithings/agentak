@@ -37,6 +37,31 @@ Resolution happens first and the safety check second, so a relative link under a
 `chrome:` or `file:` base becomes an url no click could open and drops back to its own
 text, like any other unsafe one. An url that names its own scheme is never touched.
 
+## Where a click goes
+
+`linkKind()` sorts the resolved url into three, against the document the chat is in:
+
+- **`away`** — another origin. The anchor keeps `target="_blank"` and `rel="noreferrer"`.
+- **`here`** — this origin, another page. The click is taken: `pushUrl()` pushes the entry
+  with `history.pushState` and raises a `popstate` behind it, the event a client-side
+  router listens on. So a chat beside a documentation site moves that site and keeps its
+  own conversation, where a tab or a reload would have taken one of the two. The state
+  pushed is `null`, because a router keeps its bookkeeping in there and the state of the
+  entry being left would read as a step back through the history; a router repairs a null
+  state on the way past.
+- **`hash`** — the page already open, at a fragment. Nothing is taken, and the browser
+  scrolls as it does for the site's own anchors.
+
+The sort is the origin and not the shape of the href: `/config` under the panel's
+`linkBase` is another site by the time it is read here, and the full url of this one is
+not. A click carrying a modifier — or a middle button — is left alone in every case, since
+the reader asked the browser for that one.
+
+The case to watch is a host with no client-side router at all: it is handed a url change
+and no page change, because nothing listens for the `popstate`. There is no opt-out today
+— a `linkBase` of the host's own url resolves to the same origin and is still `here`. A
+prop for it belongs on `Chat` if a static host ever needs one.
+
 ## Streaming
 
 `<Markdown animate>` fades each word in as it arrives. Streaming text otherwise grows

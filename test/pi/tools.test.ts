@@ -412,6 +412,40 @@ describe("the gate a page tool is behind", () => {
     await expect(call(gate, "navigate")).resolves.toBeUndefined();
     expect(gate.pending()).toEqual([]);
   });
+
+  it("takes the gate away mid-conversation, and answers what was at it", async () => {
+    const gate = createApprovalGate("once", pageRules);
+    expect(gate.policy()).toBe("once");
+
+    const waiting = call(gate, "navigate");
+    expect(gate.pending()).toHaveLength(1);
+
+    // The click that took the gate away is an answer to the call at it: the
+    // question is gone, so the call runs rather than waiting for nothing.
+    gate.setPolicy("never");
+    await expect(waiting).resolves.toBeUndefined();
+    expect(gate.pending()).toEqual([]);
+    expect(gate.answers()["navigate-1"]?.approved).toBe(true);
+
+    // And the page's own word goes with it — the session-wide off outranks it.
+    await expect(call(gate, "host_tool")).resolves.toBeUndefined();
+  });
+
+  it("asks about everything again once the gate is back", async () => {
+    const gate = createApprovalGate("once", pageRules);
+
+    void call(gate, "host_tool");
+    gate.respond("host_tool-1", true);
+    await expect(call(gate, "host_tool")).resolves.toBeUndefined();
+
+    gate.setPolicy("never");
+    gate.setPolicy("once");
+    expect(gate.policy()).toBe("once");
+
+    // The allow covered a gate that has been down since. It covers nothing now.
+    void call(gate, "host_tool");
+    expect(gate.pending()).toHaveLength(1);
+  });
 });
 
 describe("the page option", () => {
@@ -444,6 +478,34 @@ describe("the page option", () => {
     listed = [page(), page({ name: "list-todos" })];
     fire();
     await vi.waitFor(() => expect(names(session)).toEqual(["add-todo", "list-todos"]));
+    session.dispose();
+  });
+
+  it("opens with the gate down, and reports the switch that puts it back", async () => {
+    const session = createPiSession({
+      page: { call: () => Promise.resolve("ok"), list: () => Promise.resolve([page()]) },
+      storage: memoryStorage(),
+    });
+
+    // Nothing to gate yet, so the bar is told about no switch at all.
+    expect(session.snapshot().toolPolicy).toBeUndefined();
+
+    await vi.waitFor(() => expect(session.snapshot().toolPolicy).toBe("bypass"));
+    session.setToolPolicy?.("ask");
+    expect(session.snapshot().toolPolicy).toBe("ask");
+    session.setToolPolicy?.("bypass");
+    expect(session.snapshot().toolPolicy).toBe("bypass");
+    session.dispose();
+  });
+
+  it("opens on the gate a host asked for", async () => {
+    const session = createPiSession({
+      approvals: "always",
+      page: { call: () => Promise.resolve("ok"), list: () => Promise.resolve([page()]) },
+      storage: memoryStorage(),
+    });
+
+    await vi.waitFor(() => expect(session.snapshot().toolPolicy).toBe("ask"));
     session.dispose();
   });
 

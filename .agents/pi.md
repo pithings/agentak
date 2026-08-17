@@ -19,33 +19,33 @@ rather than inside it — `providers.ts` next to `providers/`, as `components/ch
 sits next to `components/chat/` — and that hub is the only file the other groups
 import. `index.ts` is the one public entry; no folder carries a barrel of its own.
 
-| File                         | What                                                      |
-| ---------------------------- | --------------------------------------------------------- |
-| `session.ts`                 | the store, the page and the title as one `ChatSession`    |
-| `snapshot.ts`                | a conversation, in the shape a host stores it             |
-| `agent.ts`                   | the `Agent`, the stream function, the system prompt       |
-| `providers.ts`               | the provider list, the api modules, `streamFor()`         |
-| `providers/models.ts`        | catalog filtering, the defaults                           |
-| `providers/catalog.ts`       | one provider's models, fetched once per page              |
-| `providers/use-catalog.ts`   | the same, as a hook, for a host driving `Chat` itself     |
-| `providers/free-models.ts`   | the hand-written catalogs of the four keyless providers   |
-| `providers/on-device.ts`     | Chrome's own model, and whether this browser carries it   |
-| `providers/chrome-prompt.ts` | the Prompt API as an api pi can speak                     |
-| `providers/local.ts`         | the wllama models, where the module comes from, the gate  |
-| `providers/wllama.ts`        | llama.cpp in this tab as an api pi can speak              |
-| `storage.ts`                 | the store the keys, provider, model and level live in     |
-| `storage/secret.ts`          | the keys in that store, sealed and unsealed               |
-| `storage/vault.ts`           | the key that seals them, and the lock over it             |
-| `storage/passkey.ts`         | WebAuthn's PRF, as a key the device holds                 |
-| `storage/history.ts`         | the conversations a session keeps, over that same store   |
-| `tools.ts`                   | the page's tools as pi's, named, gated and kept level     |
-| `tools/webmcp.ts`            | `document.modelContext`, and the tools a page offers      |
-| `tools/approvals.ts`         | the confirmation gate behind `beforeToolCall`             |
-| `chat.ts`                    | a subscribable view of `Agent` events                     |
-| `chat/use-agent.ts`          | the store as a hook — `ChatState`, unchanged              |
-| `chat/transcript.ts`         | `AgentMessage[]` -> renderable parts, and the usage panel |
-| `chat/title.ts`              | the conversation's name — derived, or asked of the model  |
-| `chat/errors.ts`             | a failed turn, worded for the person reading it           |
+| File                         | What                                                          |
+| ---------------------------- | ------------------------------------------------------------- |
+| `session.ts`                 | the store, the page and the title as one `ChatSession`        |
+| `snapshot.ts`                | a conversation, in the shape a host stores it                 |
+| `agent.ts`                   | the `Agent`, the stream function, the system prompt           |
+| `providers.ts`               | the provider list, the api modules, `streamFor()`             |
+| `providers/models.ts`        | catalog filtering, the defaults                               |
+| `providers/catalog.ts`       | one provider's models, fetched once per page                  |
+| `providers/use-catalog.ts`   | the same, as a hook, for a host driving `Chat` itself         |
+| `providers/free-models.ts`   | the hand-written catalogs of the four keyless providers       |
+| `providers/on-device.ts`     | Chrome's own model, and whether this browser carries it       |
+| `providers/chrome-prompt.ts` | the Prompt API as an api pi can speak                         |
+| `providers/local.ts`         | the wllama models, where the module comes from, the gate      |
+| `providers/wllama.ts`        | llama.cpp in this tab as an api pi can speak                  |
+| `storage.ts`                 | the store the keys, provider, model and level live in         |
+| `storage/secret.ts`          | the keys in that store, sealed and unsealed                   |
+| `storage/vault.ts`           | the key that seals them, and the lock over it                 |
+| `storage/passkey.ts`         | WebAuthn's PRF, as a key the device holds                     |
+| `storage/history.ts`         | the conversations a session keeps, over that same store       |
+| `tools.ts`                   | the page's tools as pi's, named, gated and kept level         |
+| `tools/webmcp.ts`            | `document.modelContext`, and the tools a page offers          |
+| `tools/approvals.ts`         | the confirmation gate behind `beforeToolCall`, and its switch |
+| `chat.ts`                    | a subscribable view of `Agent` events                         |
+| `chat/use-agent.ts`          | the store as a hook — `ChatState`, unchanged                  |
+| `chat/transcript.ts`         | `AgentMessage[]` -> renderable parts, and the usage panel     |
+| `chat/title.ts`              | the conversation's name — derived, or asked of the model      |
+| `chat/errors.ts`             | a failed turn, worded for the person reading it               |
 
 ## Imports stay dynamic
 
@@ -220,11 +220,18 @@ and the page scrolls as one column. A catalog lands in that list, under a spinne
 providers are a `DropdownMenu` rather than a list of their own: which one is set is one
 line, and eight rows above the models would be most of the page.
 
-**Nothing is chosen on a fresh surface** — no provider, and so no model. The first
-message opens the settings page instead of going to a provider nobody picked; the text is
-held and sent as soon as one can answer. The provider dropdown is open on arrival while
-nothing is running — the page asks its question rather than showing a shut box — and
-`defaultOpen` is read once, so closing it stays closed. `storedProviderId()` is what a second visit opens
+**A fresh surface opens on the head of the list** — the provider, and no model with it.
+`openingProvider()` in `session.ts` takes what the store holds, where that provider can
+still answer, and the head of `availableProviders()` where it cannot — whether or not this
+browser holds its key. The list is ordered to lead with the choice worth making, so the row
+it leads with is the one a first visit is set to, and the settings page then asks for the
+key it needs. The first message still opens that page, because no model is chosen; the text
+is held and sent as soon as something can answer. The provider dropdown is open on arrival
+wherever nothing can answer yet — no provider set, or one set that holds no key — because
+that is the question the page opened to ask, and a shut box is a question that has to be
+found first. A keyless row is one of the answers to it: the free providers are in that same
+list, and picking one is as good an end to the page as typing a key. `defaultOpen` is read
+once, so closing it stays closed. `storedProviderId()` is what a second visit opens
 on, so the question is asked once.
 
 Picking a model assigns `agent.state.model` and closes the page: it is the last of the
@@ -242,11 +249,19 @@ not while a key is being typed.
 list under it, and the page itself stays up. Nothing picks a model for anyone: `follow()` in `session.ts`
 restores only `storedModelId(provider)`, so a provider used before comes back as it was,
 and one chosen for the first time waits on the list. Picking a provider that has no key
-opens the key section on it, and the provider changes only once the key is saved — so
-`providerId` never names a provider that cannot answer, and a stored provider whose key
-is gone counts as no provider at all. The dropdown still names the one just clicked, and
+opens the key section on it, and the provider changes only once the key is saved — so no
+click ever leaves `providerId` on a provider that cannot answer, and a stored provider
+whose key is gone is replaced by the head of the list rather than restored. The head on a
+first visit is the one exception, and it is nobody's click. The dropdown still names the one just clicked, and
 the model section says the key is what its models are waiting on: `providerId` is the
 harness's rule, not an answer to the click.
+
+**No models until the key is in**, which is the same rule read from the other end. A keyed
+provider with no key lists none of them: what is loaded under that heading is either the
+provider before it, or its own catalog — which is a list to pick from and then fail a turn
+on. `unkeyed` in `settings.tsx` is the test, and it covers both the row just clicked and the
+provider the session opened on; the section says the key is the step before them instead.
+The catalogs themselves need no key, so this is the page's order and not the network's.
 
 **A saved key is a button, not a field.** Nothing reads a key back out of storage, so a
 provider already set up shows **Change key** where the field would be — an empty box under
@@ -442,7 +457,10 @@ A page tool is one the visitor never installed, acting on a site they are signed
 a tool that acts is confirmed every time and no allow is remembered for it. A tool that
 only reads is taken at the site's word: the alternative is asking about every search of a
 documentation page, which teaches the reader to click through the question.
-`approvals: "never"` outranks all of it — a host that turned the gate off meant it.
+`approvals: "never"` outranks all of it — a host that turned the gate off meant it, and so
+did a person who turned it off from the bar. That is where the session opens: a chat is a
+surface with a switch on it, so `createPiSession()` defaults to `never` and the bar's
+**Ask** puts the gate up. The table above is what the gate does once it is up.
 
 **`untrustedContentHint` reaches both readers.** A site that says it does not vouch for a
 result — a review, a comment, another user's message — gets a line ahead of the output
@@ -470,6 +488,29 @@ first appears; a subscriber that finds none waits for it, every 500ms and ten ti
 Finding it is news of its own — nothing has read that api's list — so the listeners are
 told as if it had changed. Past five seconds the answer is no and no timer is left
 running: a browser that carries no WebMCP must not pay for one that does.
+
+## A tool a person ran
+
+`callTool(name)` on the session, which the composer's slash list is what calls: the tools
+are listed under `/model` and `/new`, and Enter on one runs it. The model did not ask for
+this call, so `chat.ts` writes the one thing a provider needs before it will take a
+result — the call itself, an assistant message carrying a `toolCall` block with the current
+model's name on it and no usage, because nothing was spent here. The tool then runs, the
+result is appended, and `agent.continue()` reads it. The answer is the point: a tool result
+nobody reads is a person reading raw output.
+
+**No arguments, and no gate.** Nothing on the surface types arguments, so `{}` goes in; a
+tool that wants some throws, the throw becomes the tool result, and the model reads what
+was wanted and calls it again properly — a better answer than a row that refuses to run.
+The approval gate stands in front of the model and is not asked here, because this call
+has what the model's never has: the person choosing it.
+
+**It is a run, so the store says so.** `isStreaming` covers it, which is what keeps a
+message from being sent into a transcript holding a call with no result; `stop()` aborts
+it, and the result is written even then, because a call without one is a transcript no
+provider takes. A `load()` mid-call bumps a generation counter, and the continuation reads
+it to find that the conversation it was called from is gone — a stored conversation opened
+while a tool ran must not be handed the result of the one before it. See `chat.ts`.
 
 ## Where the choices go
 
@@ -791,7 +832,7 @@ The other ported elements have no source in pi: `plan`, `task` and `chain-of-tho
 need a todo tool, `sources` and `inline-citation` a search tool, `file-tree` a listing
 tool, and `commit`, `test-results`, `stack-trace`, `package-info` and
 `environment-variables` a shell. `schema-display` is shaped like an HTTP endpoint, so a
-tool schema is a costume on it, and `AgentTool` already prints the schema. Write the
+tool schema is a costume on it, and `AgentTool` prints the schema where it is asked to. Write the
 tool first; the element is waiting.
 
 `model-selector` had a source and lost it: the settings page picks a model from a plain

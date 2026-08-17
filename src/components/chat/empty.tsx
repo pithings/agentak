@@ -4,13 +4,13 @@ import type { ComponentChildren } from "preact";
 import {
   Agent,
   AgentContent,
-  AgentHeader,
   AgentInstructions,
   AgentTool,
   AgentTools,
 } from "../ai-elements/agent.tsx";
 import { ConversationEmptyState } from "../ai-elements/conversation.tsx";
 import { ChatRecent, type ChatRecentProps } from "./history.tsx";
+import { ChatPrompts, type ChatPromptsProps } from "./prompts.tsx";
 import type { ChatAgent } from "./types.ts";
 import { BotIcon } from "../../lib/icons.tsx";
 import { u } from "../../styles/base.ts";
@@ -31,7 +31,7 @@ const S = {
   },
 } satisfies Record<string, Sx>;
 
-export interface ChatEmptyProps extends ChatRecentProps {
+export interface ChatEmptyProps extends ChatRecentProps, ChatPromptsProps {
   /** Shown under the greeting, so the tools are visible before the first turn. */
   agent?: ChatAgent;
   /** Host content — a suggestion, a launcher. It goes under the greeting. */
@@ -44,10 +44,13 @@ export function ChatEmpty({
   children,
   history,
   onOpenConversation,
+  onPrompt,
   onShowHistory,
+  prompts,
 }: ChatEmptyProps) {
   const recent = onOpenConversation && history && history.length > 0;
-  const alone = !agent && !children && !recent;
+  const starters = Boolean(onPrompt && prompts?.length);
+  const alone = !agent && !children && !recent && !starters;
 
   return (
     <div style={S.empty}>
@@ -59,15 +62,20 @@ export function ChatEmpty({
       />
       {children}
       {agent && (
-        <Agent>
-          <AgentHeader model={agent.model} name={agent.name} />
+        // Open, and with no header over it: what is worth opening is a row
+        // inside it. The greeting above already names the chat, and the status
+        // bar under the composer names the model — a row saying "Assistant"
+        // once more is a row that says nothing.
+        <Agent defaultOpen>
           <AgentContent>
             <AgentInstructions>{agent.instructions}</AgentInstructions>
-            <AgentTools>
-              {agent.tools.map((tool) => (
-                <AgentTool key={tool.name} tool={tool} value={tool.name} />
-              ))}
-            </AgentTools>
+            {agent.tools.length > 0 && (
+              <AgentTools>
+                {agent.tools.map((tool) => (
+                  <AgentTool key={tool.name} tool={tool} value={tool.name} />
+                ))}
+              </AgentTools>
+            )}
           </AgentContent>
         </Agent>
       )}
@@ -78,6 +86,10 @@ export function ChatEmpty({
         onOpenConversation={onOpenConversation}
         onShowHistory={onShowHistory}
       />
+      {/* And last of all, nearest the composer: what to say. Everything above is
+          what this chat is and what it has been; this is the one thing here that
+          starts a turn, so it sits at the end, a click away from the field. */}
+      <ChatPrompts onPrompt={onPrompt} prompts={prompts} />
     </div>
   );
 }

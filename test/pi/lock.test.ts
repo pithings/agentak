@@ -190,8 +190,9 @@ describe("a pi session over a store that can lock", () => {
     expect(keyed()?.locked).toBeFalsy();
     expect(keyed()?.keyLost).toBe(true);
     expect(keyed()?.hasKey).toBe(false);
-    // And the provider is one to set up again, so nothing opens on it.
-    expect(session.snapshot().providerId).toBeUndefined();
+    // And the provider is one to set up again, so it is not the one that opens:
+    // the head of the list is, which asks for a key of its own.
+    expect(session.snapshot().providerId).not.toBe(KEYED);
 
     // The message is held for the settings page rather than for a dialog that
     // would never open, which is the dead end this marking is here to stop.

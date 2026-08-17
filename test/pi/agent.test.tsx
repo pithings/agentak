@@ -266,6 +266,61 @@ describe("the wired agent", () => {
     expect(result.current.usage?.modelId).toBe("anthropic/claude-sonnet-5");
   });
 
+  it("runs a tool a person picked, then answers from what it returned", async () => {
+    const { result } = setup([answerTurn]);
+
+    act(() => result.current.callTool("lookup"));
+    await waitFor(() => expect(result.current.messages).toHaveLength(2));
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+
+    // The call is written as the model's own would be, so its result has a call
+    // to answer — and the loop then reads it, which is the whole point.
+    const call = toolOf(result.current.messages[0].parts);
+    expect(call.name).toBe("lookup");
+    expect(call.status).toBe("done");
+    expect(call.output).toBe("two plans");
+    expect(result.current.messages[1].parts[0]).toEqual({ kind: "text", text: "Two plans." });
+  });
+
+  it("gives the model a failure to read when a hand-run tool throws", async () => {
+    const runtime = createAgent({
+      apiKey: "test-key",
+      streamFn: scripted([answerTurn]),
+      tools: [
+        {
+          ...lookup,
+          execute: () => Promise.reject(new Error("needs a url")),
+        },
+      ],
+    });
+    const { result } = renderHook(() => useAgent(runtime));
+
+    act(() => result.current.callTool("lookup"));
+    await waitFor(() => expect(result.current.messages).toHaveLength(2));
+
+    const call = toolOf(result.current.messages[0].parts);
+    expect(call.status).toBe("error");
+    expect(call.output).toBe("needs a url");
+    // The turn still runs: what the tool wanted is what the model reads.
+    expect(result.current.messages[1].parts[0]).toEqual({ kind: "text", text: "Two plans." });
+  });
+
+  it("runs no tool it does not have, and none while a turn holds the transcript", async () => {
+    const { result } = setup([lookupTurn, answerTurn]);
+
+    act(() => result.current.callTool("nothing_of_the_sort"));
+    expect(result.current.messages).toEqual([]);
+
+    act(() => result.current.send("read it"));
+    await waitFor(() =>
+      expect(toolOf(result.current.messages[1]?.parts ?? []).status).toBe("pending"),
+    );
+
+    const before = result.current.messages.length;
+    act(() => result.current.callTool("lookup"));
+    expect(result.current.messages).toHaveLength(before);
+  });
+
   it("empties the transcript on reset", async () => {
     const { result } = setup([answerTurn]);
 

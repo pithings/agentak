@@ -1,16 +1,16 @@
 import { Button } from "@/components/ui/button.tsx";
-import { XIcon } from "@/lib/icons.tsx";
+import { PanelRightCloseIcon } from "@/lib/icons.tsx";
 
 /**
  * The host's own chrome for the chatbox — back to the live agent, and close.
  *
- * It goes on the agent's header, beside the new conversation and the stored
- * ones, so the box has one title bar. The element projects it there through
+ * It goes at the end of the agent's status bar, under the composer, so the box
+ * has one row of chrome. The element projects it there through
  * `slot="actions"`; the demo island takes it as the `actions` prop.
  *
  * The conversation list is not here any more: the session keeps its own and the
- * chat lists them from its header — `history: true` in `chat-widget.vue` is the
- * whole of what this page writes for it.
+ * chat lists them from its title bar — `history: true` in `chat-widget.vue` is
+ * the whole of what this page writes for it.
  *
  * The library `Button` is what the buttons beside it use, so they match.
  */
@@ -40,18 +40,17 @@ export function ChatActions({ onLive, onClose }: { onLive?: () => void; onClose:
           </svg>
         </Button>
       )}
-      {/* A cross, not a chevron: the button is at the end of the bar, where a
-          panel's close is, and it reads as "put this away" whichever layout the
-          surface is in. Nothing is lost — the box hides and keeps its
-          transcript. */}
+      {/* A panel folding into its edge, not a cross: nothing is closed here and
+          nothing is lost — the box goes away and keeps its transcript, and the
+          launcher brings the same conversation back. */}
       <Button
-        aria-label="Close the assistant"
+        aria-label="Collapse the assistant"
         onClick={onClose}
         size="icon-sm"
-        title="Close"
+        title="Collapse"
         variant="ghost"
       >
-        <XIcon />
+        <PanelRightCloseIcon />
       </Button>
     </>
   );

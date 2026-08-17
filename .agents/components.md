@@ -57,9 +57,10 @@ rules that cost the most to learn, is in [components/styling.md](components/styl
 
 ## The foot floats
 
-In `chat.tsx` the error line, the queue and the composer are one **absolute** row over
-the foot of the transcript, not a flex row under it. `ConversationContent` and the
-scroll button end above it, by the height a `ResizeObserver` reads off that row.
+In `chat.tsx` the error line, the queue, the composer and the status bar under it are one
+**absolute** block over the foot of the transcript, not a flex row under it.
+`ConversationContent` and the scroll button end above it, by the height a `ResizeObserver`
+reads off that block.
 
 That is what makes room for a virtual keyboard without moving the surface.
 `watchKeyboardInset` reports how much of the layout viewport the keyboard covers —
@@ -70,8 +71,9 @@ the browser honours `interactive-widget=resizes-content` the layout viewport shr
 its own, the inset is 0, and the same code does nothing.
 
 A lifted foot is nowhere near the home bar, so `--chat-safe-bottom` goes to `0px` there;
-the composer's `padding-bottom` reads that var with `env(safe-area-inset-bottom)` as its
-fallback, so a composer used on its own still clears the bar.
+the `padding-bottom` of `chat/bar.tsx` — the last row on the surface — reads that var with
+`env(safe-area-inset-bottom)` as its fallback, so a bar used on its own still clears the
+home bar.
 
 **Neither number is state.** `useFootHeight` and `useKeyboardLift` write them on the
 surface as `--chat-foot` and `--chat-inset`, and everything that has to end above the foot
@@ -111,15 +113,17 @@ keeps the wasm parse and the syntax pass off a re-render.
 popover over it: a provider list and a list of conversations are read, and a panel the
 height of a phone keyboard is not where either belongs. `chat.tsx` holds one flag per page
 and opens only one at a time — opening either puts the other away, so the transcript is
-never behind two pages. The header follows: while a page is up the back arrow leads the
-bar, in front of the title, which says which page it is — and the buttons the page stands
+never behind two pages. The title bar follows: while a page is up the back arrow leads it,
+in front of the title, which says which page it is — and the two buttons the page stands
 for go off the bar until it is closed.
 
 The settings page also puts the composer away — its `hidden` prop, which is `display: none`
 and not an unmount, so the uncontrolled textarea keeps its draft. Nothing is said to a
-provider that is still being chosen, and the floating foot is then only the error row that
-opened the page, so `CLEAR` measures the room that row needs and no more. The history page
-keeps the composer.
+provider that is still being chosen, and the floating foot is then the status bar plus the
+error row that opened the page, so `CLEAR` measures the room those need and no more. The
+composer draws no line over itself — the round box it holds is its own frame — but a page
+that scrolls has to end against one, so the bar takes a seam while the composer is away,
+through the `style` `chat.tsx` merges over it. The history page keeps the composer.
 
 Each flag is controllable, so a session can own it instead — see [`session.md`](session.md).
 

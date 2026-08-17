@@ -1,10 +1,12 @@
-import type { StreamFn } from "@earendil-works/pi-agent-core";
+import type { AgentTool, StreamFn } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, StopReason } from "@earendil-works/pi-ai";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { cleanup, render, waitFor } from "@testing-library/preact";
+import { Type } from "typebox";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { AgentChat } from "../../src/agent-chat.tsx";
+import { availableProviders } from "../../src/pi/providers.ts";
 import { createPiSession, type PiSessionOptions } from "../../src/pi/session.ts";
 import { memoryStorage, type PiStorage } from "../../src/pi/storage.ts";
 
@@ -48,7 +50,18 @@ const refusing =
   };
 
 const answer = turn([{ type: "text", text: "Two plans." }], "stop");
+
 const named = turn([{ type: "text", text: "Plans on this page" }], "stop");
+
+/** A host tool, because the loop ships with none. */
+const lookup: AgentTool<ReturnType<typeof Type.Object>> = {
+  name: "lookup",
+  label: "Look up",
+  description: "Answers with a fixed line, so a tool can be run by hand.",
+  parameters: Type.Object({}, { additionalProperties: false }),
+  execute: () =>
+    Promise.resolve({ content: [{ type: "text", text: "two plans" }], details: undefined }),
+};
 
 /** LLM7 is free and its catalog is written into the bundle, so nothing is fetched. */
 const FREE = "llm7";
@@ -56,6 +69,13 @@ const MODEL = "gemini-3.1-flash-lite";
 
 /** One that takes a key, and whose catalog is an import rather than a fetch. */
 const KEYED = "openrouter";
+
+/**
+ * The head of the picker, which is what a chat with nothing stored opens on.
+ * Read from the list rather than written here: the order is the picker's to
+ * change, and this is the rule that follows it.
+ */
+const HEAD = availableProviders()[0].id;
 
 /** The same, and its catalog carries a reasoning model beside a plain one. */
 const THINKS = "ovhcloud";
@@ -79,8 +99,8 @@ describe("createPiSession", () => {
   it("holds the first message until a provider can answer, then sends it", async () => {
     const session = piSession({ streamFn: scripted([answer]) });
 
-    // Nothing is chosen on a fresh session, so the message waits and the picker
-    // is the question.
+    // A fresh session has no model, and here not even the provider the store is
+    // still being read for, so the message waits and the picker is the question.
     session.send("what is this page?");
     expect(session.snapshot().messages).toHaveLength(0);
     expect(session.snapshot().pickerOpen).toBe(true);
@@ -221,10 +241,44 @@ describe("createPiSession", () => {
     expect(session.snapshot().models).toHaveLength(0);
     expect(await storage.get(`api-key:${KEYED}`)).toBeFalsy();
 
-    // And the store it went from is the one the next session opens on.
+    // And the one it was asked for cannot answer without that key, so the next
+    // session opens on the head of the list rather than on nothing.
     const next = piSession({ provider: KEYED, streamFn: scripted([answer]) });
     await next.ready;
-    expect(next.snapshot().providerId).toBeUndefined();
+    expect(next.snapshot().providerId).toBe(HEAD);
+  });
+
+  it("opens on the head of the list when nothing is stored", async () => {
+    const session = piSession({ streamFn: scripted([answer]) });
+    await session.ready;
+    expect(session.snapshot().providerId).toBe(HEAD);
+
+    // Which settles nothing about the first message: no model is chosen, and
+    // that row takes a key this browser has not been given, so the message waits
+    // on the settings page as it does with nothing chosen at all.
+    session.send("what is this page?");
+    expect(session.snapshot().messages).toHaveLength(0);
+    expect(session.snapshot().pickerOpen).toBe(true);
+  });
+
+  it("holds a tool a person picked until a provider can read what it returns", async () => {
+    const session = piSession({ streamFn: scripted([answer]), tools: [lookup] });
+
+    // Running it needs nothing, but the answer does: the tool waits with the
+    // messages, and the picker is the same question.
+    session.callTool?.("lookup");
+    expect(session.snapshot().messages).toHaveLength(0);
+    expect(session.snapshot().pickerOpen).toBe(true);
+
+    session.selectProvider?.(FREE);
+    await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
+    session.selectModel?.(MODEL);
+
+    // The call with its result, and then the model on what came back.
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(2));
+    const [call, said] = session.snapshot().messages;
+    expect(call.parts[0]).toMatchObject({ kind: "tool", name: "lookup", output: "two plans" });
+    expect(said.parts[0]).toEqual({ kind: "text", text: "Two plans." });
   });
 
   it("leaves the page shut when the provider itself is down", async () => {

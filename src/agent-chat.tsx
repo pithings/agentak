@@ -3,7 +3,7 @@ import type { ComponentChildren } from "preact";
 import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
 
-import { Chat } from "./components/chat.tsx";
+import { Chat, type ChatPrompt } from "./components/chat.tsx";
 import { Button } from "./components/ui/button.tsx";
 import { SlidersIcon } from "./lib/icons.tsx";
 import {
@@ -51,6 +51,12 @@ export interface AgentChatProps extends ChatSessionOptions {
    */
   emptyActions?: ComponentChildren;
   /**
+   * Starter messages for that same empty state, one button each: a click sends
+   * one to the session. A string is both the button and the message, and
+   * `{ label, prompt }` is a short button over a longer message.
+   */
+  prompts?: ChatPrompt[];
+  /**
    * What a relative link in an answer is relative to — an url. A chat on a page
    * leaves it out: the browser already resolves `/config` against that page. A
    * surface that talks about another document says which one, or the link
@@ -80,6 +86,7 @@ export function AgentChat({
   autoFocus,
   emptyActions,
   linkBase,
+  prompts,
   ...options
 }: AgentChatProps) {
   const snapshot = useSession(session);
@@ -141,6 +148,7 @@ export function AgentChat({
       emptyActions={empty}
       historyOpen={historyOpen}
       linkBase={linkBase}
+      onCallTool={session.callTool && ((name) => session.callTool?.(name))}
       onDequeue={session.dequeue && ((id) => session.dequeue?.(id))}
       onDismissError={session.dismissError && (() => session.dismissError?.())}
       onForgetConversation={
@@ -167,8 +175,10 @@ export function AgentChat({
       onThinkingLevelChange={
         session.setThinkingLevel && ((level) => session.setThinkingLevel?.(level))
       }
+      onToolPolicyChange={session.setToolPolicy && ((policy) => session.setToolPolicy?.(policy))}
       onUnlockKeys={session.unlockKeys && (() => session.unlockKeys?.())}
       pickerOpen={pickerOpen}
+      prompts={prompts}
       style={style}
     />
   );

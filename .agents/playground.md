@@ -62,9 +62,10 @@ island, because canned turns are the one surface with no session behind them. Th
 session watcher ends the live one on the way, and ending it stores what it holds — so the
 demo keeps nothing, and going back to live reopens the conversation where it was left.
 
-**One title bar.** The surface heads itself — context meter and new conversation in
-the header, model and provider in the composer, next to send — so the page puts no
-bar of its own over it. Minimise, back-to-live and the demo launcher are all
+**One title bar.** The surface heads itself — title, new conversation and the stored
+ones over the transcript, model, provider and the context meter in the bar under the
+composer — so the page puts no bar of its own over it. Collapse, back-to-live and the
+demo launcher are all
 `chat-actions.tsx`, preact components the page renders _into_ the surface, through the
 `actions` and `emptyActions` props — the demo island needs no launcher of its own.
 They stay preact vnodes through the vue wrapper, which is why the widget builds them
@@ -93,7 +94,7 @@ be used to try it — `localhost` is a secure context, and a panel on `chrome-ex
 has no WebAuthn at all.
 
 Picking one replaces the session's state in place, so the widget never swaps a session and
-never loses the island. The widget opens on a new conversation each time, the header's
+never loses the island. The widget opens on a new conversation each time, the title bar's
 **new conversation** button files the one it replaces away, and `dispose()` on the way out
 writes what is in hand — a tab that closes needs no flush, because a conversation is
 written every time the loop settles.
@@ -127,7 +128,7 @@ panel is `fixed` on its own, in the corner or over the whole screen. It scales f
 the corner it sits in, and the launcher — `fixed` in that same corner in every
 layout, and a sibling of the rail, never a child that the collapse would clip —
 scales from the same point, so the bubble grows into the box and shrinks back out of
-it. The launcher shows only while the surface is minimised, and the header chevron is
+it. The launcher shows only while the surface is minimised, and the bar's collapse is
 what minimises it. Both transitions carry `motion-reduce:transition-none`.
 
 The sheet keeps that full height when the keyboard opens — it does **not** resize
@@ -247,6 +248,13 @@ does. Two tools reach the model through it, as one `PageTools`:
   and a WebMCP tool cannot be serialised, so `tab-tools.ts` runs `getTools()` and
   `executeTool()` inside the tab through `chrome.scripting.executeScript` in the `MAIN`
   world, and only names and JSON strings come back. See [`webmcp.md`](webmcp.md).
+
+**The one starter.** An empty panel carries a button that says "Summarize this page" at the
+foot of its greeting, as `prompts` on the surface. It is `read_active_tab` in one click, and it is what the panel
+can always answer: the tool is on nearly every tab and runs unasked, so a panel opened on
+a page nobody has a question about is still one click from being useful. It says what the
+panel is on the way, too — a chat about the page in front, and not another tab of a chat
+site.
 
 **The links of the tab.** An answer about the site in front is written in that site's
 terms, so `/config` in it means that site's `/config`. This document is

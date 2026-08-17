@@ -1,6 +1,28 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, type Ref, ref, watchEffect } from "vue";
 
 /**
+ * The cookie the reader's choice is kept in, and how long it is kept for. A
+ * cookie rather than `localStorage` because this one thing is about the site
+ * rather than about the chat: what the chat itself stores — the provider, the
+ * key and the conversations — is the session's own store.
+ */
+const COOKIE = "agentak-chat";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
+
+/** Only what a reader left open is written, so an unset cookie reads as closed. */
+function readOpen() {
+  return document.cookie.split("; ").includes(`${COOKIE}=open`);
+}
+
+function writeOpen(open: boolean) {
+  // `lax` because nothing here follows a cross-site request, and `secure` off a
+  // plain-http `localhost`, which is where the site is developed.
+  const secure = location.protocol === "https:" ? "; secure" : "";
+  const value = open ? "open" : "closed";
+  document.cookie = `${COOKIE}=${value}; path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax${secure}`;
+}
+
+/**
  * Everything the reader does to the chat: opening it, minimising it, and which
  * of the two layouts it is in.
  *
@@ -58,18 +80,24 @@ export function useChatShell(options: {
     focusLater(input);
   }
 
+  /** Every state the reader picks is the one the next page is served into. */
+  function setOpen(next: boolean) {
+    open.value = next;
+    writeOpen(next);
+  }
+
   function close() {
     // The chat is about to become `inert`, so a focus inside it would be dropped
     // on the document. The button it folds into takes it instead — and a reader
     // whose focus is out on the page keeps it where it is.
     const inside = panel.value?.contains(document.activeElement);
-    open.value = false;
+    setOpen(false);
     if (inside) focusLater(() => button.value);
   }
 
   /** Opening the chat is asking to say something, so the composer is ready for it. */
   async function toggle() {
-    open.value = !open.value;
+    setOpen(!open.value);
     if (!open.value) return;
     await load();
     focusComposer();
@@ -109,8 +137,17 @@ export function useChatShell(options: {
 
   onMounted(() => {
     measure();
-    // The chat is closed in both layouts, which is how the page was served: it
-    // opens for the reader who asks for it, and the chat itself is fetched then.
+    // The page is served closed in both layouts — it is baked, so no cookie
+    // reaches the render — and the rail a reader left out comes back here, one
+    // frame later and along the edge it went out by. The chat is fetched with
+    // it, but takes no focus: nobody asked for it on this page.
+    //
+    // The sheet is not restored. It is the whole screen over a page the reader
+    // has just arrived on, and what it opens on is an empty conversation.
+    if (wide.value && readOpen()) {
+      open.value = true;
+      void load();
+    }
     mounted.value = true;
     desktop?.addEventListener("change", measure);
     globalThis.addEventListener("keydown", onKey);

@@ -137,7 +137,7 @@ export const AgentDemo = ({ name, model, instructions, tools, output }: AgentDem
       <AgentInstructions>{instructions}</AgentInstructions>
       <AgentTools defaultValue={[tools[0]?.name ?? ""]}>
         {tools.map((tool) => (
-          <AgentTool key={tool.name} tool={tool} value={tool.name} />
+          <AgentTool key={tool.name} schema tool={tool} value={tool.name} />
         ))}
       </AgentTools>
       {output && <AgentOutput schema={output} />}

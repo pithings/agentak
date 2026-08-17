@@ -55,6 +55,12 @@ export interface PromptInputMessage {
 
 export type PromptInputProps = Omit<WithSx<ComponentProps<"form">>, "onSubmit"> & {
   onSubmit: (message: PromptInputMessage, event: JSX.TargetedSubmitEvent<HTMLFormElement>) => void;
+  /**
+   * Merged over the box inside the form — the frame, the radius and the
+   * background a reader sees, which `style` cannot reach because that lands on
+   * the form around it. The chat composer rounds the box to a pill with it.
+   */
+  groupStyle?: Sx;
 };
 
 /**
@@ -64,6 +70,7 @@ export type PromptInputProps = Omit<WithSx<ComponentProps<"form">>, "onSubmit"> 
 export const PromptInput = ({
   className,
   style,
+  groupStyle,
   onSubmit,
   children,
   ...props
@@ -83,7 +90,7 @@ export const PromptInput = ({
 
   return (
     <form className={className} onSubmit={handleSubmit} style={sx(S.prompt, style)} {...props}>
-      <InputGroup style={S.promptGroup}>{children}</InputGroup>
+      <InputGroup style={sx(S.promptGroup, groupStyle)}>{children}</InputGroup>
     </form>
   );
 };

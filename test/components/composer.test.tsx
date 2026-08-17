@@ -13,6 +13,15 @@ const MODELS = [
 
 const PROVIDERS = [{ id: "openai", label: "OpenAI" }];
 
+const AGENT = {
+  instructions: "Be useful.",
+  name: "Assistant",
+  tools: [
+    { description: "Read the current page", name: "read_page" },
+    { description: "Take a picture of it", name: "screenshot" },
+  ],
+};
+
 const composer = (props: Partial<ComponentProps<typeof ChatComposer>> = {}) => (
   <ChatComposer
     isStreaming={false}
@@ -27,18 +36,36 @@ const composer = (props: Partial<ComponentProps<typeof ChatComposer>> = {}) => (
 );
 
 describe("ChatComposer", () => {
-  it("names the model and asks the surface for the settings page", () => {
-    const opened: boolean[] = [];
-    render(composer({ onPickerOpenChange: (open) => opened.push(open) }));
+  it("is a field and a send button, and nothing else", () => {
+    render(composer());
+    // What is running and every button the surface owns are one row down, in
+    // the bar — see `bar.test.tsx`.
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].getAttribute("aria-label")).toBe("Submit");
+  });
 
-    // A model id says nothing about where it runs, so the provider comes with it.
-    const trigger = screen.getByRole("button", { name: /GPT-5/ });
-    expect(trigger.textContent).toBe("GPT-5 (OpenAI)");
+  it("keeps send on the field's row until the message is more than one line", () => {
+    render(composer());
+    const field = screen.getByRole("textbox") as HTMLTextAreaElement;
+    const send = () => screen.getByRole("button", { name: "Submit" });
+    const row = () => send().parentElement as HTMLElement;
 
-    // The trigger opens nothing itself — the page stands where the transcript
-    // is, which only `Chat` can answer for.
-    fireEvent.click(trigger);
-    expect(opened).toEqual([true]);
+    // One line: the field and the button are the same row, and the box around
+    // them is a pill.
+    expect(row().contains(field)).toBe(true);
+    const box = field.closest('[data-slot="input-group"]') as HTMLElement;
+    expect(box.style.borderRadius).toBe("999px");
+
+    // More than one: the button moves under the field, and the pill is a box.
+    fireEvent.input(field, { target: { value: "one\ntwo" } });
+    expect(row().contains(field)).toBe(false);
+    expect(row().dataset.slot).toBe("input-group-addon");
+    expect(box.style.borderRadius).not.toBe("999px");
+
+    // And back, once the second line goes.
+    fireEvent.input(field, { target: { value: "one" } });
+    expect(row().contains(field)).toBe(true);
   });
 
   it("goes away under the settings page and keeps what was typed", () => {
@@ -103,6 +130,103 @@ describe("ChatComposer", () => {
     // A word that names none is a message, so the list goes.
     fireEvent.input(field, { target: { value: "/nope" } });
     expect(screen.queryByRole("listbox", { name: "Commands" })).toBeNull();
+  });
+
+  it("lists the agent's tools under the commands", () => {
+    render(composer({ agent: AGENT, onReset: () => {} }));
+    const field = screen.getByRole("textbox") as HTMLTextAreaElement;
+
+    fireEvent.input(field, { target: { value: "/" } });
+    // The two verbs first, then what the model can do.
+    expect(screen.getAllByRole("option").map((row) => row.textContent)).toEqual([
+      "/modelProvider, model and thinking level",
+      "/newStart a new conversation",
+      "/read_pageRead the current page",
+      "/screenshotTake a picture of it",
+    ]);
+
+    // A tool is found by the same half-typed name a command is.
+    fireEvent.input(field, { target: { value: "/read" } });
+    const shown = screen.getAllByRole("option");
+    expect(shown).toHaveLength(1);
+    expect(shown[0].textContent).toContain("/read_page");
+  });
+
+  it("runs the tool the cursor is on, and clears the field", () => {
+    const called: string[] = [];
+    const sent: string[] = [];
+    render(
+      composer({
+        agent: AGENT,
+        onCallTool: (name) => called.push(name),
+        onSend: (text) => sent.push(text),
+      }),
+    );
+
+    const field = screen.getByRole("textbox") as HTMLTextAreaElement;
+    field.value = "/read";
+    fireEvent.input(field, { target: { value: "/read" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    // The harness runs it and the model reads the result, so the row was the
+    // whole of what was being asked — nothing is left to say.
+    expect(called).toEqual(["read_page"]);
+    expect(sent).toEqual([]);
+    expect(field.value).toBe("");
+    expect(screen.queryByRole("listbox", { name: "Commands" })).toBeNull();
+  });
+
+  it("writes a tool's name rather than running it while the model is working", () => {
+    const called: string[] = [];
+    render(composer({ agent: AGENT, isStreaming: true, onCallTool: (name) => called.push(name) }));
+
+    const field = screen.getByRole("textbox") as HTMLTextAreaElement;
+    field.value = "/read";
+    fireEvent.input(field, { target: { value: "/read" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    // The transcript belongs to the turn that is running, so the row falls back
+    // to the name and the message queues behind it.
+    expect(called).toEqual([]);
+    expect(field.value).toBe("read_page ");
+  });
+
+  it("writes a tool's name into the message where nothing can run it", () => {
+    const sent: string[] = [];
+    render(composer({ agent: AGENT, onSend: (text) => sent.push(text) }));
+
+    const field = screen.getByRole("textbox") as HTMLTextAreaElement;
+    field.value = "/read";
+    fireEvent.input(field, { target: { value: "/read" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    // The slash was how the tool was found, not part of what is said, and the
+    // caret is after the name because the message is not finished.
+    expect(field.value).toBe("read_page ");
+    expect(field.selectionStart).toBe("read_page ".length);
+    expect(sent).toEqual([]);
+    expect(screen.queryByRole("listbox", { name: "Commands" })).toBeNull();
+
+    // What is typed after it is one message, sent as it was written.
+    field.value = "read_page and tell me what it says";
+    fireEvent.submit(field.closest("form") as HTMLFormElement);
+    expect(sent).toEqual(["read_page and tell me what it says"]);
+  });
+
+  it("keeps a name the commands already use", () => {
+    // Two rows spelt the same would be one question with two answers, and only
+    // the command is a thing this surface runs.
+    render(
+      composer({
+        agent: { ...AGENT, tools: [{ description: "Not this one", name: "model" }] },
+        onReset: () => {},
+      }),
+    );
+
+    fireEvent.input(screen.getByRole("textbox"), { target: { value: "/model" } });
+    const shown = screen.getAllByRole("option");
+    expect(shown).toHaveLength(1);
+    expect(shown[0].textContent).toContain("Provider, model and thinking level");
   });
 
   it("offers only the commands it was given the means to run", () => {
@@ -237,26 +361,5 @@ describe("ChatComposer", () => {
     fireEvent.keyDown(field, { key: "Escape" });
     expect(screen.queryByRole("listbox", { name: "Commands" })).toBeNull();
     expect(field.value).toBe("/m");
-  });
-
-  it("says so in the meter when the window is nearly spent", () => {
-    const meter = (nearLimit: boolean) => (
-      <ChatComposer
-        isStreaming={false}
-        onSend={() => {}}
-        onStop={() => {}}
-        usage={{ maxTokens: 200_000, nearLimit, usedTokens: 190_000 }}
-      />
-    );
-
-    const { rerender } = render(meter(false));
-    // The ring reads the same either way; only the warning is new.
-    const ring = screen.getByRole("img", { name: /95%$/ });
-    fireEvent.click(ring.closest("button") as HTMLButtonElement);
-    expect(screen.queryByText(/Near the context limit/)).toBeNull();
-
-    rerender(meter(true));
-    expect(screen.getByRole("img", { name: /near the limit/ })).toBeTruthy();
-    expect(screen.getByText(/Near the context limit/)).toBeTruthy();
   });
 });

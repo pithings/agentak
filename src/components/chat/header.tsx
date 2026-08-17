@@ -1,8 +1,6 @@
 // Docs: @docs/3.widget.md
-import type { ComponentChildren } from "preact";
-
 import { Button } from "../ui/button.tsx";
-import { ArrowLeftIcon, ClockIcon, PlusIcon, SlidersIcon } from "../../lib/icons.tsx";
+import { ArrowLeftIcon, ClockIcon, PlusIcon } from "../../lib/icons.tsx";
 import { reset } from "../../styles/base.ts";
 import { sx, type Sx } from "../../styles/sx.ts";
 
@@ -50,20 +48,12 @@ export interface ChatHeaderProps {
   onReset: () => void;
   /** What this conversation is about. Nothing shows before the first message. */
   title?: string;
-  /** Host buttons for the end of the bar — one title bar, not two. */
-  actions?: ComponentChildren;
   /**
-   * The way out of the settings page. With it the bar leads with a back arrow
-   * and drops the buttons the page replaces — the page is not a conversation,
-   * and one title bar serves both.
+   * The way out of a page. With it the bar leads with a back arrow and drops
+   * the buttons the page replaces — the page is not a conversation, and one
+   * title bar serves both.
    */
   onBack?: () => void;
-  /**
-   * The way in. Absent where there is nothing to choose — a session with one
-   * fixed model — and while the page is already up, where `onBack` is the pair
-   * of this.
-   */
-  onSettings?: () => void;
   /**
    * The way to the stored conversations. Absent where a harness stores none,
    * and while a page is up.
@@ -72,23 +62,17 @@ export interface ChatHeaderProps {
 }
 
 /**
- * The chat's title bar: the title first, then every button after it.
+ * The chat's title bar: what the surface is about, and the two buttons that
+ * change which conversation it is about.
  *
- * One rule holds the row together — what the bar *is* leads it, and what the
- * bar *does* trails it. So the title is at the leading edge, and the controls
- * collect at the other in the order they are reached for: a new conversation,
- * the stored ones, the settings, and last of all the host's own chrome. The
- * back arrow is the one thing before the title, because on a page it is not a
- * control of the chat but the way out of the page the title names.
+ * What is *running* — the model, the context it has spent — reads under the
+ * composer instead, with the host's own chrome; see `bar.tsx`. What is left
+ * here is the conversation itself: the name leads, and starting a new one and
+ * opening a stored one follow it, in the order they are reached for. The back
+ * arrow is the one thing before the name, because on a page it is not a control
+ * of the chat but the way out of the page the name states.
  */
-export function ChatHeader({
-  onReset,
-  title,
-  actions,
-  onBack,
-  onSettings,
-  onHistory,
-}: ChatHeaderProps) {
+export function ChatHeader({ onReset, title, onBack, onHistory }: ChatHeaderProps) {
   return (
     <header style={S.header}>
       {onBack ? (
@@ -129,22 +113,6 @@ export function ChatHeader({
           <ClockIcon />
         </Button>
       ) : null}
-
-      {/* After the chat's own buttons and before the host's: the page belongs to
-          the chat, and whatever chrome the host owns stays at the end. */}
-      {onSettings ? (
-        <Button
-          aria-label="Settings"
-          onClick={onSettings}
-          size="icon-sm"
-          title="Settings"
-          variant="ghost"
-        >
-          <SlidersIcon />
-        </Button>
-      ) : null}
-
-      {actions}
     </header>
   );
 }

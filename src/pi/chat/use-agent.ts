@@ -20,6 +20,8 @@ export interface ChatState extends AgentSnapshot {
   clearError(): void;
   /** Run the failed turn again, in place. */
   retry(): void;
+  /** Run one of the agent's tools now, and let the model read what it returned. */
+  callTool(name: string): void;
   setModel(model: AnyModel): void;
   /** How hard the model thinks before it answers. */
   setThinkingLevel(level: ThinkingLevel): void;
@@ -63,6 +65,7 @@ export function useAgent(runtime: AgentRuntime): ChatState {
     dequeue: store.dequeue,
     clearError: store.clearError,
     retry: store.retry,
+    callTool: store.callTool,
     setModel: store.setModel,
     setThinkingLevel: store.setThinkingLevel,
   };

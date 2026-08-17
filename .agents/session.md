@@ -16,7 +16,7 @@ createPiSession()            ChatSnapshot = Pick<ChatProps, …>
 `ChatSnapshot` is not a type of its own — it is the subset of `Chat`'s props a harness
 owns. So "compatible" is checked by tsc rather than promised by a doc. What is left out
 of the `Pick` belongs to whoever mounts the chat: `style`, `className`, `actions`,
-`emptyActions`.
+`emptyActions`, `prompts`.
 
 `Pick` alone catches a rename, never an addition — a new prop on the surface that joined
 no list would just be unreachable, which is how `providerLabel` was once stranded. So
@@ -37,7 +37,7 @@ forwards options by.
 
 `ChatSession` is five required members — `subscribe`, `snapshot`, `send`, `stop`,
 `reset` — plus optional ones for the parts of the surface that answer back:
-`respondToTool`, `dequeue`, `dismissError`, `retry`, `fork`, `retryFrom`, `selectProvider`,
+`respondToTool`, `callTool`, `dequeue`, `dismissError`, `retry`, `fork`, `retryFrom`, `selectProvider`,
 `selectModel`, `setThinkingLevel`, `saveKey`, `forgetKey`, `setKeyLock`, `unlockKeys`,
 `setPickerOpen`, `openConversation`, `forgetConversation`, `setHistoryOpen`, `setOptions`.
 **Absent means gone, not broken.** A harness with one
@@ -69,6 +69,14 @@ belongs to whoever counts the tokens. pi puts it where its own harness would com
 `shouldCompact(used, window, DEFAULT_COMPACTION_SETTINGS)`, which is the window less the
 room a summary needs. Nothing here compacts yet, so the warning is all there is.
 
+**`toolPolicy` is the gate as two words, and `setToolPolicy` is the switch.** `ask` is
+whatever gate the harness has — every call, or the first of each tool — and `bypass` is
+that gate off; the bar under the composer reads one and sets the other. A harness reports
+no `toolPolicy` where nothing is gated, and the bar then carries no switch: pi answers
+`undefined` while the loop has no tools at all. The built-in session opens on `bypass` and
+stores nothing, so it is a choice about the conversation in front of the reader rather
+than a setting — see [`pi.md`](pi.md).
+
 `respondToTool` takes a third argument, `reason`, which rides with a denial alone: the
 harness gives it to the model in place of the tool's output, so a denial can steer the
 next turn rather than only failing this one. pi's gate already took one — see
@@ -76,6 +84,17 @@ next turn rather than only failing this one. pi's gate already took one — see
 empty assistant message carrying `errorMessage`) and calls `agent.continue()`, which
 refuses a transcript ending on an assistant message. A catalog error retries the catalog
 load instead, so the button is never the dead one.
+
+`callTool` is the other tool method, and it points the other way: `respondToTool` answers
+a call the model asked for, while this one is a call nobody asked for — a person picked
+the tool out of the composer's slash list. It pairs with `agent`, which is where the
+surface reads the names it offers, and it is given one of those names and nothing else:
+no arguments, because nothing on the surface types any. A harness runs the tool, writes
+the call and its result into the transcript, and carries on so the model reads what came
+back — a tool result nobody reads is a person reading raw output. pi does exactly that in
+`chat.ts`: the call is written the way the model's own is, since a provider takes a result
+only after the call it answers, and `agent.continue()` runs from it. Absent, the list still
+names the tools and picking one only writes the name into the message.
 
 Two rules a harness must keep:
 

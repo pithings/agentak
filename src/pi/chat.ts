@@ -1,6 +1,7 @@
 // Docs: @docs/4.agents/2.pi-agent/9.advanced-api.md
 // Docs: @docs/4.agents/2.pi-agent/8.runtime-behavior.md
 import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
+import type { ImageContent, TextContent, Usage } from "@earendil-works/pi-ai";
 
 import type { AgentRuntime } from "./agent.ts";
 import { describeFailure, failureStatus } from "./chat/errors.ts";
@@ -64,6 +65,28 @@ export interface AgentStore {
   clearError(): void;
   /** Run the failed turn again, in place. No-op when there is nothing to retry. */
   retry(): void;
+  /**
+   * Run one of the agent's tools now, because a person asked for it rather than
+   * the model.
+   *
+   * The call is written into the transcript as though the model had asked — a
+   * provider takes a tool result only after the call it answers — and the loop
+   * then carries on from that result, so the model reads what came back and says
+   * something about it. That is the whole point of running one this way: a tool
+   * result nobody reads is a person reading raw output.
+   *
+   * No arguments are passed, because nothing on the surface types any. A tool
+   * that wants some fails, the failure is the result, and the model can call it
+   * again properly — which is a better answer than refusing to run it here.
+   *
+   * The approval gate is not asked. It stands in front of the model, and this
+   * call has the one thing the model's never has: the person choosing it.
+   *
+   * No-op while a turn or another such call is running, and while the tool is
+   * running the store reports `isStreaming` — the transcript holds a call with
+   * no result yet, which is exactly what nothing else may be sent into.
+   */
+  callTool(name: string): void;
   setModel(model: AnyModel): void;
   /**
    * Raise or drop the reasoning effort of the next turn. The caller checks the
@@ -78,6 +101,50 @@ const userMessage = (text: string): AgentMessage => ({
   role: "user",
   content: [{ type: "text", text }],
   timestamp: Date.now(),
+});
+
+/** Nothing was spent: the call was made here and not by a provider. */
+const noUsage = (): Usage => ({
+  cacheRead: 0,
+  cacheWrite: 0,
+  cost: { cacheRead: 0, cacheWrite: 0, input: 0, output: 0, total: 0 },
+  input: 0,
+  output: 0,
+  totalTokens: 0,
+});
+
+/**
+ * The call a person asked for, written the way a model's own is.
+ *
+ * It carries the current model's name because that is what the transcript is
+ * about to be sent to: a tool result belongs to the conversation, and the
+ * conversation is with this model.
+ */
+const handCall = (id: string, name: string, model: AnyModel): AgentMessage => ({
+  role: "assistant",
+  api: model.api,
+  content: [{ type: "toolCall", arguments: {}, id, name }],
+  model: model.id,
+  provider: model.provider,
+  stopReason: "toolUse",
+  timestamp: Date.now(),
+  usage: noUsage(),
+});
+
+const toolResult = (
+  id: string,
+  name: string,
+  content: (TextContent | ImageContent)[],
+  isError: boolean,
+  details?: unknown,
+): AgentMessage => ({
+  role: "toolResult",
+  content,
+  details,
+  isError,
+  timestamp: Date.now(),
+  toolCallId: id,
+  toolName: name,
 });
 
 const isUserText = (message: AgentMessage, text: string) =>
@@ -109,6 +176,17 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
   let dismissed: string | undefined;
   let queued: QueuedMessage[] = [];
   let nextId = 0;
+  /**
+   * A tool a person asked for, running outside any turn. pi knows nothing about
+   * it, so the store carries the three things a run has: that it is happening,
+   * the way to stop it, and which transcript it belongs to — a conversation
+   * swapped mid-call must not take the result of the one before it.
+   */
+  let calling: AbortController | undefined;
+  let generation = 0;
+
+  /** Nothing may be sent while either kind of run holds the transcript. */
+  const busy = () => agent.state.isStreaming || calling !== undefined;
 
   const notify = () => {
     cached = undefined;
@@ -147,6 +225,13 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
    * which is every swap a person makes, lands at once.
    */
   const load = (messages: AgentMessage[], after?: () => void) => {
+    // A hand-run tool is a run of this store's own, and a swap ends it like any
+    // other: the generation is what its own continuation reads to find that the
+    // transcript it was called from is gone.
+    generation += 1;
+    calling?.abort();
+    calling = undefined;
+
     const swap = () => {
       agent.reset();
       if (messages.length > 0) agent.state.messages = [...messages];
@@ -166,6 +251,19 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
     void agent.waitForIdle().then(swap);
   };
 
+  /**
+   * The loop, run on from a transcript that ends on something it can answer — a
+   * failed turn dropped, or a tool result nobody has read yet. `prompt()` is for
+   * what a person says; this is for what is already there.
+   */
+  const carryOn = () => {
+    agent.continue().catch((error: unknown) => {
+      failure = error instanceof Error ? error.message : String(error);
+      notify();
+    });
+    notify();
+  };
+
   const build = (): AgentSnapshot => {
     const messages = agent.state.messages;
     const raw = failure ?? agent.state.errorMessage;
@@ -176,7 +274,10 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
         pending: approvals.pending(),
       }),
       usage: toContextUsage(messages, agent.state.model),
-      isStreaming: agent.state.isStreaming,
+      // A tool running by hand is the surface's turn as much as the model's: the
+      // transcript holds a call with no result yet, and the stop button is what
+      // ends it.
+      isStreaming: busy(),
       model: agent.state.model as AnyModel,
       thinkingLevel: agent.state.thinkingLevel,
       error: describeFailure(error),
@@ -202,7 +303,10 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
       failure = undefined;
       dismissed = undefined;
 
-      if (agent.state.isStreaming) {
+      // Queued behind a hand-run tool as well: pi drains its steering queue at
+      // the first chance the continuation gives it, which is the turn that reads
+      // the tool's result.
+      if (busy()) {
         nextId += 1;
         agent.steer(userMessage(trimmed));
         queued = [...queued, { id: `q${nextId}`, text: trimmed, at: agent.state.messages.length }];
@@ -228,6 +332,10 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
 
     stop() {
       agent.abort();
+      // The other kind of run this store can be in the middle of. A tool given
+      // no signal of its own ignores it, and the result still lands — what stops
+      // either way is the turn that would have read it.
+      calling?.abort();
       notify();
     },
 
@@ -249,7 +357,7 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
      * nothing to run again.
      */
     retry() {
-      if (agent.state.isStreaming) return;
+      if (busy()) return;
 
       const messages = agent.state.messages;
       let end = messages.length;
@@ -262,11 +370,56 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
       failure = undefined;
       dismissed = undefined;
 
-      agent.continue().catch((error: unknown) => {
-        failure = error instanceof Error ? error.message : String(error);
-        notify();
-      });
+      carryOn();
+    },
+
+    callTool(name) {
+      if (busy()) return;
+      const tool = agent.state.tools.find((entry) => entry.name === name);
+      if (!tool) return;
+
+      failure = undefined;
+      dismissed = undefined;
+      nextId += 1;
+      // The id is the seam between the call and its result, and both are written
+      // here, so the only thing it has to be is unlike every other id in this
+      // transcript — a restored one included.
+      const id = `hand-${Date.now()}-${nextId}`;
+      agent.state.messages = [...agent.state.messages, handCall(id, name, agent.state.model)];
+
+      const run = new AbortController();
+      calling = run;
+      const mine = generation;
+      // The call is drawn as running while the tool works, exactly as the
+      // model's own is.
       notify();
+
+      void (async () => {
+        let result: AgentMessage;
+        try {
+          const output = await tool.execute(id, {}, run.signal);
+          result = toolResult(id, name, output.content, false, output.details);
+        } catch (error: unknown) {
+          // A tool that wanted arguments, or one that failed: either way the
+          // model reads what went wrong and can ask for it properly.
+          const said = error instanceof Error ? error.message : String(error);
+          result = toolResult(id, name, [{ type: "text", text: said }], true);
+        }
+        // The conversation this was called from is gone — a new one, or a stored
+        // one opened while the tool worked. Its result belongs to neither.
+        if (mine !== generation) return;
+
+        calling = undefined;
+        agent.state.messages = [...agent.state.messages, result];
+        // Stopped: the result is written all the same, because a call with none
+        // is a transcript no provider accepts. Nothing reads it until the next
+        // thing said.
+        if (run.signal.aborted) {
+          notify();
+          return;
+        }
+        carryOn();
+      })();
     },
 
     respond(id, approved, reason) {
@@ -284,6 +437,8 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
     },
 
     dispose() {
+      generation += 1;
+      calling?.abort();
       offAgent();
       offApprovals();
       listeners.clear();

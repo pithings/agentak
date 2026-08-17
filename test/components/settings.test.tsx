@@ -28,6 +28,34 @@ const manyModels = () =>
     name: `Model ${index}`,
   }));
 
+/** Two models over several releases, oldest first, as a catalog lists them. */
+const CATALOG = [
+  { contextWindow: 400_000, id: "openai/gpt-5.5", name: "GPT 5.5" },
+  { contextWindow: 400_000, id: "openai/gpt-5.6-luna", name: "GPT 5.6 Luna" },
+  { contextWindow: 400_000, id: "openai/gpt-5.6-sol", name: "GPT 5.6 Sol" },
+  { contextWindow: 200_000, id: "openai/gpt-5.4-mini", name: "GPT 5.4 Mini" },
+  { contextWindow: 200_000, id: "anthropic/claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
+  { contextWindow: 1_000_000, id: "anthropic/claude-sonnet-5", name: "Claude Sonnet 5" },
+];
+
+/** That same catalog with the long tail a gateway carries around it. */
+const GATEWAY = [
+  ...CATALOG,
+  { contextWindow: 1_000_000, id: "google/gemini-3.5-flash", name: "Gemini 3.5 Flash" },
+  { contextWindow: 1_000_000, id: "google/gemini-3.7-flash", name: "Gemini 3.7 Flash" },
+  { contextWindow: 128_000, id: "sakana/namazu", name: "Sakana Namazu" },
+  { contextWindow: 128_000, id: "poolside/laguna-s-2.1", name: "Laguna S 2.1" },
+  { contextWindow: 128_000, id: "thinkingmachines/inkling", name: "Inkling" },
+  { contextWindow: 128_000, id: "nvidia/nemotron-3-ultra", name: "Nemotron 3 Ultra" },
+  { contextWindow: 128_000, id: "tencent/hy3", name: "Hy3" },
+];
+
+/** The model rows in order, by their name and not the meta beside it. */
+const names = (container: Element) =>
+  [...container.querySelectorAll('[data-slot="chat-settings-row"]')].map(
+    (row) => row.querySelector("span")?.textContent,
+  );
+
 describe("ChatSettings", () => {
   it("shows provider, key, thinking and model at once", () => {
     render(
@@ -146,7 +174,9 @@ describe("ChatSettings", () => {
     expect(screen.getByRole("button", { name: /Anthropic/ }).textContent).toBe(
       "AnthropicNeeds key",
     );
-    expect(screen.getByText(/Save the key to load Anthropic/)).toBeTruthy();
+    // Its models are the provider before it's, so the section goes with the
+    // choice — the key field is the whole page until a key is saved.
+    expect(screen.queryByText(/^Model/)).toBeNull();
 
     const key = container.querySelector('input[type="password"]') as HTMLInputElement;
     fireEvent.input(key, { target: { value: "sk-ant-live" } });
@@ -155,13 +185,82 @@ describe("ChatSettings", () => {
     expect(picked).toEqual(["llm7", "anthropic"]);
   });
 
-  it("says which models are left when the filter matches none", () => {
+  it("lists the newest of each model, and the older ones behind one button", () => {
+    const { container } = render(<ChatSettings models={CATALOG} providerLabel="Gateway" />);
+
+    // One row per model: Sonnet 4.5 goes under Sonnet 5, and GPT 5.5 under the
+    // 5.6s — a codename is a release of GPT and not a model of its own. Both of
+    // those 5.6s stay, because a release under two names is two models.
+    expect(names(container)).toEqual([
+      "Claude Sonnet 5",
+      "GPT 5.4 Mini",
+      "GPT 5.6 Sol",
+      "GPT 5.6 Luna",
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Show 2 more models/ }));
+    // Opened, each model is one run of rows with its newest at the head.
+    expect(names(container)).toEqual([
+      "Claude Sonnet 5",
+      "Claude Sonnet 4.5",
+      "GPT 5.4 Mini",
+      "GPT 5.6 Sol",
+      "GPT 5.6 Luna",
+      "GPT 5.5",
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Show fewer/ }));
+    expect(names(container).length).toBe(4);
+  });
+
+  it("offers the newest of the well-known lines before anything is typed", () => {
+    const { container } = render(<ChatSettings models={GATEWAY} providerLabel="Gateway" />);
+
+    // A catalog is a recommendation until it is searched: the lines a person
+    // asks for by name, newest each, and none of the long tail around them.
+    expect(names(container)).toEqual(["Gemini 3.7 Flash", "Claude Sonnet 5", "GPT 5.6 Sol"]);
+
+    // The rest is one click away — the tail and the older releases together.
+    fireEvent.click(screen.getByRole("button", { name: /Show 10 more models/ }));
+    expect(names(container).length).toBe(GATEWAY.length);
+
+    // A search is the other question, so it reads the whole catalog. The
+    // grouping still holds: Sonnet 4.5 is behind the button, under Sonnet 5.
+    fireEvent.click(screen.getByRole("button", { name: /Show fewer/ }));
+    fireEvent.input(screen.getByLabelText("Search models"), { target: { value: "sonnet" } });
+    expect(names(container)).toEqual(["Claude Sonnet 5"]);
+    fireEvent.click(screen.getByRole("button", { name: /Show 1 more model$/ }));
+    expect(names(container)).toEqual(["Claude Sonnet 5", "Claude Sonnet 4.5"]);
+  });
+
+  it("keeps the model running in the list, however old it is", () => {
+    const { container } = render(
+      <ChatSettings
+        modelId="anthropic/claude-sonnet-4.5"
+        models={CATALOG}
+        providerLabel="Gateway"
+      />,
+    );
+
+    // Collapsed, and the tick is still on the page.
+    expect(names(container)).toContain("Claude Sonnet 4.5");
+    expect(
+      screen.getByRole("button", { name: /Claude Sonnet 4.5/ }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(screen.getByRole("button", { name: /Show 1 more model$/ })).toBeTruthy();
+  });
+
+  it("collapses what the filter matched, and says when it matches none", () => {
     const { container } = render(<ChatSettings models={manyModels()} providerLabel="Local" />);
     const rows = () => container.querySelectorAll('[data-slot="chat-settings-row"]');
 
     const search = screen.getByLabelText("Search models") as HTMLInputElement;
     fireEvent.input(search, { target: { value: "Model 1" } });
-    // 1 and 10 and 11.
+    // 1 and 10 and 11 match, and the three are one model — so the newest of them
+    // is the row, and the two behind the button are what the filter also matched.
+    expect(rows().length).toBe(1);
+    expect(rows()[0]?.textContent).toContain("Model 11");
+    fireEvent.click(screen.getByRole("button", { name: /Show 2 more models/ }));
     expect(rows().length).toBe(3);
 
     fireEvent.input(search, { target: { value: "nothing" } });
@@ -340,6 +439,21 @@ describe("Chat", () => {
   it("shows no device lock where the harness reports none", () => {
     render(<ChatSettings providerId="llm7" providers={PROVIDERS} />);
     expect(screen.queryByText("Device lock")).toBeNull();
+  });
+
+  it("shows no device lock until a key is stored", () => {
+    const free = [
+      { id: "llm7", label: "LLM7" },
+      { id: "anthropic", keyed: true, label: "Anthropic" },
+    ];
+    const { rerender } = render(
+      <ChatSettings keyLock={{ state: "off" }} providerId="llm7" providers={free} />,
+    );
+    // Nothing is stored, so the lock locks nothing.
+    expect(screen.queryByText("Device lock")).toBeNull();
+
+    rerender(<ChatSettings keyLock={{ state: "off" }} providerId="llm7" providers={PROVIDERS} />);
+    expect(screen.getByText("Device lock")).toBeTruthy();
   });
 
   it("closes the page when a message is sent", () => {

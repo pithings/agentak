@@ -42,6 +42,16 @@ export interface ChatProvider {
  */
 export type ChatThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 
+/**
+ * What stands in front of a tool call, as the bar reads it.
+ *
+ * `ask` is the harness's own gate, whatever it asks — every call, or the first
+ * of each tool. `bypass` is that gate off: the model's calls run as they come.
+ * Two words rather than the harness's three, because this is a switch and not a
+ * scale, and the one thing a person decides here is whether they are asked.
+ */
+export type ChatToolPolicy = "ask" | "bypass";
+
 /** What the context meter shows. Produced by `pi/chat/transcript.ts`. */
 export interface ChatUsage {
   usedTokens: number;
@@ -63,6 +73,16 @@ export interface ChatAgent {
   instructions: string;
   tools: (ToolDefinition & { name: string })[];
 }
+
+/**
+ * A message the empty state offers, so a chat that has never been used has
+ * something to say in it.
+ *
+ * A string is the whole of one: the words on the button are the words sent. The
+ * object form is for a starter whose button is the short of what it sends — a
+ * row of buttons is read at a glance, and what the model is asked is a sentence.
+ */
+export type ChatPrompt = string | { label: string; prompt?: string };
 
 /** A message typed while the agent was working, waiting its turn. */
 export interface ChatQueueItem {

@@ -26,11 +26,12 @@ import PreactHost from "./preact-host.vue";
  * greeting, and taking it swaps the island for `DemoAgent` — the same surface
  * over the canned turns, streaming on mount.
  *
- * **One title bar.** The surface heads itself — the context meter and a new
- * conversation in the header, the model and the provider in the composer — so
- * the page puts no second bar over it. The page's own buttons go *into* that
- * header, and its demo launcher into the empty state: the `actions` and
- * `emptyActions` props, which both surfaces take.
+ * **One title bar.** The surface heads itself — the title, a new conversation
+ * and the stored ones over the transcript, the model, the provider and the
+ * context meter in the bar under the composer — so the page puts no second bar
+ * over it. The page's own buttons go *into* that bar, and its demo launcher
+ * into the empty state: the `actions` and `emptyActions` props, which both
+ * surfaces take.
  *
  * `generateTitle` is on here: the header names the conversation from the first
  * message, and the model renames it once the first answer lands. It is one
@@ -62,7 +63,7 @@ import PreactHost from "./preact-host.vue";
 const playDemo = () => setChatMode("demo");
 const goLive = () => setChatMode("live");
 
-// The header chrome and the demo launcher are preact children — the surface
+// The bar chrome and the demo launcher are preact children — the surface
 // inside the element is preact, whatever renders the page around it. Constants:
 // nothing in them changes, so the island is never redrawn for their sake.
 const actions = h(ChatActions, { onClose: closeChat });

@@ -1,7 +1,7 @@
 // Docs: @docs/4.agents/3.custom-agents.md
 import { useEffect, useRef, useState } from "preact/hooks";
 
-import type { ChatProps, ChatThinkingLevel } from "./components/chat.tsx";
+import type { ChatProps, ChatThinkingLevel, ChatToolPolicy } from "./components/chat.tsx";
 
 /**
  * What a harness owns of the chat surface.
@@ -24,6 +24,7 @@ export type ChatSnapshot = Pick<
   | "title"
   | "agent"
   | "usage"
+  | "toolPolicy"
   | "queued"
   | "providers"
   | "providerId"
@@ -41,7 +42,14 @@ export type ChatSnapshot = Pick<
 >;
 
 /** What the host mounts, rather than what a harness reports. */
-type HostOwned = "className" | "style" | "actions" | "autoFocus" | "emptyActions" | "linkBase";
+type HostOwned =
+  | "className"
+  | "style"
+  | "actions"
+  | "autoFocus"
+  | "emptyActions"
+  | "prompts"
+  | "linkBase";
 
 /** What the surface calls back on. `AgentChat` routes every one to the session. */
 type Callbacks = Extract<keyof ChatProps, `on${string}`>;
@@ -110,6 +118,18 @@ export interface ChatSession {
   reset(): void;
 
   /**
+   * Run one of the agent's tools now, by the name `agent.tools` lists it under —
+   * the person picked it from the composer's slash list rather than the model
+   * asking for it.
+   *
+   * A harness runs the tool, puts the call and its result in the transcript, and
+   * carries on so the model reads what came back. No arguments are passed: the
+   * surface types none. Without it the list still names the tools, but picking
+   * one only writes the name into the message.
+   */
+  callTool?(name: string): void;
+
+  /**
    * Answer a tool confirmation, by tool call id. Without it, nothing is gated.
    *
    * `reason` rides along with a denial: it is what the harness tells the model
@@ -117,6 +137,16 @@ export interface ChatSession {
    * steers the next turn rather than only failing this one.
    */
   respondToTool?(toolCallId: string, approved: boolean, reason?: string): void;
+  /**
+   * Ask before a tool runs, or let them run. Pairs with `toolPolicy`, and the
+   * bar under the composer is the one control for both halves.
+   *
+   * `ask` is whatever gate the harness has — every call, or the first of each
+   * tool. `bypass` is that gate off, for as long as this session lives: it is a
+   * thing a person decides about the conversation in front of them, so nothing
+   * here stores it, and the next session opens asking again.
+   */
+  setToolPolicy?(policy: ChatToolPolicy): void;
   /** Drop a message that is still waiting its turn. Pairs with `queued`. */
   dequeue?(id: string): void;
   /** Clear `error` without dropping the transcript, which `reset()` would. */

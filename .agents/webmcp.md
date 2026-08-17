@@ -111,7 +111,8 @@ Four things the wiring had to answer, and how each one is answered:
 2. **The gate.** `readOnlyHint` decides it, both ways: a tool that only reads runs
    unasked, and anything else is confirmed on every call. `createApprovalGate()` takes an
    `approvalFor` policy per tool, and `createPiSession()` hands it the toolset.
-   `approvals: "never"` outranks it.
+   `approvals: "never"` outranks it — which is what a session opens on, and what the bar's
+   own switch sets, so the gate reads this only once somebody has put it up.
 3. **Untrusted output.** Both readers are told. The model gets a line ahead of the result
    naming the origin and saying to treat it as data; the person gets a note above the
    output, from `untrustedFrom` on the tool part. `details` carries the origin and the

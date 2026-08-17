@@ -36,6 +36,7 @@ export * from "./ai-elements/prompt-input.tsx";
 export * from "./ai-elements/queue.tsx";
 export * from "./ai-elements/reasoning.tsx";
 export * from "./ai-elements/shimmer.tsx";
+export * from "./ai-elements/suggestion.tsx";
 export * from "./ai-elements/task.tsx";
 export * from "./ai-elements/tool.tsx";
 
@@ -65,7 +66,6 @@ export * from "./_parked/ai-elements/snippet.tsx";
 export * from "./_parked/ai-elements/sources.tsx";
 export * from "./_parked/ai-elements/speech-input.tsx";
 export * from "./_parked/ai-elements/stack-trace.tsx";
-export * from "./_parked/ai-elements/suggestion.tsx";
 export * from "./_parked/ai-elements/terminal.tsx";
 export * from "./_parked/ai-elements/test-results.tsx";
 export * from "./_parked/ai-elements/transcription.tsx";
@@ -73,11 +73,13 @@ export * from "./_parked/ai-elements/web-preview.tsx";
 
 // The chat surface and its parts, the markdown renderer, and the element registry.
 export * from "./chat.tsx";
+export * from "./chat/bar.tsx";
 export * from "./chat/composer.tsx";
 export * from "./chat/empty.tsx";
 export * from "./chat/header.tsx";
 export * from "./chat/history.tsx";
 export * from "./chat/message.tsx";
+export * from "./chat/prompts.tsx";
 export * from "./chat/queue.tsx";
 export * from "./chat/settings.tsx";
 export * from "./elements.tsx";

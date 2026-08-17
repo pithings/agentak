@@ -214,14 +214,20 @@ export const BrainIcon = (props: IconProps) => (
   </Icon>
 );
 
+/**
+ * The agentak mark, not a lucide glyph: `assets/agentak.svg` scaled from its
+ * 52-unit box into the 24 the others use, so it takes the same stroke width and
+ * sits on the same grid. The eyes are the one filled part, so they name the
+ * colour the rest inherits. The logo blinks; an icon this size does not.
+ */
 export const BotIcon = (props: IconProps) => (
   <Icon {...props}>
-    <path d="M12 8V4H8" />
-    <rect height="12" rx="2" width="16" x="4" y="8" />
-    <path d="M2 14h2" />
-    <path d="M20 14h2" />
-    <path d="M15 13v2" />
-    <path d="M9 13v2" />
+    <rect height="16.15" rx="5.54" width="13.85" x="5.08" y="3.92" />
+    <path d="M2.54 10.85q-1.85 2.77 0 6" />
+    <path d="M21.46 10.85q1.85 2.77 0 6" />
+    <path d="M10.62 14.54q1.38 1.62 2.77 0" />
+    <circle cx="9.23" cy="11.31" fill="currentColor" r="1.11" stroke="none" />
+    <circle cx="14.77" cy="11.31" fill="currentColor" r="1.11" stroke="none" />
   </Icon>
 );
 
@@ -414,6 +420,22 @@ export const UnlockIcon = (props: IconProps) => (
   </Icon>
 );
 
+/** The gate in front of a tool call, standing. */
+export const ShieldIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+  </Icon>
+);
+
+/** And the same gate crossed out — the calls run unasked. */
+export const ShieldOffIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m2 2 20 20" />
+    <path d="M5 5a1 1 0 0 0-1 1v7c0 5 3.5 7.5 7.67 8.94a1 1 0 0 0 .67 0c1.9-.65 3.79-1.5 5.19-2.93" />
+    <path d="M9.3 3.65a12.3 12.3 0 0 0 1.94-1.37 1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1v7a9.8 9.8 0 0 1-.08 1.26" />
+  </Icon>
+);
+
 export const PlugIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M12 22v-5" />
@@ -429,6 +451,15 @@ export const SlidersIcon = (props: IconProps) => (
     <path d="M14 17H5" />
     <circle cx="17" cy="17" r="3" />
     <circle cx="7" cy="7" r="3" />
+  </Icon>
+);
+
+/** A panel folding back into the edge it came from — a host's "put this away". */
+export const PanelRightCloseIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect height="18" rx="2" width="18" x="3" y="3" />
+    <path d="M15 3v18" />
+    <path d="m8 9 3 3-3 3" />
   </Icon>
 );
 
@@ -488,8 +519,11 @@ const ICONS: ((props: IconProps) => JSX.Element)[] = [
   KeyIcon,
   LockIcon,
   UnlockIcon,
+  ShieldIcon,
+  ShieldOffIcon,
   PlugIcon,
   SlidersIcon,
+  PanelRightCloseIcon,
 ];
 for (const component of ICONS) (component as IconComponent).isIcon = true;
 

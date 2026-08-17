@@ -36,3 +36,49 @@ export function resolveUrl(url: string, base?: string): string {
     return url;
   }
 }
+
+/** What a click on a resolved url should do. */
+export type LinkKind = "away" | "here" | "hash";
+
+/**
+ * Which of the three `url` is, read against the document the chat is in.
+ *
+ * `away` is another site, and opens a tab. `here` is this one: a link the model
+ * wrote about the page it is on, so the click is answered in place rather than
+ * in a second copy of the site the reader is already looking at. `hash` is a
+ * fragment of the page already open, which the browser scrolls to itself.
+ *
+ * The test is the origin and not the shape of the href, because that is what
+ * says where a click lands: `/config` under the panel's `linkBase` is another
+ * site by the time it is read here, and the full url of this one is not.
+ */
+export function linkKind(url: string): LinkKind {
+  if (typeof location === "undefined") return "away";
+  let target: URL;
+  try {
+    target = new URL(url, location.href);
+  } catch {
+    return "away";
+  }
+  if (target.origin !== location.origin) return "away";
+  return target.pathname === location.pathname && target.search === location.search
+    ? "hash"
+    : "here";
+}
+
+/**
+ * A place in this document, through the history api rather than a load: the
+ * entry is pushed and a `popstate` is raised behind it, which is the event a
+ * client-side router listens on. So a chat on a documentation site answers a
+ * link the way that site's own links answer — the page changes and the chat
+ * beside it keeps its conversation, which a reload would have taken.
+ *
+ * The state pushed is `null` on purpose. A router keeps its own bookkeeping in
+ * there, and handing it back the state of the entry being left would read as a
+ * step through the history rather than a step into a new one; every router this
+ * was written for repairs a null state on the way past.
+ */
+export function pushUrl(url: string): void {
+  history.pushState(null, "", url);
+  dispatchEvent(new PopStateEvent("popstate", { state: null }));
+}

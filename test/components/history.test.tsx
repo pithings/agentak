@@ -33,12 +33,12 @@ describe("the history page", () => {
     expect(screen.queryByRole("button", { name: "Conversations" })).toBeNull();
   });
 
-  it("keeps the button with the others at the end of the bar", () => {
+  it("keeps the button with the others at the end of the title bar", () => {
     surface({ history: HISTORY });
     const header = screen.getByRole("button", { name: "Conversations" }).parentElement;
-    // The title leads and the buttons follow it, in the order they are reached
-    // for. An unnamed conversation still takes the room the title would have,
-    // else the row packs right and nothing holds its two ends apart.
+    // The title leads and the two buttons follow it, in the order they are
+    // reached for. An unnamed conversation still takes the room the title would
+    // have, else the row packs right and nothing holds its two ends apart.
     expect(header?.firstElementChild?.getAttribute("style")).toContain("flex: 1");
     expect([...(header?.children ?? [])].map((el) => el.getAttribute("aria-label"))).toEqual([
       null,
@@ -138,11 +138,12 @@ describe("the history page", () => {
   it("holds one page at a time", () => {
     surface({
       history: HISTORY,
+      modelId: "gpt-5",
       models: [{ contextWindow: 200_000, id: "gpt-5", name: "GPT-5" }],
       providerLabel: "OpenAI",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "GPT-5" }));
     expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
     // The way in is gone while a page is up: the back arrow is that spot now.
     expect(screen.queryByRole("button", { name: "Conversations" })).toBeNull();

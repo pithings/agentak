@@ -46,6 +46,7 @@ const PANEL_PROPS: Required<ComponentObjectPropsOptions<ChatPanelProps>> = {
   emptyActions: null,
   generateTitle: FLAG,
   linkBase: null,
+  prompts: null,
   session: REQUIRED,
   tokens: FLAG,
 };
@@ -67,6 +68,7 @@ const VIEW_PROPS: Required<ComponentObjectPropsOptions<ChatViewProps>> = {
   modelId: null,
   models: null,
   modelsLoading: FLAG,
+  onCallTool: null,
   onDequeue: null,
   onDismissError: null,
   onForgetConversation: null,
@@ -86,8 +88,10 @@ const VIEW_PROPS: Required<ComponentObjectPropsOptions<ChatViewProps>> = {
   onSend: REQUIRED,
   onStop: REQUIRED,
   onThinkingLevelChange: null,
+  onToolPolicyChange: null,
   onUnlockKeys: null,
   pickerOpen: FLAG,
+  prompts: null,
   providerId: null,
   providerLabel: null,
   providers: null,
@@ -96,6 +100,7 @@ const VIEW_PROPS: Required<ComponentObjectPropsOptions<ChatViewProps>> = {
   thinkingLevels: null,
   title: null,
   tokens: FLAG,
+  toolPolicy: null,
   usage: null,
 };
 

@@ -32,6 +32,17 @@ export interface ApprovalGate {
   /** Answered calls, by tool call id. The transcript keeps showing the outcome. */
   answers(): Record<string, ToolApproval>;
   respond(id: string, approved: boolean, reason?: string): void;
+  /** The session's own policy — what governs a tool that answers none of its own. */
+  policy(): ApprovalPolicy;
+  /**
+   * Change it, mid-conversation: a person turning the gate off, or back on.
+   *
+   * Turning it off answers what is already at it, allowed. The alternative is a
+   * call left waiting for a question nothing asks any more — and the click that
+   * turned the gate off is an answer to that call as much as to the next one.
+   * Turning it back on remembers no allow: every tool is asked about again.
+   */
+  setPolicy(policy: ApprovalPolicy): void;
   /** Deny what is waiting and forget the answers, with the transcript they belong to. */
   clear(): void;
 }
@@ -47,12 +58,14 @@ export interface ApprovalGate {
  * the site says about them. See `tools.ts`.
  *
  * A session-wide `never` still wins over any of it: a host that turned the gate
- * off meant it.
+ * off meant it — and so does a person who turned it off from the chat's own bar,
+ * which is `setPolicy`.
  */
 export function createApprovalGate(
-  policy: ApprovalPolicy = "once",
+  initial: ApprovalPolicy = "once",
   approvalFor?: (toolName: string) => ApprovalPolicy | undefined,
 ): ApprovalGate {
+  let policy = initial;
   const waiting = new Map<
     string,
     { request: ApprovalRequest; settle: (approved: boolean) => void }
@@ -120,6 +133,21 @@ export function createApprovalGate(
     answers: () => Object.fromEntries(answered),
 
     respond: (id, approved, reason) => answer(id, approved, reason),
+
+    policy: () => policy,
+
+    setPolicy(next) {
+      if (next === policy) return;
+      policy = next;
+      // The gate off is the gate off, a call already at it included. Allowed
+      // rather than denied: the click that turned it off said run them.
+      // `answer` deletes the entry it is given, which a Map iterator allows.
+      if (next === "never") for (const id of waiting.keys()) answer(id, true);
+      // A gate turned back on is a gate that asks: what one allow covered while
+      // it was on last is not covered now.
+      else allowed.clear();
+      notify();
+    },
 
     clear() {
       // `answer` deletes the entry it is given, which a Map iterator allows.
