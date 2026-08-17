@@ -284,6 +284,19 @@ runs before the first render, so the panel never opens light and then turns dark
 browser paints that, not the chat, and a white strip either side of a dark panel is that
 rule missing.
 
+Three tokens then come from the browser rather than from the library: `--background`,
+`--foreground` and `--muted-foreground` are set to `Canvas`, `CanvasText` and `GrayText`.
+Chrome tells an extension nothing about the shell the panel is docked in — there is no
+theme api, and a screenshot reaches the page and never the browser around it — and the
+system colours are the one answer it does give. They are the colours it paints a document
+with, not the toolbar, so this is a near miss rather than a match; it is picked by the
+browser though, and it holds under a theme nobody can read. One rule serves both schemes,
+because a system colour resolves against the used `color-scheme` and the class above has
+already set that. `:root:root` outranks both `:root` and `.dark`, so the cascade does not
+depend on when the chat injects its tokens. The rest of the palette stays the library's:
+the greys sit against these three by eye, and the status and syntax colours are fixed on
+purpose.
+
 **The manifest declares `wasm-unsafe-eval`.** md4x is a wasm parser, and the default MV3
 policy blocks `WebAssembly.instantiate` outright — `loadMarkdown()` catches it and every
 answer renders as its raw markdown, which is what a panel without this line shows. The

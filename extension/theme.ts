@@ -20,3 +20,38 @@ export function followColorScheme(): void {
   paint();
   dark.addEventListener("change", paint);
 }
+
+/**
+ * The three tokens the browser can answer better than we can.
+ *
+ * Chrome tells an extension nothing about its own shell — no theme api, and a
+ * screenshot reaches the page and never the browser around it. The css system
+ * colours are the one thing it does answer: `Canvas` is the colour it paints a
+ * document, `CanvasText` the colour it writes on one, and `GrayText` the dimmed
+ * text it draws against both. They are not the toolbar, so this is a near miss
+ * and not a match — but a near miss picked by the browser beats a guess of ours,
+ * and it holds under a theme we cannot read.
+ *
+ * **One block covers both schemes.** A system colour resolves against the used
+ * `color-scheme`, and `followColorScheme()` has already put that on the root —
+ * so `Canvas` is the light one or the dark one without a second rule, and it
+ * turns over at dusk with everything else.
+ *
+ * The rest of the palette stays the library's. The greys are derived from these
+ * three in the eye rather than in css, the status hues and the syntax colours
+ * are fixed on purpose, and `--surface` and `--hover` already read `--background`
+ * and `--accent`, so they follow this on their own.
+ *
+ * `:root:root` outranks both `:root` and `.dark`, so this wins wherever it lands
+ * in the cascade — the library injects its tokens when the chat mounts, and that
+ * is after this, not before.
+ */
+export function useSystemColors(): void {
+  const style = document.createElement("style");
+  style.textContent = `:root:root {
+  --background: Canvas;
+  --foreground: CanvasText;
+  --muted-foreground: GrayText;
+}`;
+  document.head.append(style);
+}

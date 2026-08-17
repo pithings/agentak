@@ -9,9 +9,15 @@
  * `PiStorage` reads synchronously and `chrome.storage` does not, so the area is
  * read once, in full, before the panel mounts. After that the map is the
  * answer and every write goes both places: into the map, which is what the next
- * read sees, and out to the area, which nobody waits for. A write that fails is
- * a value that lives as long as the panel does, which is what a page whose
- * storage is denied already gets.
+ * read sees, and out to the area, which answers later.
+ *
+ * That answer is handed back rather than dropped. The map would otherwise read
+ * back a transcript the area refused for want of room, and the history reads a
+ * write back to learn it has to give up an older conversation — so a full area
+ * would look like a stored one, and the chat would list a conversation that was
+ * not there to open. A write that fails for any other reason is a value that
+ * lives as long as the panel does, which is what a page whose storage is denied
+ * already gets.
  *
  * No prefix on the names. The area belongs to this extension alone, unlike the
  * `localStorage` of a host page that a chat is only a guest in.
@@ -47,7 +53,12 @@ export async function chromeStorage(): Promise<PiStorage> {
 
     set(name, value) {
       values.set(name, value);
-      void chrome.storage.local.set({ [name]: value }).catch(() => {});
+      const written = chrome.storage.local.set({ [name]: value });
+      // Handled here so a caller that ignores the answer — every caller but the
+      // history — leaves no unhandled rejection behind. The promise handed back
+      // still rejects for the one caller that awaits it.
+      written.catch(() => {});
+      return written;
     },
 
     remove(name) {

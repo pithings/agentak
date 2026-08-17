@@ -12,7 +12,13 @@
  */
 export interface PiStorage {
   get(name: string): string | undefined;
-  set(name: string, value: string): void;
+  /**
+   * Put a value in. A store that lands the write itself returns nothing, and a
+   * store that only sends it off returns a promise that rejects when it did not
+   * land — `chrome.storage` is the second kind. Nothing waits for it except the
+   * history, which gives up an older conversation when the store is full.
+   */
+  set(name: string, value: string): void | Promise<void>;
   /**
    * Take a value out. Optional, because a store of two methods is the whole of
    * what the picker needs — a conversation dropped from a store without it is

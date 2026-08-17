@@ -92,21 +92,50 @@ export function createHistory(storage: PiStorage = pageStorage, limit = LIMIT): 
   };
 
   /**
-   * Write one transcript, giving up older ones until it fits.
+   * Hand the store one transcript, and say whether it landed.
    *
-   * `set` reports nothing — `localStorage` throws when it is full, and
-   * `browserStorage()` swallows it — so the write is read back. A long
+   * A full store is reported in one of two ways, and neither is an error the
+   * caller sees. `localStorage` throws and `browserStorage()` swallows it, so
+   * the write is read back: what came back short was never written.
+   * `chrome.storage` sends the write off and answers later, so the promise is
+   * awaited. Both are checked, because a store answers one way or the other and
+   * this does not need to know which.
+   */
+  async function landed(id: string, json: string): Promise<boolean> {
+    try {
+      await storage.set(entryKey(id), json);
+    } catch {
+      return false;
+    }
+    return storage.get(entryKey(id))?.length === json.length;
+  }
+
+  /**
+   * Write one transcript, giving up older ones until it fits. A long
    * conversation with tool output in it is not small, the oldest conversation is
    * the cheapest thing to give up, and with nothing left to give up the write
    * was never going to land.
    */
-  function put(id: string, json: string): boolean {
-    storage.set(entryKey(id), json);
-    while (storage.get(entryKey(id))?.length !== json.length) {
+  async function put(id: string, json: string): Promise<boolean> {
+    /**
+     * Whether it is still wanted. A store answers between one `keep()` and the
+     * next, and a conversation can be dropped while it does — by the limit, or
+     * by hand on the history page. Its key went with it, so there is nothing
+     * left to write and nothing to take back out.
+     */
+    const wanted = () => items.some((entry) => entry.id === id);
+
+    while (wanted()) {
+      const stored = await landed(id, json);
+      if (!wanted()) {
+        if (stored) drop(entryKey(id)); // written after it was dropped
+        break;
+      }
+      if (stored) return true;
+
       const oldest = items.filter((entry) => entry.id !== id).at(-1);
       if (!oldest) return false;
       forget(oldest.id);
-      storage.set(entryKey(id), json);
     }
     return true;
   }
@@ -132,8 +161,14 @@ export function createHistory(storage: PiStorage = pageStorage, limit = LIMIT): 
       items = [{ id, title, updated: Date.now() }, ...items.filter((entry) => entry.id !== id)];
       for (const gone of items.slice(limit)) forget(gone.id);
 
-      if (put(id, JSON.stringify(snapshot))) writeIndex();
-      else forget(id);
+      // The index goes out now rather than after the answer: a store that
+      // answers later would otherwise leave the live conversation unlisted
+      // until it did. A write that never lands is taken back out below, so the
+      // index never keeps a row whose transcript is not there to open.
+      writeIndex();
+      void put(id, JSON.stringify(snapshot)).then((stored) => {
+        if (!stored) forget(id);
+      });
     },
 
     forget,
