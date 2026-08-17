@@ -22,6 +22,9 @@ const setMedia = (...queries: string[]) =>
     matches: queries.some((part) => query.includes(part)),
   }));
 
+/** The display, which is the device — not the surface the chat was given. */
+const setScreen = (width: number) => vi.stubGlobal("screen", { width });
+
 afterEach(() => {
   Reflect.deleteProperty(navigator, "hardwareConcurrency");
   vi.unstubAllGlobals();
@@ -158,6 +161,7 @@ describe("Markdown", () => {
 
     setCores(8); // a capable machine, but a phone screen — and then reduced motion
     setMedia("pointer: coarse");
+    setScreen(390);
     rerender(<Markdown animate>{"one two three"}</Markdown>);
     expect(container.querySelectorAll("span")).toHaveLength(0);
 
@@ -165,5 +169,16 @@ describe("Markdown", () => {
     rerender(<Markdown animate>{"one two three four"}</Markdown>);
     expect(container.querySelectorAll("span")).toHaveLength(0);
     expect(container.textContent).toBe("one two three four");
+  });
+
+  // The side panel, and any chat docked in a page's sidebar: a narrow surface
+  // is not a small device, and the fade is what that hardware was built for.
+  it("animates on a narrow surface of a full-sized screen", () => {
+    setCores(8);
+    setMedia("pointer: coarse"); // a desktop with a touch display
+    setScreen(1920);
+
+    const { container } = render(<Markdown animate>{"one two"}</Markdown>);
+    expect(container.querySelectorAll("p span")).toHaveLength(2);
   });
 });

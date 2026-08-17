@@ -56,7 +56,11 @@ settled transcript carries no extra DOM.
 `animate` is a request, and two checks can refuse it: `prefersReducedMotion()` and
 `isLowPowerDevice()`, both in `lib/use-animation.ts`. The device is called low power
 when it reports `deviceMemory` of 4 GB or less, or 4 cores or fewer, or answers a
-coarse pointer on a screen no wider than 820px — a phone, whatever it claims to have.
+coarse pointer on a display no wider than 820px — a phone, whatever it claims to have.
+The display and not the viewport: `screen.width`, because a surface is often narrow
+without the device being small. The side panel is ~400px on a desktop and a chat docked
+in a page's sidebar is no wider; a `max-width` query read either as a phone and took the
+fade away from hardware built to run it.
 Both are read in `Markdown` rather than in the fade, because a reader who gets no
 animation should not pay for the spans that carry it. One animated element is cheap
 everywhere and asks nothing — this is for the many-at-once case alone.
