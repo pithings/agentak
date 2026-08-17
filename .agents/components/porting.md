@@ -1,113 +1,18 @@
-# Porting a registry component
+# Porting registry components
 
-`image` is the smallest worked example — read it beside this list. The registry has no
-index endpoint: the component list comes from
-`https://elements.ai-sdk.dev/sitemap.xml`.
+1. Fetch `https://elements.ai-sdk.dev/api/registry/<name>.json`.
+2. Replace React imports with Preact; use `preact/compat` only for `memo`/`forwardRef`.
+   Replace Lucide with `lib/icons.ts` and Radix state helpers with local primitives.
+3. Copy only required AI SDK type fields into `src/types.ts`.
+4. Convert every class to module-scope `Sx`; follow [`styling.md`](styling.md).
+5. Prefer a playground demo wrapper over adding data-only props to the shipped component.
+6. Park a complete component if nothing renders it. Do not add a dependency casually.
+7. Show the port in the playground and run typecheck, tests, lint, and format.
 
-1. **Get the source.** `curl -s https://elements.ai-sdk.dev/api/registry/<name>.json`.
-   The file text is `.files[0].content`; `.dependencies` and `.registryDependencies`
-   say what it wants from npm and from the registry.
-2. **Retarget the imports.** `react`/`react-dom` become `preact` and `preact/hooks`;
-   `memo` and `forwardRef` come from `preact/compat`. `lucide-react` icons become
-   `lib/icons` — add the icon there if it is missing, with the geometry from lucide.
-   Radix `use-controllable-state` becomes `lib/use-controllable-state`. A radix
-   primitive with no `components/ui/` twin is a blocker: hand-roll it first, and read
-   [primitives.md](primitives.md) for what the existing ones do and do not carry.
-3. **Cut the `ai` dependency.** Copy only the fields the component reads into
-   `src/types.ts`, under the upstream type name in a comment.
-4. **Convert the classes.** Every tailwind string becomes an `Sx` object in the
-   module-scope `S`, merged with `sx()`. Follow [styling.md](styling.md) — above all,
-   reset first and caller's `style` last.
-5. **Show it in the demo.** A port is not done until a human can see it in a browser.
-   See [playground.md](../playground.md).
-6. **Drop what needs a new package**, and say so in the file, so the choice is
-   deliberate and reversible.
-7. **Check.** `pnpm typecheck`, `pnpm vitest run`, `pnpm lint`, `pnpm fmt`. Tests live
-   in the library's `test/` alone, so add one there for anything worth pinning; the
-   page itself is checked by hand.
+Important deviations: no `asChild`, no remote assets, no `dangerouslySetInnerHTML`, no
+command dialog, and no React-only packages. ANSI output uses `src/lib/ansi.ts`. Compound
+transcript parts contain serializable data, never JSX.
 
-`src/index.ts` exports the shell, not single elements, so a port needs no barrel
-change; `src/components/index.ts` is the named export of every built-in.
-
-## Deviations from upstream
-
-Worth knowing before reading a ported file against its registry source.
-
-- **No `asChild`.** `CollapsibleTrigger` is a real `<button>`, so `commit` splits its
-  header into `CommitHeader` (a div) plus `CommitHeaderTrigger`, and `stack-trace`
-  makes the root the `Collapsible` itself with a `role="button"` header. Exporting the
-  collapsible's context would remove the need.
-- **Data props on compound elements.** A transcript part carries plain data, never JSX,
-  so `test-results` gained `suites?`, `environment-variables` gained `variables?`, and
-  `transcription`'s segment render prop became optional — each extending the
-  component's own `children ?? default` idiom. Everything else composes through a
-  `playground/src/demo-*.tsx` wrapper, which keeps the demo shape out of the shipped
-  component. **Prefer the wrapper.**
-- **No model catalog.** `context` priced tokens with `tokenlens`. The catalog is not
-  bundled, so the limits and the money arrive as props — `usedTokens`, `maxTokens`,
-  `usage`, and a `costs` object in USD — and `modelId` is only a label.
-- **No floating panels where a `Collapsible` does.** `context` hangs its breakdown off
-  one, so the panel sits in the flow. It opens where the pointer arrives and shuts where
-  it leaves, each after a 150 ms rest — the open wait keeps a pointer crossing the
-  composer's footer from opening it, and the close wait carries a pointer over the gap
-  between the meter and a panel positioned off it. The root watches the pointer, not the
-  trigger, because the panel is a child of the root: a pointer that goes on into the
-  breakdown has not left. A click still toggles, which is what touch and the keyboard
-  have, so a tap is left to the click behind it and the pointer is only read off a mouse.
-  The panel is frosted glass — `--background` mixed to 70% with a `backdrop-filter` blur,
-  so it follows the theme with no dark rule and takes the colour of the transcript under
-  it; the footer's `--secondary` is thinned with it, and 70% is the floor because that is
-  what a browser without `backdrop-filter` is left with. Its progress bar is a two-div
-  meter.
-- **No `dangerouslySetInnerHTML`.** `schema-display` splits on a captured
-  `/(\{[^}]+\})/` and renders spans.
-- **Own ANSI parser.** `src/lib/ansi.ts` splits `terminal` output on SGR sequences,
-  tracks the running state, and returns spans: the 16 base colors as `--ansi-*`
-  tokens, plus `38;5;<n>` / `48;5;<n>` and truecolor as `rgb()`. Every other CSI
-  sequence is stripped rather than printed, and a sequence a stream cut short is
-  dropped, so a half-arrived escape never flickers into the text. Command output is
-  untrusted, so it reaches the DOM as spans and never as markup.
-- **No remote assets.** `model-selector` upstream fetches a provider logo per item from
-  `models.dev`; a third-party request is not something a side panel or a host page
-  should make, and the extension CSP blocks it. A caller passes its own inline icon.
-- **No command dialog.** `model-selector` is a `Popover`, not a ⌘K dialog, so
-  `ModelSelectorDialog` does not exist and `ModelSelectorValue` does — a popover trigger
-  has to say what is chosen.
-- **`agent`** is a `Collapsible`: the card body is dense reference, so `AgentHeader` is
-  the trigger and the card starts closed. Upstream has no toggle. A caller that renders
-  no header opens the card instead and leaves the opening to the rows inside it, which is
-  what the chat's empty state does — the greeting above it names the chat and the status
-  bar names the model, so a header would name neither. Inside, upstream heads a tool row
-  with its description and hides the schema under it; here the row is the tool's name as
-  `toolTitle()` reads it — the same words the header of the call itself carries — the
-  description is what opens, and the schema is left to `schema`, off by default.
-  `AgentInstructions` and `AgentTools` are rows of the same kind — a bot and a wrench,
-  "Agent Instructions" and "Tools" with the count, the second opening a list whose own
-  rows open their descriptions — so the card is a list of things to open, all of one
-  kind, and closed it is two lines. A tool row carries no icon of its own: it is indented
-  to where the word above it starts, which is what says whose row it is.
-- **`snippet`** copies on a click anywhere on it, not on the button alone, so the copy
-  state lives on `Snippet` — `onCopy`, `onError` and `timeout` are its props, and
-  `SnippetCopyButton` only reads them off the context.
-- **`accordion`** keeps `string[]` for both `type="single"` and `"multiple"`, where
-  radix carries a bare string for `single`.
-- **`environment-variables`** honours its controlled prop through
-  `useControllableState`; upstream ignores it.
-- **`prompt-input`** takes a `groupStyle` beside `style`. The form is the outer element,
-  so a caller's `style` never reaches the `InputGroup` that draws the frame — and the
-  chat composer rounds that frame to a pill. Upstream reaches it with a class.
-
-## Not ported
-
-Each needs a new npm dependency. Restore deliberately, not by default.
-
-| Component                                                              | Blocker                                                                                                    |
-| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `canvas`, `connection`, `controls`, `edge`, `node`, `panel`, `toolbar` | `@xyflow/react` is react-only. Needs `preact/compat` aliasing, which `test/eject.test.ts` asserts against. |
-| `persona`                                                              | `@rive-app/react-webgl2`, react-only                                                                       |
-| `jsx-preview`                                                          | `react-jsx-parser`, react-only                                                                             |
-| `audio-player`                                                         | `media-chrome` (web components, so framework-neutral) plus `button-group`                                  |
-
-`attachments`, `voice-selector` and `mic-selector` need no dependency —
-`_parked/ui/hover-card` and `ui/command` cover what blocked them, so only the port is
-left. `model-selector` is the worked example for the last two.
+Not ported because they require new dependencies: XYFlow components (`canvas`,
+`connection`, `controls`, `edge`, `node`, `panel`, `toolbar`), `persona`, `jsx-preview`, and
+`audio-player`. Restore them only through an explicit dependency decision.

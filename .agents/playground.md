@@ -1,414 +1,78 @@
 # Playground and extension
 
-Two sub-packages that host the library. Both alias `@` to `../src` in their vite
-configs, so they run against the **source**: the page is where the library is
-worked on, and the panel is the smallest host there is. The `agentak` dependency in
-each `package.json` is the honest declaration of that; nothing resolves through it.
-
-Both set `reactAliasesEnabled: false`, as the root does.
-
-## playground/ — `@agentak/playground`
-
-`pnpm dev` serves it on `:4050`. A vue SPA in tailwind — a host app, not a shell
-around the library: a topbar, a sidebar that browses every component, a catalog
-grid, and the chatbox — a rail on the right on a desktop, a box in the corner on
-anything narrower. It is the closest thing the repo has to the page a consumer would
-drop the chat into.
-
-| File                  | What                                                                  |
-| --------------------- | --------------------------------------------------------------------- |
-| `main.ts`             | declares the `tokens` in a `<style>`, then mounts the app on `#app`   |
-| `app.vue`             | the shell: topbar, sidebar, `<RouterView>`, chatbox                   |
-| `router.ts`           | `/` readme, `/components` catalog, `/demo` transcript, `/c/:name` one |
-| `styles.css`          | `@import "tailwindcss"`, and the `@theme` that reads the `--*` names  |
-| `theme.ts`            | `.dark` on the root — the whole theme switch, page and widget         |
-| `chat-store.ts`       | the widget state the topbar and the catalog both reach for            |
-| `components/*.vue`    | topbar, sidebar, chatbox, preview card, and the preact bridge         |
-| `views/*.vue`         | readme home, catalog grid, demo transcript, single-component page     |
-| `catalog.tsx`         | every component with fixture data, plus the lookups the routes use    |
-| `demo-chat.ts`        | the scripted conversation; `autoStart` streams it, prompts included   |
-| `demo-transcript.tsx` | the same turns settled, with no playback — the `/demo` page           |
-| `demo-agent.tsx`      | `Chat` over the canned turns — no loop, no key                        |
-| `chat-actions.tsx`    | the page's own buttons — minimise, back to live, play the demo        |
-| `demo-elements.tsx`   | the demo renderers, registered into the element registry              |
-| `demo-*.tsx`          | data-driven wrappers, so the demo drives compound elements from props |
-
-### Two frameworks, one page
-
-The page is vue; every component in the library is preact. They meet in
-`components/preact-host.vue` — one div that vue renders empty and preact fills, so
-neither patches the other's nodes. A catalog preview is one such island; the demo
-chat is another.
-
-The chatbox is the one island the page does **not** hand-roll: it is `ChatPanel`
-from `agentak/vue`, which owns the same bridge inside the library — a div vue renders
-and preact fills. The wrapper carries no loop, so the widget still makes the pi session
-itself and still ends it: a `shallowRef` filled on the first live mount, dropped when
-the mode changes or the widget goes away. So the widget is also the check on that
-wrapper, which is what a consumer of this package writes.
-
-It opens with the page — a phone excepted, where the sheet would cover the page a
-visitor came for, so `chat-store.ts` starts minimised and unmounted and the launcher
-waits. There is no shadow root between the page and the agent — the `--*` tokens reach
-it by inheritance, and so does tailwind preflight. That makes the widget the real
-host-page integration, and the one place to check the surface before the extension
-ships it. A visitor chooses nothing up front: the first message opens the settings page, and
-the free providers need no key.
-
-The demo is the other `ChatMode`, and not a state anything starts in: it is one
-**Play the demo** button under the greeting, passed in as `emptyActions`. Taking it
-swaps the wrapper for `DemoAgent` over the canned turns — a hand-mounted `PreactHost`
-island, because canned turns are the one surface with no session behind them. The
-session watcher ends the live one on the way, and ending it stores what it holds — so the
-demo keeps nothing, and going back to live reopens the conversation where it was left.
-
-**One title bar.** The surface heads itself — title, new conversation and the stored
-ones over the transcript, model, provider and the context meter in the bar under the
-composer — so the page puts no bar of its own over it. Collapse, back-to-live and the
-demo launcher are all
-`chat-actions.tsx`, preact components the page renders _into_ the surface, through the
-`actions` and `emptyActions` props — the demo island needs no launcher of its own.
-They stay preact vnodes through the vue wrapper, which is why the widget builds them
-with `h()` and holds them as constants: a new vnode is a redraw of the island. The
-chat is the only view `AgentChat` has, so the box never loses its minimise button; the
-empty actions show only before the first message.
-
-The panel hides rather than unmounting, so minimising keeps the transcript; changing
-mode ends the session instead, and the store is what brings it back. Escape minimises it as well, from inside the agent too. The handler
-skips a `defaultPrevented` Escape, which is how one keystroke dismisses an open popover
-**or** the box, never both: `PopoverContent` calls `preventDefault()` when it closes
-on Escape. The docked rail is the exception — it covers nothing, so Escape in its
-composer must not take a column of the page away.
-
-### The conversations it keeps
-
-Two words of host code: `history: true` on `createPiSession()`, beside the
-`browserStorage()` the keys already use. The session keeps every conversation there and
-lists them on the chat's own history page — the clock in the bar — so the page
-holds no list, no ids and no wiring of its own. See [`pi.md`](pi.md) for what it stores and
-[`session.md`](session.md) for the seam it travels on.
-
-That same `browserStorage()` is what puts the device lock on the settings page: the store
-seals the keys, so it carries a lock, and the playground is the one surface here that can
-be used to try it — `localhost` is a secure context, and a panel on `chrome-extension:`
-has no WebAuthn at all.
-
-Picking one replaces the session's state in place, so the widget never swaps a session and
-never loses the island. The widget opens on a new conversation each time, the title bar's
-**new conversation** button files the one it replaces away, and `dispose()` on the way out
-writes what is in hand — a tab that closes needs no flush, because a conversation is
-written every time the loop settles.
-
-The demo keeps nothing — its turns are canned, and it has no session at all.
-
-### Three layouts, one surface
-
-Two media queries in the widget pick between them, watched rather than read once, so
-a resize restyles the one agent instead of mounting a second and losing the
-transcript. The library constrains no size of its own: all of this is the host
-page's call and lives in the widget alone.
-
-| Width        | Shape                                                    |
-| ------------ | -------------------------------------------------------- |
-| `lg` and up  | a rail docked on the right, a column of the shell's row  |
-| `sm` to `lg` | the floating box, over the bottom-right corner           |
-| under `sm`   | a sheet on the whole viewport, no rounding and no border |
-
-**The rail** is chrome of the page, not a box over it. `app.vue` puts the widget in
-the same flex row as the sidebar and `<main>`, opposite the sidebar and sticky under
-the topbar at full height, so the page narrows to make room and takes it back when
-the rail collapses. Minimising animates the wrapper's `width` to `0`; the panel keeps
-the rail width inside that wrapper and is clipped by it, so it travels out past the
-right edge rather than reflowing its transcript on the way. Because the panel stays
-displayed while clipped, `inert` is what keeps the hidden transcript out of the tab
-order.
-
-**Below `lg`** the wrapper is `display: contents` and puts nothing in the row: the
-panel is `fixed` on its own, in the corner or over the whole screen. It scales from
-the corner it sits in, and the launcher — `fixed` in that same corner in every
-layout, and a sibling of the rail, never a child that the collapse would clip —
-scales from the same point, so the bubble grows into the box and shrinks back out of
-it. The launcher shows only while the surface is minimised, and the bar's collapse is
-what minimises it. Both transitions carry `motion-reduce:transition-none`.
-
-The sheet keeps that full height when the keyboard opens — it does **not** resize
-itself to the visual viewport. It did once, and the cost was a strip of page showing
-below it: a browser that overlays the keyboard rather than shrinking the layout
-viewport leaves `visualViewport` a frame behind the animation, and every pixel the
-sheet gives up is a pixel of the page behind it. `fixed inset-0` has nothing to show
-through, and the agent lifts its own composer over the keyboard instead — see
-`useKeyboardInset` in the library. What the widget does own is holding the document
-still under the sheet: `overflow: hidden` and `overscroll-behavior: none` on the root
-while the box is up and narrow.
-
-### The readme page
-
-`/` is the repo `README.md`. The `markdown()` plugin in `vite.config.ts` renders any
-imported `.md` with md4x **at build time** and exports the HTML string, so the page
-ships no parser and the file is one static chunk of the entry — the runtime md4x the
-chat loads is a separate, lazy import. `views/home-view.vue` puts that string in a
-`v-html` and paints it in scoped `:deep()` rules: tailwind preflight strips the
-element styles, and the readme has no classes to hook. `src/markdown.d.ts` declares
-the `*.md` module for `vue-tsc`.
-
-Fences go through rangi in the same plugin — a span per token carrying the `--shj-*`
-the page repoints on `.dark`, so the readme and a chat code block colour alike. Every
-grammar is imported, as none of it ships. **The md4x `highlighter` replaces the whole
-block**, not the text inside `<code>`: the callback writes its own `<pre><code>`
-wrapper, and returning the tokens alone renders the code as running text.
-
-### Tokens and the tailwind theme
-
-`main.ts` puts `tokens` in a `<style>` on the document, the way a host page must —
-nothing in the library injects them, and the widget passes `:tokens="false"` because
-the page has already said it. `styles.css` then maps its palette onto the
-same names with `@theme inline`, so `bg-page` is `var(--background)` and one
-class repoints when `.dark` repoints the token. The page and the widget cannot
-drift apart.
-
-Tailwind preflight applies to the page and to every island in it, the chatbox
-included — there is no shadow root anywhere to stop it. An inline style outranks it, so
-what shows through is what no element sets: a component that forgets a reset, or a
-caller's own children. Nothing catches that — the human checks the widget itself, and
-this page is the honest test of it, because a consumer's page carries a stylesheet too.
-
-### Adding an element to the demo
-
-A port is not done until a human can see it in a browser.
-
-1. Register the renderer in `DEMO_ELEMENTS` in `demo-elements.tsx`. `ELEMENTS` in
-   `src/components/elements.tsx` is for the names the loop itself emits.
-2. Add a canned reply in `demo-chat.ts` that renders it with realistic fixture data.
-   The transcript carries it as a `{ kind: "element", name, props }` part, which
-   `chat/message.tsx` looks up in the registry — so a new element needs no change to the
-   `ViewPart` union and no branch of its own.
-3. Interactive components get static props and no-op callbacks; the demo store holds no
-   state for them. A compound element gets a `demo-*.tsx` wrapper, so the demo shape
-   stays out of the shipped component.
-
-### Checks
-
-The package has **no tests**. `pnpm vitest run` covers the library alone; the page is
-checked by a human in a real browser, which is what the catalog and the chatbox are
-for. Nothing automated watches the demo, so a broken fixture shows up on screen.
-
-`pnpm typecheck` runs `vue-tsc` for this package, so `.vue` scripts are checked too.
-vue-tsc cannot load typescript 7, so the package pins typescript 5.9 for itself; the
-library and the extension stay on the root's 7.
-
-## extension/ — `@agentak/extension`
-
-MV3 side panel. `pnpm build:extension` writes `extension/dist`; load it unpacked. Nothing
-here has been opened in a browser yet.
-
-The same command then packs that folder, because the folder is for the person who builds
-it and a file is for the person who installs it. `scripts/pack.ts` writes the build as a
-zip to `docs/.docs/public/agentak-extension.zip`, which the docs site serves at
-`/agentak-extension.zip` and which is the shape the web store takes — the manifest at the
-root of the archive. It is written by hand, over `node:zlib`, so the build needs no `zip`
-on the machine, and every entry carries the same fixed timestamp, so an unchanged build
-packs to the same bytes.
-
-The archive is a build output and is git ignored, so the docs build makes it: `docs`
-runs `pnpm -C .. build:extension` before `undocs build`. The docs folder is its own pnpm
-workspace, so that command needs the root workspace installed where the site is built.
-
-| File             | What                                                                     |
-| ---------------- | ------------------------------------------------------------------------ |
-| `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported             |
-| `sidepanel.html` | the panel document — one full-height `#root` to render into              |
-| `panel.tsx`      | `ChatPanel` from `agentak/preact`, over `createPiSession()`              |
-| `tab-tools.ts`   | the tools of the tab in front, as the session's `page`                   |
-| `read-page.ts`   | `read_active_tab` — the panel's own tool, and the half injected in a tab |
-| `history.ts`     | the conversations, one shelf per site, following the tab in front        |
-| `catalogs.ts`    | the bundled model catalogs, through `useCatalogSource()`                 |
-| `storage.ts`     | keys, choices and conversations in `chrome.storage.local`                |
-| `background.ts`  | the service worker — opens the panel, and starts the badge               |
-| `badge.ts`       | the count of the page's own tools, on the toolbar icon                   |
-| `icons/`         | the toolbar icons — `pnpm icons` draws them, `vite.config.ts` copies     |
-| `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`                    |
-
-The panel is the surface a page hosts, plus three things a page does not need.
-
-**The tools of the tab.** `page` is the option a page rarely passes and the panel always
-does. Two tools reach the model through it, as one `PageTools`:
-
-- `read_active_tab`, the panel's own — the rendered text of the tab in front, with its
-  title and url. It is what makes the agent worth opening on an ordinary site, because
-  WebMCP ships behind an origin trial and nearly no page publishes any tool at all.
-  Read-only, so it runs unasked; untrusted, so the model is told in front of every result
-  that the page is data and not instructions. It is injected in the isolated world, which
-  sees the same dom and touches none of the page's own globals. It is named for the tab
-  and not for the page, because `read_page` is what a site calls its own reader — this
-  project's documentation does — and two tools under one name leave the model guessing.
-  Where a page publishes such a reader the panel drops its own from the list altogether:
-  the site knows its own structure, and `publishesReader()` in `tab-tools.ts` holds the
-  names it is recognised by.
-- whatever the page publishes on `document.modelContext`. Its own document carries none,
-  and a WebMCP tool cannot be serialised, so `tab-tools.ts` runs `getTools()` and
-  `executeTool()` inside the tab through `chrome.scripting.executeScript` in the `MAIN`
-  world, and only names and JSON strings come back. See [`webmcp.md`](webmcp.md).
-
-**The one starter.** An empty panel carries a button that says "Summarize this page" at the
-foot of its greeting, as `prompts` on the surface. It is `read_active_tab` in one click, and it is what the panel
-can always answer: the tool is on nearly every tab and runs unasked, so a panel opened on
-a page nobody has a question about is still one click from being useful. It says what the
-panel is on the way, too — a chat about the page in front, and not another tab of a chat
-site.
-
-**The links of the tab.** An answer about the site in front is written in that site's
-terms, so `/config` in it means that site's `/config`. This document is
-`chrome-extension:`, and a link resolved against it would open a file the extension does
-not have. So `panel.tsx` passes the url of the tab in front as `linkBase`, through
-`watchActiveUrl()` in `tab-tools.ts` — the whole url, because `./next` is relative to the
-path as well, and read again on every tab change and every navigation, exactly as the
-tools and the history shelf are. A tab with no url a link could be opened under — a
-`chrome:` screen, a local file — leaves the link as its own text, which the markdown
-renderer decides on its own; see [`components/markdown.md`](components/markdown.md).
-
-**The badge.** `badge.ts` puts the number of tools the page in front publishes on the
-toolbar icon, and `background.ts` starts it at the top level, because the worker is
-restarted for each event and a listener registered later would miss the one that woke it.
-It is the worker's job and not the panel's: the question the badge answers — does this site
-offer the agent anything? — is asked about the tab the panel has _not_ been opened on.
-WebMCP ships behind an origin trial and nearly no site publishes a tool, so a person who
-had to open the panel on each tab to find that out would stop looking.
-
-`read_active_tab` is left out of the count. The panel offers it nearly everywhere, and a
-badge reading `1` on every page states nothing. The text is set per tab, so the mark belongs to the page
-it was counted on, and only the tab in front is ever counted — a badge is read where it is
-looked at, and counting a background tab would mean an injected call in every page that
-loads anywhere. A tab that finished loading behind the one in front is counted when it
-comes forward. `relayToolChange()` in `tab-tools.ts` is what the panel and the badge share:
-the page marks its own window, so whichever asks second attaches nothing, and a tool
-registered long after load moves the count either way.
-
-The badge takes the icon's own two colours — the plate as its ground and the ink as its
-text — so it reads on a light and a dark toolbar for the same reason the icon does.
-
-The manifest asks for every http origin rather than `activeTab`. `activeTab` is granted
-for the tab the toolbar button was clicked on, and the side panel outlives that tab: a
-person who opens the panel and then browses would find the agent blind to everything but
-the one tab it started on, which is the whole of what it is for. The cost is the install
-warning that names every site, and it is the honest one — this agent reads pages.
-
-**The catalogs.** The two keyed gateways read theirs from esm.sh, and an MV3 content
-security policy allows no remote module, so the panel would list no model for either.
-`catalogs.ts` passes its own source to `useCatalogSource()`: one `import()` per provider,
-written out rather than built from the name, because a bundler follows a literal and
-nothing else. Each is its own chunk, so a catalog is still only read when its provider is
-picked — OpenRouter's alone is 136 KB. They are as old as the build, which is the price of
-a panel that lists anything at all. The free providers are unaffected; their models are in
-`pi/providers/free-models.ts`, which the panel already bundles.
-
-**The store.** `chrome.storage.local` rather than `localStorage`: it is one area per
-extension rather than one per document, and it survives what clearing browsing data takes
-away. `PiStorage` answers with promises and so does the area, so it is read and written as
-it is, with nothing kept in front of it. The panel mounts on `session.ready` instead — a
-chat that mounted first would show every choice forgotten, then change it under the reader.
-The map that used to stand in front was the one thing that could lie: it read back a
-transcript the area had refused for want of room, and the history learns a store is full by
-reading a write back. The panel keeps its conversations there too.
-
-**The history, per site.** One area is right for the keys and the choices — a key typed on
-one tab answers on the next — and wrong for the conversations. The panel reads the tab in
-front, so what was said is about the site it was said on, and one list mixing every site a
-person visited is both hard to read and more than the panel should show whoever is looking
-at the screen now. `history.ts` segments only that: each origin gets a whole
-`createHistory()` over a `PiStorage` that renames every key it is given, so the store stays
-one area and the limit, the eviction and the full-store retry stay the library's own. The
-count is per site, so twenty conversations on one never push out the one on another. A tab
-with no origin — the new tab page, a `chrome:` screen — shares the shelf named
-`the current tab`, which is the name `read_active_tab` already gives it.
-
-The panel outlives the tab it was opened from, so the shelf changes under it. `follow()`
-listens for the tab in front changing, and moves the chat with it: that site's newest
-conversation, or a new one where it has none. Both write the conversation being left first,
-and it goes to the shelf it was had on rather than the one now in front — `owners` binds a
-conversation to its site on the first write and never moves it, so browsing away mid-answer
-files nothing under the wrong site. Only the last of two tab changes decides, because the
-origin is read asynchronously and a person clicking through tabs is faster than that.
-
-**The focus.** The panel passes `autoFocus`, which a page leaves off. A chat on a page is
-one thing on it, and taking the caret the moment it mounts would pull it off whatever the
-reader was doing; the panel is the whole document and was opened to be typed in, so the
-composer takes the focus as it mounts. Chrome tears the panel down when it is closed, so
-each opening is a mount and takes it again.
-
-Once is not enough, though, which is the whole of why the composer asks in a loop rather
-than in a line. The panel is its own document and the browser gives it the focus when it
-is ready to, which is after the panel has mounted: a field focused before that holds the
-document's own focus and no keys, and chrome then hands the document to its body and takes
-even that away. So the request stands frame by frame until the document holds the focus and
-the field holds it too, and it is dropped after a second — a person who has clicked back
-into the page has answered it.
-
-**The icons.** `assets/agentak.svg` is the logo, and chrome takes a bitmap at four sizes.
-`scripts/icons.ts` draws them — the svg's own shapes through their distance functions,
-rather than a downscale of a render, so the 16-pixel one is the same drawing and not a
-photograph of it. Rerun `pnpm icons` when the logo changes. The one thing it adds is a
-plate: the svg picks its ink from the reader's colour scheme, a png cannot, and a toolbar
-is light for one person and dark for the next — so the logo is drawn in the svg's own
-dark-scheme ink on a rounded plate of its light-scheme ink.
-
-**The theme.** The library ships both palettes and picks between them on `.dark` on an
-ancestor, and which one is on is the host's call — the playground runs a switch of its
-own. The panel has none and needs none, so `theme.ts` follows `prefers-color-scheme` and
-goes on following it, because the scheme changes under a panel that is already open. It
-runs before the first render, so the panel never opens light and then turns dark. The
-`background` on `body` in `sidepanel.html` is the same concern from the other side: the
-browser paints that, not the chat, and a white strip either side of a dark panel is that
-rule missing.
-
-Three tokens then come from the browser rather than from the library: `--background`,
-`--foreground` and `--muted-foreground` are set to `Canvas`, `CanvasText` and `GrayText`.
-Chrome tells an extension nothing about the shell the panel is docked in — there is no
-theme api, and a screenshot reaches the page and never the browser around it — and the
-system colours are the one answer it does give. They are the colours it paints a document
-with, not the toolbar, so this is a near miss rather than a match; it is picked by the
-browser though, and it holds under a theme nobody can read. One rule serves both schemes,
-because a system colour resolves against the used `color-scheme` and the class above has
-already set that. `:root:root` outranks both `:root` and `.dark`, so the cascade does not
-depend on when the chat injects its tokens. The rest of the palette stays the library's:
-the greys sit against these three by eye, and the status and syntax colours are fixed on
-purpose.
-
-**The manifest declares `wasm-unsafe-eval`.** md4x is a wasm parser, and the default MV3
-policy blocks `WebAssembly.instantiate` outright — `loadMarkdown()` catches it and every
-answer renders as its raw markdown, which is what a panel without this line shows. The
-directive allows wasm and nothing else; MV3 permits no `unsafe-eval` at all, so typebox's
-own probe for it still fails, still logs one CSP warning to the panel console, and still
-falls back to its dynamic checks. That warning is expected and is not this bug.
-
-The CSP blocks third-party requests, which is one reason no component fetches a remote
-asset.
-
-**wllama is shipped rather than fetched**, and `extension/wllama/` is the whole of it.
-The library's default takes the module and its wasm from a CDN, which the policy above
-allows no more than it allows a remote catalog. That much is `useWllamaSource()`, the
-same shape as `useCatalogSource()`.
-
-The worker is the half that is not a url. wllama never loads one from a file: it joins
-the emscripten glue and its own worker code into one string per run and starts it as a
-`blob:` url. A worker script is matched against `worker-src`, which falls back to
-`script-src 'self'`, and `blob:` is not `'self'` — nor may an MV3 policy be widened to
-say otherwise, so this is not a manifest line that was missed.
-
-So the build writes that worker out as a file, which `'self'` covers. `build.ts` holds
-two vite plugins: one writes `dist/wllama/` — the llama worker, the OPFS worker and the
-7.6 MB wasm — and the other rewrites the package's `createWorker()` to call `worker.ts`
-beside it. Nothing is patched in `node_modules`; the rewrite is a transform, and the
-version is pinned exactly so an update arrives through the lockfile and is read.
-
-One thing the build cannot know is `RUN_OPTIONS` — where the wasm is and how many threads
-to run — which wllama writes into the first line of the code it hands `createWorker()`.
-`worker.ts` reads it off that line and puts it on the worker's url as a query, and the
-generated file reads it back from its own `location`. That is also where the two guards
-live: threads mean pthreads, which emscripten starts from a blob in turn, and compat mode
-is a different glue than the one the build baked. Neither can happen here — wllama asks
-for `SharedArrayBuffer` first and the manifest declares no cross-origin isolation — and
-both throw with the reason rather than failing inside the worker.
-
-Every read in `build.ts` asserts. A wllama that moves one of these pieces fails the build
-naming what moved, rather than shipping a panel whose local models throw on the first
-turn.
+Both packages alias `@` to `../src`, so they test library source rather than `dist`.
+Both intentionally disable React aliases.
+
+## Playground
+
+The playground is a Vue/Tailwind host containing Preact islands. Vue owns each empty host
+element; Preact owns its children. The live chat uses the Vue wrapper and creates/disposes
+its own Pi session. There is no shadow root, so Tailwind preflight reaching the chat is an
+intentional integration test.
+
+Non-obvious behavior:
+
+- The page installs `tokens` once and passes `tokens={false}` to the wrapper.
+- Preact `actions`/`emptyActions` passed through Vue are stable `h()` nodes; recreating them
+  redraws the island.
+- Desktop uses a docked rail, medium screens a floating box, and phones a fixed full-screen
+  sheet. Resize the same mounted session; do not create one per layout.
+- The phone sheet stays layout-viewport sized while the chat foot handles the visual
+  keyboard. Lock document scrolling behind it.
+- Escape closes an inner popover before it can minimize the floating chat. A docked rail
+  does not minimize on Escape.
+- The README is rendered with md4x and rangi at build time. Runtime chat Markdown remains a
+  separate lazy bundle.
+- A component port is incomplete until it has realistic playground fixture data. Keep
+  demo-only state/adapters outside shipped components when possible.
+- The playground has no browser tests. `pnpm vitest run` covers only the library.
+
+## MV3 extension
+
+The side panel mounts only after `PiSession.ready`. It uses `chrome.storage.local`, bundled
+catalogs, bundled wllama, and a `PageTools` bridge to the active tab.
+
+### Active-tab invariants
+
+- `read_active_tab` returns rendered text, title, and URL. It is read-only and untrusted.
+  Omit it when the page publishes its own recognized reader.
+- WebMCP discovery/execution runs in the tab's MAIN world. The DOM reader runs in the
+  isolated world. Live tool handles never cross messages.
+- The manifest needs all HTTP origins, not `activeTab`, because a side panel follows tabs
+  after the toolbar click.
+- Pass the active tab URL as `linkBase`, and update tools, links, and history on tab changes
+  and navigation.
+- The badge counts only page-published WebMCP tools, per tab. Do not count
+  `read_active_tab`. Register worker listeners at top level because MV3 workers restart.
+
+### History and storage
+
+Keys and model choices are extension-global. Conversations are partitioned per site by a
+storage key prefix, with a shared fallback shelf for pages without an origin. Bind each
+conversation to its original site on first write so navigation during an answer cannot
+file it under the destination. Only the latest asynchronous tab-follow operation may win.
+
+### MV3 build constraints
+
+- Remote module imports are forbidden. `catalogs.ts` supplies literal lazy imports for
+  keyed provider catalogs.
+- The manifest CSP must include `wasm-unsafe-eval` for md4x and wllama. Typebox's expected
+  unsafe-eval warning still falls back safely.
+- wllama normally creates blob workers, which MV3 forbids. `extension/wllama/build.ts`
+  writes self-hosted workers/wasm and transforms worker creation. The worker passes
+  `RUN_OPTIONS` through its URL. Keep build assertions strict and the patched dependency
+  version pinned.
+- The panel follows system color scheme before first render. System colors override only
+  background, foreground, and muted foreground because Chrome exposes no side-panel theme.
+- The panel requests autofocus repeatedly for up to one second because Chrome grants the
+  panel document focus after mount.
+- `pnpm build:extension` also creates a deterministic zip for the docs site.
+
+## Manual checks
+
+Load `extension/dist` unpacked. Verify bundled catalogs, key persistence, active-tab
+following, WebMCP and `read_active_tab`, `chrome:` failures, per-site history during
+navigation/streaming, badge updates and contrast, panel links, autofocus, and theme.
+For wllama, use the smallest model and verify worker startup, first download, OPFS reuse,
+and tool-call parsing. For device lock, use the localhost playground and verify PRF
+capability, lock/unlock gestures, reload behavior, cancellation, and re-sealing.

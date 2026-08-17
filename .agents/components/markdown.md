@@ -1,121 +1,34 @@
 # Markdown and syntax highlighting
 
-## Markdown
+`md4x/standalone` is loaded lazily and instantiated once. Until it loads, or if it fails,
+render source text verbatim. `components/markdown.tsx` renders the AST into Preact; never
+switch model or tool output to `dangerouslySetInnerHTML`.
 
-[`md4x`](https://github.com/unjs/md4x) (wasm) parses; `components/markdown.tsx`
-renders. `lib/markdown.ts` instantiates the wasm once and `useMarkdown()` reports when
-that finishes; until then, and if it fails, text renders verbatim, so a first paint is
-never blank and never lost.
+## Security and streaming
 
-`<Markdown>` walks the AST from `parseAST(text, { heal: true })` into preact elements
-rather than calling `renderToHtml`:
+- Treat inline/block HTML as text. Drop `javascript:` and `data:` links and images.
+- Keep `parseAST(..., { heal: true })` so incomplete streaming delimiters do not flicker.
+- Unknown AST tags render their children instead of reaching the DOM unstyled.
+- Fences use the shared `CodeBlock`.
+- Word animation is only for the trailing streaming part. Disable it for reduced motion
+  and low-power/phone devices; settled Markdown must return to plain text nodes.
 
-- **No `dangerouslySetInnerHTML`.** This text comes from a model reading an untrusted
-  page. In the AST, inline HTML is already a text node, `html_block` renders as text,
-  and `javascript:` / `data:` URLs are dropped from links and images.
-- Fences become the shared `CodeBlock`, so markdown and tool output are highlighted and
-  copyable by the same component.
+## Links
 
-`heal` closes delimiters left open mid-stream, so a half-typed `**bold` does not
-flicker. `CLASSES` in that file is the tag allowlist — a tag missing from it renders
-its children, so a new md4x tag degrades to text instead of reaching the DOM unstyled.
+`linkBase` changes how relative links resolve, primarily for the extension panel. Resolve
+first, then run the safety check.
 
-## Relative links
+- Cross-origin links open with `target="_blank"` and `rel="noreferrer"`.
+- Same-origin non-fragment links use `history.pushState(null, "", url)` and dispatch
+  `popstate` for client routers.
+- Same-document fragments and modified/middle clicks stay browser-native.
+- Unsafe resolved schemes render as text.
 
-`/config` in an answer is relative to something, and a page answers that itself: the
-browser resolves an `href` against the document holding it. A surface that is not the
-document it talks about has no such answer — the side panel is `chrome-extension:`, so
-that link would open a file the extension does not have.
+A static same-origin host without a client router is a known limitation: same-origin links
+change history without loading a page.
 
-So the host says what the base is. `linkBase` on `Chat` and `AgentChat` is an url, it
-reaches `lib/links.ts` as the `LinkBase` context, and `MdLink`/`MdImage` read it there
-rather than having it threaded through the walk — a panel that follows another tab
-redraws its links and nothing else. Without a base the href goes to the dom as the model
-wrote it, which is the page's own case and needs no host.
+## Highlighting
 
-Resolution happens first and the safety check second, so a relative link under a
-`chrome:` or `file:` base becomes an url no click could open and drops back to its own
-text, like any other unsafe one. An url that names its own scheme is never touched.
-
-## Where a click goes
-
-`linkKind()` sorts the resolved url into three, against the document the chat is in:
-
-- **`away`** — another origin. The anchor keeps `target="_blank"` and `rel="noreferrer"`.
-- **`here`** — this origin, another page. The click is taken: `pushUrl()` pushes the entry
-  with `history.pushState` and raises a `popstate` behind it, the event a client-side
-  router listens on. So a chat beside a documentation site moves that site and keeps its
-  own conversation, where a tab or a reload would have taken one of the two. The state
-  pushed is `null`, because a router keeps its bookkeeping in there and the state of the
-  entry being left would read as a step back through the history; a router repairs a null
-  state on the way past.
-- **`hash`** — the page already open, at a fragment. Nothing is taken, and the browser
-  scrolls as it does for the site's own anchors.
-
-The sort is the origin and not the shape of the href: `/config` under the panel's
-`linkBase` is another site by the time it is read here, and the full url of this one is
-not. A click carrying a modifier — or a middle button — is left alone in every case, since
-the reader asked the browser for that one.
-
-The case to watch is a host with no client-side router at all: it is handed a url change
-and no page change, because nothing listens for the `popstate`. There is no opt-out today
-— a `linkBase` of the host's own url resolves to the same origin and is still `here`. A
-prop for it belongs on `Chat` if a static host ever needs one.
-
-## Streaming
-
-`<Markdown animate>` fades each word in as it arrives. Streaming text otherwise grows
-one text node, which no animation can reach, so under `animate` every word becomes a
-span keyed by its position: a word already on screen keeps its key and its element, so
-its mount-time fade never plays twice, and only the words that just arrived animate.
-The fade is `fadeInKeyframes`/`fadeInOptions` (`styles/base.ts`) through
-`animateOnMount()` — a module-scope ref callback, because the renderer emits an unknown
-number of them and cannot call a hook per word. Whitespace alone stays a bare string,
-since the only text nodes under a `ul` or a `table` are the gaps between rows.
-
-The spans last as long as the stream. `animate` comes from the trailing part of the
-last message (`chat/message.tsx` -> `MessageResponse`, and `ReasoningContent` from its
-own `isStreaming`); when it goes false the block renders as plain text again, so a
-settled transcript carries no extra DOM.
-
-`animate` is a request, and two checks can refuse it: `prefersReducedMotion()` and
-`isLowPowerDevice()`, both in `lib/use-animation.ts`. The device is called low power
-when it reports `deviceMemory` of 4 GB or less, or 4 cores or fewer, or answers a
-coarse pointer on a display no wider than 820px — a phone, whatever it claims to have.
-The display and not the viewport: `screen.width`, because a surface is often narrow
-without the device being small. The side panel is ~400px on a desktop and a chat docked
-in a page's sidebar is no wider; a `max-width` query read either as a phone and took the
-fade away from hardware built to run it.
-Both are read in `Markdown` rather than in the fade, because a reader who gets no
-animation should not pay for the spans that carry it. One animated element is cheap
-everywhere and asks nothing — this is for the many-at-once case alone.
-
-Every import is `md4x/standalone`, which carries the wasm inline as deflated base64 and
-inflates it through `DecompressionStream`. One entry, one branch, node and browser
-alike — no export conditions, no build plugin, no emitted asset for a host page or an
-extension to fetch. `lib/markdown.ts` imports it dynamically, so the base64 stays a
-lazy chunk, and `parseAST` is reached through `parseMarkdown()` rather than imported
-directly.
-
-## Syntax highlighting
-
-`code-block.tsx` uses [`rangi`](https://github.com/pi0/rangi) through `rangi/core`,
-which bundles no grammar of its own. The registry it is given is rangi's whole
-`languages` object, some 87 names: every grammar rangi ships, plus its aliases, which
-that object spreads in under the alternative spellings. A fence tag is therefore looked
-up as written — `js`, `javascript`, `sh`, `yml`, `patch` all land on a grammar with no
-table of ours in between. A name that is still unknown comes back as one untyped token,
-so it renders verbatim.
-
-The whole set has to be registered, not a chosen few: a grammar that embeds another —
-`vue`, `astro`, `html`, `markdown` — resolves the inner one **by name** out of this same
-registry. Register `vue` alone and the SFC shell colours while the `<script>` body stays
-plain. The grammars are one chunk, ~36 kB raw and ~13 kB gzipped.
-
-rangi is synchronous: tokenizing happens in a `useMemo` and the first render is already
-coloured. No highlighter cache, no token cache, no placeholder pass.
-
-Colors come from `--shj-<token>` in `styles/base.ts` — github-light on `:root`/`:host`,
-github-dark on `.dark`/`:host(.dark)`. This is rangi's `cssVariables` theme written out
-by hand, because its own light/dark pairs inline `light-dark()`, which follows
-`color-scheme` rather than this project's class-based `dark` variant.
+Use `rangi/core` with the complete language registry. Embedded grammars resolve other
+languages by registry name, so registering only a visible subset breaks Vue/HTML/Markdown
+fences. Unknown languages render verbatim. Token colors come from `--shj-*` variables.
