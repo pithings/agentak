@@ -89,6 +89,17 @@ export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "message
  * what the chat asks of a harness.
  */
 export interface PiSession extends ChatSession {
+  /**
+   * Resolved once the stored choices are in hand: the keys, the provider, the
+   * model, the level, and the conversations where the session keeps its own.
+   *
+   * A `PiStorage` answers later, so a session opens on nothing and takes what
+   * the store held a beat after. Nothing has to wait for it — the surface
+   * redraws when the choices land — but a host that would rather not show a
+   * chat that has forgotten everything, and then change it under the reader,
+   * mounts on this. The extension panel does.
+   */
+  ready: Promise<void>;
   /** Stops listening to the agent and drops every listener. */
   dispose(): void;
   /**
@@ -120,17 +131,20 @@ export interface PiSession extends ChatSession {
 const DEFAULT_THINKING: ThinkingLevel = "medium";
 
 /** Keys already in hand: what a host passed, over what the store holds. */
-function seedKeys(
+async function seedKeys(
   choices: PiChoices,
   providers: Provider[],
   apiKey: PiSessionOptions["apiKey"],
   providerId?: string,
-): Record<string, string> {
+): Promise<Record<string, string>> {
   const keys: Record<string, string> = {};
-  for (const provider of providers) {
-    const stored = choices.storedApiKey(provider.id);
-    if (stored) keys[provider.id] = stored;
-  }
+  // Asked for at once rather than one after another: a store that answers later
+  // would otherwise cost a round trip per provider.
+  const stored = await Promise.all(providers.map((provider) => choices.storedApiKey(provider.id)));
+  providers.forEach((provider, index) => {
+    const key = stored[index];
+    if (key) keys[provider.id] = key;
+  });
   if (typeof apiKey === "string" && providerId) keys[providerId] = apiKey;
   else if (apiKey) Object.assign(keys, apiKey);
   return keys;
@@ -210,10 +224,10 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   // Where the surface runs decides the list: a page drops the providers that
   // answer no preflight. Fixed for the life of the session.
   const available = availableProviders();
-  const wanted = openOn ?? opened?.provider ?? choices.storedProviderId();
 
-  let keys = seedKeys(choices, available, apiKey, wanted);
-  let providerId = openingProvider(available, keys, wanted);
+  // Both come out of the store, so both open empty and fill in below.
+  let keys: Record<string, string> = {};
+  let providerId: string | undefined;
   let preferences: ChatSessionOptions = { generateTitle: named };
   /**
    * The stored choices, until they land: the model waits for its catalog, and
@@ -245,6 +259,12 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    * carries to a model this browser has not run yet, where the model offers it.
    */
   let lastThinking = agentOptions.thinkingLevel;
+  /**
+   * Which pick is the current one. A stored choice is read while the person is
+   * looking at the picker, so one made by hand in the meantime must not be
+   * overruled by the store answering after it.
+   */
+  let picked = 0;
   /** Typed before a provider was chosen. It goes as soon as one can answer. */
   let pending = "";
   let pickerOpen = false;
@@ -298,10 +318,14 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    * is only off where somebody said off. A model that cannot reason clamps to
    * `off`, which is the whole of what it has.
    */
-  const followThinking = () => {
+  const followThinking = async () => {
     if (!providerId) return;
+    const mine = picked;
     const restore = restoring();
-    const kept = restore?.thinkingLevel ?? choices.storedThinkingLevel(providerId, model().id);
+    const kept =
+      restore?.thinkingLevel ?? (await choices.storedThinkingLevel(providerId, model().id));
+    // A level chosen by hand while the store was answering is the one that stands.
+    if (mine !== picked) return;
     const offered = levels();
     const wanted =
       offered.find((level) => level === kept) ?? offered.find((level) => level === lastThinking);
@@ -310,9 +334,13 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     if (restore) opening = undefined;
   };
 
-  const chooseModel = (next: AnyModel) => {
+  const chooseModel = async (next: AnyModel) => {
     store.setModel(next);
-    followThinking();
+    // Clamped at once, and only then read from the store: the level and the
+    // model land together, so nothing ever shows a level this model refuses
+    // while the store is still being asked what it held for this one.
+    store.setThinkingLevel(clampThinkingLevel(next, runtime.agent.state.thinkingLevel));
+    await followThinking();
   };
 
   const flush = () => {
@@ -346,22 +374,24 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    * last used with it. A provider chosen for the first time ends on its model
    * list, because nothing here picks a model for anyone.
    */
-  const follow = () => {
+  const follow = async () => {
     if (!providerId || models.length === 0) return;
+    const mine = picked;
     const restore = restoring();
     // Already on this provider's model: only the level is left to restore. A
     // stored conversation is not on it yet, whatever the agent happens to
     // hold — the default model belongs to a provider too, so the shortcut is
     // not taken while a snapshot is still owed.
     if (!restore && model().provider === providerId) {
-      followThinking();
+      await followThinking();
       return;
     }
-    const next = findModel(models, restore?.model ?? choices.storedModelId(providerId));
+    const next = findModel(models, restore?.model ?? (await choices.storedModelId(providerId)));
+    if (mine !== picked) return; // a model was picked while the store answered
     // Its model may be gone from the catalog. The level is still the
     // conversation's, and the snapshot is spent either way.
-    if (next) chooseModel(next);
-    else if (restore) followThinking();
+    if (next) await chooseModel(next);
+    else if (restore) await followThinking();
     flush();
   };
 
@@ -371,7 +401,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     if (have) {
       models = have;
       modelsLoading = false;
-      follow();
+      void follow().then(notify);
       notify();
       return;
     }
@@ -384,7 +414,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
         if (providerId !== id) return;
         models = loaded;
         modelsLoading = false;
-        follow();
+        void follow().then(notify);
         notify();
       },
       (error: unknown) => {
@@ -526,13 +556,19 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    * conversation's own, then this browser's, then none. `opening` holds the
    * model and the level until the catalog lands, exactly as before.
    */
-  const restore = (next?: PiSnapshot) => {
+  const restore = async (next?: PiSnapshot) => {
     pending = "";
     opening = next;
     adoptTitle(next);
+    // Before the store is asked anything: the transcript on screen is the one
+    // thing that must not wait for a provider to be looked up.
     store.load(next ? usablePiMessages(next.messages) : []);
 
-    const open = openingProvider(available, keys, next?.provider ?? choices.storedProviderId());
+    const open = openingProvider(
+      available,
+      keys,
+      next?.provider ?? (await choices.storedProviderId()),
+    );
     if (open && open !== providerId) {
       providerId = open;
       load(open); // notifies, and follows the choices once the catalog is in
@@ -540,7 +576,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     }
     // The catalog is already in hand, so only the conversation's own model and
     // level are left to follow.
-    follow();
+    await follow();
     notify();
   };
 
@@ -592,9 +628,38 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     notify();
   });
 
-  if (providerId) load(providerId);
+  /**
+   * What the store held, once it answers: the keys, and the provider to open
+   * on. Everything below it — the catalog, the model, the level — follows from
+   * the provider, exactly as it does when one is picked by hand.
+   *
+   * The conversations are waited on too, so a host that mounts on `ready` gets
+   * a history page with its rows already in it.
+   */
+  const hydrated = (async () => {
+    const mine = picked;
+    const wanted = openOn ?? opened?.provider ?? (await choices.storedProviderId());
+    const stored = await seedKeys(choices, available, apiKey, wanted);
+    // What this session was given in the meantime is the newer, so it sits over
+    // what the store held: a key typed into the settings page before the store
+    // answered must not be replaced by the one it used to hold.
+    keys = { ...stored, ...keys };
+    // And a provider picked in that same window is the one to open on, so the
+    // stored one is dropped rather than loaded over it.
+    if (mine === picked) {
+      providerId = openingProvider(available, keys, wanted);
+      if (providerId) load(providerId);
+    }
+    // A history of the host's own that cannot read its list is a chat with no
+    // rows, not a chat that never mounts: whoever waits on `ready` is waiting
+    // to show something.
+    await kept?.ready?.catch(() => {});
+    notify();
+  })();
 
   return {
+    ready: hydrated,
+
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -649,7 +714,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       conversationId = mintConversationId();
       // The fork names itself: its first message may be one this conversation's
       // title never spoke for.
-      restore({ ...capture(), messages: messages.slice(0, at), title: undefined });
+      void restore({ ...capture(), messages: messages.slice(0, at), title: undefined });
     },
 
     /**
@@ -700,17 +765,20 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     },
 
     selectProvider(id) {
+      picked += 1;
       providerId = id;
-      choices.storeProviderId(id);
+      void choices.storeProviderId(id);
       load(id);
     },
 
     selectModel(id) {
       const next = findModel(models, id);
       if (!next || !providerId) return;
-      chooseModel(next);
-      choices.storeModelId(providerId, id);
-      flush();
+      // The model itself lands at once; only the level it runs at waits for the
+      // store, and the count is what keeps that answer from arriving too late.
+      picked += 1;
+      void choices.storeModelId(providerId, id);
+      void chooseModel(next).then(flush);
     },
 
     /**
@@ -719,14 +787,15 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
      */
     setThinkingLevel(level) {
       if (!ready() || !providerId) return;
+      picked += 1;
       lastThinking = level;
       store.setThinkingLevel(level);
-      choices.storeThinkingLevel(providerId, model().id, level);
+      void choices.storeThinkingLevel(providerId, model().id, level);
     },
 
     saveKey(id, key) {
       keys = { ...keys, [id]: key };
-      choices.storeApiKey(id, key);
+      void choices.storeApiKey(id, key);
       notify();
     },
 
@@ -741,7 +810,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
      */
     forgetKey(id) {
       keys = Object.fromEntries(Object.entries(keys).filter(([provider]) => provider !== id));
-      choices.forgetApiKey(id);
+      void choices.forgetApiKey(id);
       if (id === providerId) {
         providerId = undefined;
         models = [];
@@ -769,11 +838,17 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
      */
     openConversation(id) {
       if (!kept || id === conversationId) return;
-      const next = kept.read(id);
-      if (!next) return;
-      keep();
-      conversationId = id;
-      restore(next);
+      void (async () => {
+        // One the store will not hand over leaves this conversation where it
+        // is, exactly as one it no longer holds does.
+        const next = await kept.read(id).catch(() => undefined);
+        // The store answers a beat later, so the conversation asked for may no
+        // longer be the one wanted — a second row picked, or a new chat started.
+        if (!next || id === conversationId) return;
+        keep();
+        conversationId = id;
+        await restore(next);
+      })();
     },
 
     /**
@@ -788,7 +863,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
         return;
       }
       conversationId = mintConversationId();
-      restore();
+      void restore();
     },
 
     setOptions(next) {
@@ -803,7 +878,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     restore(next) {
       keep();
       conversationId = mintConversationId();
-      restore(next);
+      void restore(next);
     },
 
     dispose() {

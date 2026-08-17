@@ -14,8 +14,7 @@ const snapshot = (size = 0): PiSnapshot => ({
 /**
  * A store that holds only `room` characters of transcript, in the two ways a
  * store reports being full: `throws` is `localStorage`, which swallows the throw
- * and reads back short, and the other is `chrome.storage`, which takes the value
- * into its own map at once and rejects later.
+ * and reads back short, and the other is `chrome.storage`, which rejects.
  */
 function boundedStorage(room: number, kind: "throws" | "rejects"): PiStorage {
   const values = new Map<string, string>();
@@ -24,14 +23,14 @@ function boundedStorage(room: number, kind: "throws" | "rejects"): PiStorage {
   const isChat = (name: string) => name.startsWith("chat:");
 
   return {
-    get: (name) => values.get(name),
-    set(name, value) {
+    get: (name) => Promise.resolve(values.get(name)),
+    async set(name, value) {
       const over = isChat(name) && used() - (values.get(name)?.length ?? 0) + value.length > room;
       if (over && kind === "throws") return; // swallowed, exactly as browserStorage() does
       values.set(name, value);
-      if (over) return Promise.reject(new Error("QUOTA_BYTES quota exceeded"));
+      if (over) throw new Error("QUOTA_BYTES quota exceeded");
     },
-    remove: (name) => {
+    async remove(name) {
       values.delete(name);
     },
   };
@@ -47,7 +46,7 @@ describe("createHistory", () => {
     await settled();
 
     expect(history.list()).toEqual([{ id: "a", title: "First", updated: expect.any(Number) }]);
-    expect(history.read("a")?.messages).toHaveLength(1);
+    expect((await history.read("a"))?.messages).toHaveLength(1);
   });
 
   it("keeps no more than the limit", async () => {
@@ -56,7 +55,7 @@ describe("createHistory", () => {
     await settled();
 
     expect(history.list().map((entry) => entry.id)).toEqual(["c", "b"]);
-    expect(history.read("a")).toBeUndefined();
+    expect(await history.read("a")).toBeUndefined();
   });
 
   it("forgets a conversation by its own key", async () => {
@@ -67,8 +66,8 @@ describe("createHistory", () => {
 
     history.forget("a");
     expect(history.list().map((entry) => entry.id)).toEqual(["b"]);
-    expect(history.read("a")).toBeUndefined();
-    expect(history.read("b")).toBeDefined();
+    expect(await history.read("a")).toBeUndefined();
+    expect(await history.read("b")).toBeDefined();
   });
 
   it("keeps nothing for an empty conversation", () => {
@@ -93,9 +92,9 @@ describe("createHistory", () => {
         history.keep("c", snapshot(150), "Third");
         await settled();
 
-        expect(history.read("c")).toBeDefined();
+        expect(await history.read("c")).toBeDefined();
         expect(history.list().map((entry) => entry.id)).toEqual(["c", "b"]);
-        expect(history.read("a")).toBeUndefined();
+        expect(await history.read("a")).toBeUndefined();
       });
 
       // The bug this covers: a store that only rejects looked like it had
@@ -107,7 +106,7 @@ describe("createHistory", () => {
         await settled();
 
         expect(history.list()).toEqual([]);
-        expect(history.read("a")).toBeUndefined();
+        expect(await history.read("a")).toBeUndefined();
       });
     });
   }

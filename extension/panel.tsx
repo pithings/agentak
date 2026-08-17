@@ -43,26 +43,28 @@ useLocalModels();
 followColorScheme();
 useSystemColors();
 
-// The store is read before anything mounts: `PiStorage` answers synchronously,
-// and the session reads the provider, the model and the key while it is being
-// made. Mounting first would show a chat that has forgotten every choice, then
-// change it under the reader.
+// Nothing mounts until the session says its choices are in hand. The area
+// answers later, so a chat mounted first would show every choice forgotten and
+// then change it under the reader — `session.ready` is the moment the provider,
+// the model, the key and this site's conversations have all landed.
 //
 // One session for the life of the panel, which is the life of the document. It
 // keeps its conversations in that same store, so the panel opens on a new chat
 // and lists what came before on its own history page — this site's own, and not
-// every site's. The origin is read beside the store and for the same reason: a
-// history answers synchronously and `chrome.tabs` does not.
+// every site's. The origin is read before the history rather than by it: a
+// history lists synchronously and `chrome.tabs` does not.
 //
 // `page` is the one thing the panel passes that a page does not: its own
 // document carries no tools, so the source reads the tab in front instead.
-void Promise.all([chromeStorage(), activeOrigin()]).then(([storage, origin]) => {
+void activeOrigin().then(async (origin) => {
+  const storage = chromeStorage();
   const history = originHistory(storage, origin);
   const session = createPiSession({ history, page: activeTabTools(), storage });
   // The panel outlives the tab it was opened from, so the chat follows the site
   // in front: another site is another shelf, and another conversation.
   history.follow(session);
 
+  await session.ready;
   render(<Panel session={session} />, document.querySelector("#root")!);
 });
 

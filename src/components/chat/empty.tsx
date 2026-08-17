@@ -10,6 +10,7 @@ import {
   AgentTools,
 } from "../ai-elements/agent.tsx";
 import { ConversationEmptyState } from "../ai-elements/conversation.tsx";
+import { ChatRecent, type ChatRecentProps } from "./history.tsx";
 import type { ChatAgent } from "./types.ts";
 import { BotIcon } from "../../lib/icons.tsx";
 import { u } from "../../styles/base.ts";
@@ -30,7 +31,7 @@ const S = {
   },
 } satisfies Record<string, Sx>;
 
-export interface ChatEmptyProps {
+export interface ChatEmptyProps extends ChatRecentProps {
   /** Shown under the greeting, so the tools are visible before the first turn. */
   agent?: ChatAgent;
   /** Host content — a suggestion, a launcher. It goes under the greeting. */
@@ -38,8 +39,15 @@ export interface ChatEmptyProps {
 }
 
 /** What the transcript shows before the first message. */
-export function ChatEmpty({ agent, children }: ChatEmptyProps) {
-  const alone = !agent && !children;
+export function ChatEmpty({
+  agent,
+  children,
+  history,
+  onOpenConversation,
+  onShowHistory,
+}: ChatEmptyProps) {
+  const recent = onOpenConversation && history && history.length > 0;
+  const alone = !agent && !children && !recent;
 
   return (
     <div style={S.empty}>
@@ -63,6 +71,13 @@ export function ChatEmpty({ agent, children }: ChatEmptyProps) {
           </AgentContent>
         </Agent>
       )}
+      {/* Last, under whatever the host and the agent card put there: what was
+          said before comes after what this chat is. */}
+      <ChatRecent
+        history={history}
+        onOpenConversation={onOpenConversation}
+        onShowHistory={onShowHistory}
+      />
     </div>
   );
 }

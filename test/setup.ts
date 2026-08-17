@@ -13,9 +13,6 @@
 import { type CatalogSource, useCatalogSource } from "../src/pi/providers.ts";
 
 const BUNDLED: Record<string, () => Promise<Record<string, unknown>>> = {
-  cerebras: () => import("@earendil-works/pi-ai/providers/cerebras.models"),
-  groq: () => import("@earendil-works/pi-ai/providers/groq.models"),
-  openai: () => import("@earendil-works/pi-ai/providers/openai.models"),
   openrouter: () => import("@earendil-works/pi-ai/providers/openrouter.models"),
   "vercel-ai-gateway": () => import("@earendil-works/pi-ai/providers/vercel-ai-gateway.models"),
 };

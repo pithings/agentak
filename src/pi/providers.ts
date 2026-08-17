@@ -178,60 +178,20 @@ export const vercelFetch: FetchFunction = async (input, init) => {
   }
 };
 
+/**
+ * The picker's order: the two gateways a key opens first, then the ones that
+ * need none. A free provider is the fallback and not the recommendation — one
+ * key reaches every vendor's newest model, while free means a rate limit, a
+ * small model, or a download — so the list leads with the choice worth making
+ * and leaves the keyless rows at the foot for anyone who has no key to give.
+ *
+ * Inside the free group: the device's own first, because nothing about it is
+ * metered or shared, then the two that answer a page — LLM7 ahead of OVHcloud
+ * on the published limit — then the two only the extension reaches. Chrome's
+ * own is last: it takes a 4 GB download and answers text alone, no tool call
+ * and no image, so it is the weakest row here even where it is listed.
+ */
 export const PROVIDERS: Provider[] = [
-  {
-    id: ON_DEVICE_PROVIDER_ID,
-    label: "Chrome Built-in AI",
-    free: true,
-    supported: promptApiSupported,
-    note: "Gemini Nano runs on this device. Chrome downloads it once, ~4 GB.",
-    defaultModelId: ON_DEVICE_MODEL_ID,
-    load: async () => ON_DEVICE_MODELS,
-  },
-  {
-    id: WLLAMA_PROVIDER_ID,
-    label: "Local (wllama)",
-    free: true,
-    supported: wllamaSupported,
-    note: "llama.cpp runs in this tab. The model is downloaded once, 0.2 to 1.9 GB.",
-    defaultModelId: WLLAMA_MODEL_ID,
-    load: async () => WLLAMA_MODELS,
-  },
-  {
-    id: "llm7",
-    label: "LLM7",
-    free: true,
-    note: "10 requests a minute, 500K tokens a day.",
-    defaultModelId: "gemini-3.1-flash-lite",
-    load: async () => LLM7_MODELS,
-  },
-  {
-    id: "kilo",
-    label: "Kilo Gateway",
-    gateway: true,
-    free: true,
-    cors: false,
-    note: "200 requests an hour.",
-    defaultModelId: "kilo-auto/free",
-    load: async () => KILO_MODELS,
-  },
-  {
-    id: "ovhcloud",
-    label: "OVHcloud",
-    free: true,
-    note: "2 requests a minute.",
-    defaultModelId: "gpt-oss-20b",
-    load: async () => OVHCLOUD_MODELS,
-  },
-  {
-    id: "opencode-zen",
-    label: "OpenCode Zen",
-    free: true,
-    cors: false,
-    note: "A fair-use limit the provider does not publish.",
-    defaultModelId: "deepseek-v4-flash-free",
-    load: async () => OPENCODE_ZEN_MODELS,
-  },
   {
     id: "vercel-ai-gateway",
     label: "Vercel AI Gateway",
@@ -252,28 +212,57 @@ export const PROVIDERS: Provider[] = [
     load: catalog("openrouter"),
   },
   {
-    id: "openai",
-    label: "OpenAI",
-    keyUrl: "https://platform.openai.com/api-keys",
-    keyPlaceholder: "sk-…",
-    defaultModelId: "gpt-5",
-    load: catalog("openai"),
+    id: WLLAMA_PROVIDER_ID,
+    label: "On Device (wllama)",
+    free: true,
+    supported: wllamaSupported,
+    note: "llama.cpp runs in this tab. The model is downloaded once, 0.2 to 1.9 GB.",
+    defaultModelId: WLLAMA_MODEL_ID,
+    load: async () => WLLAMA_MODELS,
   },
   {
-    id: "groq",
-    label: "Groq",
-    keyUrl: "https://console.groq.com/keys",
-    keyPlaceholder: "gsk_…",
-    defaultModelId: "llama-3.3-70b-versatile",
-    load: catalog("groq"),
+    id: "llm7",
+    label: "LLM7",
+    free: true,
+    note: "10 requests a minute, 500K tokens a day.",
+    defaultModelId: "gemini-3.1-flash-lite",
+    load: async () => LLM7_MODELS,
   },
   {
-    id: "cerebras",
-    label: "Cerebras",
-    keyUrl: "https://cloud.cerebras.ai",
-    keyPlaceholder: "csk-…",
-    defaultModelId: "gpt-oss-120b",
-    load: catalog("cerebras"),
+    id: "ovhcloud",
+    label: "OVHcloud",
+    free: true,
+    note: "2 requests a minute.",
+    defaultModelId: "gpt-oss-20b",
+    load: async () => OVHCLOUD_MODELS,
+  },
+  {
+    id: "kilo",
+    label: "Kilo Gateway",
+    gateway: true,
+    free: true,
+    cors: false,
+    note: "200 requests an hour.",
+    defaultModelId: "kilo-auto/free",
+    load: async () => KILO_MODELS,
+  },
+  {
+    id: "opencode-zen",
+    label: "OpenCode Zen",
+    free: true,
+    cors: false,
+    note: "A fair-use limit the provider does not publish.",
+    defaultModelId: "deepseek-v4-flash-free",
+    load: async () => OPENCODE_ZEN_MODELS,
+  },
+  {
+    id: ON_DEVICE_PROVIDER_ID,
+    label: "Chrome Built-in AI",
+    free: true,
+    supported: promptApiSupported,
+    note: "Gemini Nano runs on this device. Chrome downloads it once, ~4 GB.",
+    defaultModelId: ON_DEVICE_MODEL_ID,
+    load: async () => ON_DEVICE_MODELS,
   },
 ];
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { minimiseAction } from "../chat-widget/minimise-action.ts";
+import { closeAction } from "../chat-widget/close-action.ts";
 import { useChatAgent } from "../chat-widget/use-chat-agent.ts";
 import { useChatShell } from "../chat-widget/use-chat-shell.ts";
 
@@ -21,7 +21,7 @@ import { useChatShell } from "../chat-widget/use-chat-shell.ts";
  * custom `.docs/pages/index.vue` renders it beside the landing page.
  *
  * The parts are in `.docs/chat-widget/`: the session and its lazy imports, the
- * state the reader drives, the minimise button, the prompt and the stylesheet.
+ * state the reader drives, the close button, the prompt and the stylesheet.
  * That folder is beside `components/` rather than inside it because Nuxt scans
  * `components/` for `.ts` as well, and would take each file there for a
  * component.
@@ -52,7 +52,7 @@ const button = ref<HTMLButtonElement>();
 const { load, Panel, session, ui } = useChatAgent();
 const shell = useChatShell({ button, load, panel });
 const { open, state, toggle } = shell;
-const actions = minimiseAction(ui, shell);
+const actions = closeAction(ui, shell);
 </script>
 
 <template>

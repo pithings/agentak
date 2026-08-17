@@ -278,6 +278,17 @@ export function Chat({
       setDraft((last) => ({ text, key: (last?.key ?? 0) + 1 }));
     });
 
+  // Opening a stored conversation, from the history page or from the empty
+  // state's shortcut to the newest few. Either way the page goes and the
+  // composer takes the focus — what comes back is a transcript to carry on with.
+  const openConversation =
+    onOpenConversation &&
+    ((id: string) => {
+      onOpenConversation(id);
+      setHistoryOpen(false);
+      setFocusKey((n) => n + 1);
+    });
+
   const surfaceRef = useRef<HTMLDivElement>(null);
   const footRef = useFootHeight(surfaceRef);
   useKeyboardLift(surfaceRef);
@@ -319,11 +330,7 @@ export function Chat({
             onForgetConversation={onForgetConversation}
             // Opening one is what the page is for, so it is done: the chosen
             // transcript comes back in the session's own state, under this page.
-            onOpenConversation={(id) => {
-              onOpenConversation?.(id);
-              setHistoryOpen(false);
-              setFocusKey((n) => n + 1);
-            }}
+            onOpenConversation={openConversation}
             style={{ paddingBottom: CLEAR }}
           />
         ) : settingsOpen ? (
@@ -347,7 +354,14 @@ export function Chat({
           <Conversation pin={last?.id}>
             <ConversationContent style={{ paddingBottom: CLEAR }}>
               {messages.length === 0 ? (
-                <ChatEmpty agent={agent}>{emptyActions}</ChatEmpty>
+                <ChatEmpty
+                  agent={agent}
+                  history={history}
+                  onOpenConversation={openConversation}
+                  onShowHistory={history?.length ? () => showHistory(true) : undefined}
+                >
+                  {emptyActions}
+                </ChatEmpty>
               ) : (
                 messages.map((message) => (
                   <ChatMessage

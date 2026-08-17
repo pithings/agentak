@@ -1,9 +1,10 @@
 import type { ComponentChild, ComponentChildren, ComponentProps, VNode } from "preact";
 import { cloneElement, createContext, isValidElement, toChildArray } from "preact";
-import { useContext, useMemo } from "preact/hooks";
+import { useCallback, useContext, useEffect, useMemo, useRef } from "preact/hooks";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible.tsx";
 import { buttonSx } from "../ui/button.tsx";
+import { useControllableState } from "../../lib/use-controllable-state.ts";
 import { useInteraction } from "../../lib/use-interaction.ts";
 import { reset, u } from "../../styles/base.ts";
 import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
@@ -51,6 +52,12 @@ const S = {
     fontWeight: "500",
     fontVariantNumeric: "tabular-nums",
   },
+  // Frosted glass: the panel opens over the transcript, so it takes the colour
+  // of what it covers rather than hiding it. `--background` is mixed with
+  // transparent instead of being replaced, so the tint follows the theme and
+  // the panel needs no dark rule of its own. The blur is what keeps the text on
+  // it readable over any transcript; a browser without `backdrop-filter` is
+  // left the 70% tint, which is why the mix is not thinner than that.
   contextContent: {
     boxSizing: "border-box",
     minWidth: "15rem",
@@ -58,7 +65,9 @@ const S = {
     overflow: "hidden",
     border: "1px solid var(--border)",
     borderRadius: "var(--radius-md)",
-    background: "var(--background)",
+    background: "color-mix(in oklab, var(--background) 70%, transparent)",
+    backdropFilter: "blur(14px) saturate(180%)",
+    WebkitBackdropFilter: "blur(14px) saturate(180%)",
     boxShadow: "var(--shadow-xs)",
   },
   contextHeader: { boxSizing: "border-box", width: "100%", padding: "0.75rem" },
@@ -118,9 +127,21 @@ const S = {
     justifyContent: "space-between",
     gap: "0.75rem",
     padding: "0.75rem",
-    background: "var(--secondary)",
+    // Thinned with the panel it sits in: an opaque strip inside the glass would
+    // read as a bar laid over it. The blur is the panel's, so this only tints.
+    background: "color-mix(in oklab, var(--secondary) 60%, transparent)",
   },
 } satisfies Record<string, Sx>;
+
+/**
+ * ms the pointer rests on the meter before the panel opens, and rests off it
+ * before the panel shuts. The open wait keeps a pointer crossing the footer on
+ * its way to the send button from opening anything; the close wait carries a
+ * pointer over the gap between the meter and the panel above it, which belongs
+ * to neither and would otherwise take the panel away as it was reached for.
+ */
+const OPEN_DELAY = 150;
+const CLOSE_DELAY = 150;
 
 const PERCENT_MAX = 100;
 const ICON_RADIUS = 10;
@@ -172,8 +193,11 @@ export type ContextProps = WithSx<ComponentProps<typeof Collapsible>> & ContextS
 /**
  * Model context usage. A ring in the trigger, the breakdown in the panel.
  *
- * The panel is a collapsible rather than a hover card, and every cost arrives
- * as a prop — see `.agents/components/porting.md`.
+ * The panel follows the pointer: it opens where the pointer arrives and shuts
+ * where it leaves, each after a rest. A click still toggles it, because that is
+ * the way in a touch and a keyboard have. The panel is a collapsible rather
+ * than a hover card, and every cost arrives as a prop — see
+ * `.agents/components/porting.md`.
  */
 export const Context = ({
   usedTokens,
@@ -185,6 +209,11 @@ export const Context = ({
   className,
   style,
   children,
+  open,
+  defaultOpen = false,
+  onOpenChange,
+  onPointerEnter,
+  onPointerLeave,
   ...props
 }: ContextProps) => {
   const value = useMemo(
@@ -192,11 +221,59 @@ export const Context = ({
     [costs, maxTokens, modelId, nearLimit, usage, usedTokens],
   );
 
+  const [isOpen, setOpen] = useControllableState({
+    defaultProp: defaultOpen,
+    onChange: onOpenChange,
+    prop: open,
+  });
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const cancel = useCallback(() => {
+    clearTimeout(timer.current);
+    timer.current = undefined;
+  }, []);
+
+  const schedule = useCallback(
+    (next: boolean, delay: number) => {
+      cancel();
+      timer.current = setTimeout(() => {
+        timer.current = undefined;
+        setOpen(next);
+      }, delay);
+    },
+    [cancel, setOpen],
+  );
+
+  // No timer outlives the meter.
+  useEffect(() => cancel, [cancel]);
+
   return (
     <ContextContext.Provider value={value}>
       {/* Kept as a stable hook for the whole widget, same as the other
-          `context-*` parts below it — nothing sizes off it directly. */}
-      <Collapsible className={className} style={sx(S.context, style)} {...props}>
+          `context-*` parts below it — nothing sizes off it directly. The
+          pointer is watched here and not on the trigger, because the panel is
+          a child of this element: a pointer that goes on into the breakdown
+          has not left the meter. */}
+      <Collapsible
+        className={className}
+        onOpenChange={(next) => {
+          cancel(); // A click wins over anything already scheduled.
+          setOpen(next);
+        }}
+        onPointerEnter={(event) => {
+          onPointerEnter?.(event);
+          // A tap enters too, and the click behind it would shut again what
+          // the enter had just opened. Touch has the click and nothing else.
+          if (event.pointerType !== "touch") schedule(true, OPEN_DELAY);
+        }}
+        onPointerLeave={(event) => {
+          onPointerLeave?.(event);
+          if (event.pointerType !== "touch") schedule(false, CLOSE_DELAY);
+        }}
+        open={isOpen}
+        style={sx(S.context, style)}
+        {...props}
+      >
         {children ?? (
           <>
             <ContextTrigger />

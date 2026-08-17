@@ -1,10 +1,12 @@
 // Docs: @docs/3.widget.md
 // Docs: @docs/4.agents/2.pi-agent/7.conversations.md
+import type { ComponentChildren } from "preact";
+
 import type { ChatHistoryEntry } from "./types.ts";
 import { Button } from "../ui/button.tsx";
-import { XIcon } from "../../lib/icons.tsx";
+import { ChevronRightIcon, ClockIcon, XIcon } from "../../lib/icons.tsx";
 import { useInteraction } from "../../lib/use-interaction.ts";
-import { reset } from "../../styles/base.ts";
+import { reset, u } from "../../styles/base.ts";
 import { sx, type Sx } from "../../styles/sx.ts";
 
 const S = {
@@ -73,6 +75,11 @@ const S = {
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+    // Headed word by word, exactly as the bar heads the live one: a row is a
+    // name in a list, whatever case the first message was typed in. The drawing
+    // only — what is stored, and what the tooltip says, are the words
+    // themselves.
+    textTransform: "capitalize",
   },
   // Keeps the far side to itself, whatever the title does.
   meta: {
@@ -83,6 +90,24 @@ const S = {
     fontSize: "0.6875rem",
   },
   forget: { flexShrink: "0", color: "var(--muted-foreground)" },
+  // The empty state's block: a heading no louder than the rows under it. The
+  // margin is over the column's own gap, because this is the foot of that state
+  // rather than one more thing in it.
+  recent: {
+    display: "flex",
+    marginTop: "1rem",
+    flexDirection: "column",
+    gap: "0.375rem",
+  },
+  recentLabel: {
+    margin: "0",
+    paddingLeft: "0.125rem",
+    color: "var(--muted-foreground)",
+    fontSize: "0.6875rem",
+  },
+  // The way to the rest of them, so it reads as the foot of the list and not as
+  // one more conversation in it.
+  all: { color: "var(--muted-foreground)" },
 } satisfies Record<string, Sx>;
 
 const MINUTE = 60_000;
@@ -168,6 +193,94 @@ export function ChatHistory({
   );
 }
 
+/** How many of the newest the empty state offers. */
+const RECENT = 3;
+
+export interface ChatRecentProps {
+  /** The conversations kept, newest first. The block shows the first few. */
+  history?: ChatHistoryEntry[];
+  /** Open one. Without it there is no block: a shortcut to nowhere is noise. */
+  onOpenConversation?: (id: string) => void;
+  /** Open the page with the rest of them. Without it that row is left out. */
+  onShowHistory?: () => void;
+}
+
+/**
+ * The newest few conversations, offered under the greeting.
+ *
+ * A chat that has been used before opens on nothing said, with everything said
+ * already one page away. This is the head of that page, put where the reader is
+ * already looking: three rows to carry on with, and the way to the rest under
+ * them. It stands at the foot of the empty state, under the host's own content
+ * and the agent card — what was said before comes after what this chat is. It
+ * goes as soon as the first message is sent, with the greeting.
+ */
+export function ChatRecent({ history, onOpenConversation, onShowHistory }: ChatRecentProps) {
+  const recent = history?.slice(0, RECENT) ?? [];
+  if (!onOpenConversation || recent.length === 0) return null;
+
+  return (
+    <div style={S.recent}>
+      <p style={sx(reset.text, S.recentLabel)}>Recent chats</p>
+      <div aria-label="Recent chats" role="group" style={S.list}>
+        {recent.map((entry, index) => (
+          <HistoryRow
+            entry={entry}
+            first={index === 0}
+            key={entry.id}
+            onOpen={() => onOpenConversation(entry.id)}
+          />
+        ))}
+
+        {onShowHistory ? (
+          <div style={sx(S.row, S.rowLine)}>
+            <RowButton onClick={onShowHistory} style={S.all}>
+              <ClockIcon style={u.icon} />
+              <span style={S.name}>All conversations</span>
+              <ChevronRightIcon style={sx(u.icon, S.meta)} />
+            </RowButton>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+interface RowButtonProps {
+  onClick: () => void;
+  /** The conversation the chat is on. */
+  current?: boolean;
+  /** The full text, because the row is narrow and cuts it. */
+  title?: string;
+  style?: Sx;
+  children: ComponentChildren;
+}
+
+/** A row's own control. A hook cannot run inside `.map()`, so it is a component. */
+function RowButton({ onClick, current, title, style, children }: RowButtonProps) {
+  const { focusVisible, handlers, hovered } = useInteraction<HTMLButtonElement>();
+
+  return (
+    <button
+      aria-current={current ? "true" : undefined}
+      onClick={onClick}
+      style={sx(
+        reset.button,
+        S.open,
+        hovered && S.openHover,
+        focusVisible && S.openFocus,
+        current && S.openCurrent,
+        style,
+      )}
+      title={title}
+      type="button"
+      {...handlers}
+    >
+      {children}
+    </button>
+  );
+}
+
 interface HistoryRowProps {
   entry: ChatHistoryEntry;
   /** The conversation the chat is on. */
@@ -178,31 +291,16 @@ interface HistoryRowProps {
   onForget?: () => void;
 }
 
-/** One conversation. A hook cannot run inside `.map()`, so a row is a component. */
+/** One conversation, in either list. */
 function HistoryRow({ entry, current, first, onOpen, onForget }: HistoryRowProps) {
-  const { focusVisible, handlers, hovered } = useInteraction<HTMLButtonElement>();
   const ago = when(entry.updated);
 
   return (
     <div style={sx(S.row, !first && S.rowLine)}>
-      <button
-        aria-current={current ? "true" : undefined}
-        onClick={onOpen}
-        style={sx(
-          reset.button,
-          S.open,
-          hovered && S.openHover,
-          focusVisible && S.openFocus,
-          current && S.openCurrent,
-        )}
-        // The full text is the tooltip, because the row is narrow and cuts it.
-        title={entry.title}
-        type="button"
-        {...handlers}
-      >
+      <RowButton current={current} onClick={onOpen} title={entry.title}>
         <span style={S.name}>{entry.title}</span>
         {ago ? <span style={S.meta}>{ago}</span> : null}
-      </button>
+      </RowButton>
 
       {onForget ? (
         <Button

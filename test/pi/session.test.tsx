@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { AgentChat } from "../../src/agent-chat.tsx";
 import { createPiSession, type PiSessionOptions } from "../../src/pi/session.ts";
-import { memoryStorage } from "../../src/pi/storage.ts";
+import { memoryStorage, type PiStorage } from "../../src/pi/storage.ts";
 
 const turn = (content: AssistantMessage["content"], stopReason: StopReason): AssistantMessage => ({
   role: "assistant",
@@ -55,7 +55,7 @@ const FREE = "llm7";
 const MODEL = "gemini-3.1-flash-lite";
 
 /** One that takes a key, and whose catalog is an import rather than a fetch. */
-const KEYED = "openai";
+const KEYED = "openrouter";
 
 /** The same, and its catalog carries a reasoning model beside a plain one. */
 const THINKS = "ovhcloud";
@@ -128,8 +128,9 @@ describe("createPiSession", () => {
     session.selectModel?.(REASONING_MODEL);
     expect(session.snapshot().thinkingLevels).toContain("medium");
     // A model chosen to reason reasons: nothing is stored for this one, so it
-    // starts in the middle rather than off.
-    expect(session.snapshot().thinkingLevel).toBe("medium");
+    // starts in the middle rather than off. The store is asked what it holds
+    // for this model first, so the level lands a beat after the model does.
+    await waitFor(() => expect(session.snapshot().thinkingLevel).toBe("medium"));
 
     // Nothing to choose from, so the picker shows no level at all.
     session.selectModel?.(PLAIN_MODEL);
@@ -143,19 +144,20 @@ describe("createPiSession", () => {
     first.setThinkingLevel?.("high");
     expect(first.snapshot().thinkingLevel).toBe("high");
 
-    // A model that cannot reason must not be asked to: the level goes with it.
+    // A model that cannot reason must not be asked to: the level goes with it,
+    // and it goes with the model rather than with the store answering after it.
     first.selectModel?.(PLAIN_MODEL);
     expect(first.snapshot().thinkingLevel).toBe("off");
 
     // A reasoning model this browser has not run takes the level last chosen by
     // hand, rather than the default one.
     first.selectModel?.(OTHER_REASONING_MODEL);
-    expect(first.snapshot().thinkingLevel).toBe("high");
+    await waitFor(() => expect(first.snapshot().thinkingLevel).toBe("high"));
 
     const next = piSession({ provider: THINKS, streamFn: scripted([answer]) });
     await waitFor(() => expect(next.snapshot().models?.length).toBeGreaterThan(0));
     next.selectModel?.(REASONING_MODEL);
-    expect(next.snapshot().thinkingLevel).toBe("high");
+    await waitFor(() => expect(next.snapshot().thinkingLevel).toBe("high"));
   });
 
   it("notifies subscribers and keeps the snapshot until it changes", async () => {
@@ -209,7 +211,7 @@ describe("createPiSession", () => {
     session.selectProvider?.(KEYED);
     await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
     expect(keyed()?.hasKey).toBe(true);
-    expect(storage.get(`api-key:${KEYED}`)).toBe("sk-live");
+    expect(await storage.get(`api-key:${KEYED}`)).toBe("sk-live");
 
     session.forgetKey?.(KEYED);
     // Nothing is left to answer with, so the provider is one to set up again
@@ -217,10 +219,11 @@ describe("createPiSession", () => {
     expect(keyed()?.hasKey).toBe(false);
     expect(session.snapshot().providerId).toBeUndefined();
     expect(session.snapshot().models).toHaveLength(0);
-    expect(storage.get(`api-key:${KEYED}`)).toBeFalsy();
+    expect(await storage.get(`api-key:${KEYED}`)).toBeFalsy();
 
     // And the store it went from is the one the next session opens on.
     const next = piSession({ provider: KEYED, streamFn: scripted([answer]) });
+    await next.ready;
     expect(next.snapshot().providerId).toBeUndefined();
   });
 
@@ -232,6 +235,52 @@ describe("createPiSession", () => {
     session.send("what is this page?");
     await waitFor(() => expect(session.snapshot().error).toMatch(/unavailable/));
     expect(session.snapshot().pickerOpen).toBe(false);
+  });
+});
+
+describe("a pi session over a store that answers later", () => {
+  /** Every read and write on a later task, as `chrome.storage` answers. */
+  const slow = (inner: PiStorage): PiStorage => {
+    const later = <T,>(value: () => T | Promise<T>) =>
+      new Promise<T>((resolve) => setTimeout(() => resolve(value()), 5));
+    return {
+      get: (name) => later(() => inner.get(name)),
+      set: (name, value) => later(() => inner.set(name, value)),
+      remove: (name) => later(() => inner.remove?.(name)),
+    };
+  };
+
+  const slowSession = (options: PiSessionOptions = {}) =>
+    createPiSession({ storage: slow(storage), ...options });
+
+  it("opens on nothing, then on what the store held", async () => {
+    const first = piSession({ provider: FREE, streamFn: scripted([answer]) });
+    await waitFor(() => expect(first.snapshot().models?.length).toBeGreaterThan(0));
+    first.selectProvider?.(FREE);
+    first.selectModel?.(MODEL);
+    await waitFor(() => expect(first.snapshot().modelId).toBe(MODEL));
+
+    const session = slowSession({ streamFn: scripted([answer]) });
+    // The store has said nothing yet, so neither has the session.
+    expect(session.snapshot().providerId).toBeUndefined();
+
+    await session.ready;
+    expect(session.snapshot().providerId).toBe(FREE);
+    await waitFor(() => expect(session.snapshot().modelId).toBe(MODEL));
+  });
+
+  it("keeps the key and the provider chosen while the store was answering", async () => {
+    piSession({ provider: FREE, streamFn: scripted([answer]) }).selectProvider?.(FREE);
+
+    // Both happen inside the window the store is being read in, so both are
+    // newer than what it holds and must not be replaced by it.
+    const session = slowSession({ streamFn: scripted([answer]) });
+    session.saveKey?.(KEYED, "sk-live");
+    session.selectProvider?.(KEYED);
+
+    await session.ready;
+    expect(session.snapshot().providerId).toBe(KEYED);
+    expect(session.snapshot().providers?.find((entry) => entry.id === KEYED)?.hasKey).toBe(true);
   });
 });
 
@@ -305,8 +354,10 @@ describe("a pi session that keeps its own conversations", () => {
     first.dispose();
 
     // The same store, a new session: an empty chat, with the one before it on
-    // the history page.
+    // the history page. The store answers later, so the list is in hand when
+    // the session says its choices are.
     const next = piSession({ history: true, provider: FREE, streamFn: scripted([answer]) });
+    await next.ready;
     expect(next.snapshot().messages).toHaveLength(0);
     expect(next.snapshot().conversationId).not.toBe(id);
     expect(next.snapshot().history?.[0]?.id).toBe(id);

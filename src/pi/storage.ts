@@ -10,22 +10,27 @@
  * A host that wants them to outlive a reload passes a store of its own through
  * the `storage` option — `browserStorage()` for `localStorage`, or an object
  * that reads and writes wherever the host keeps things.
+ *
+ * Every method answers with a promise, because most stores worth passing cannot
+ * answer at once: `chrome.storage` and IndexedDB reply later, and a store that
+ * encrypts what it holds waits on WebCrypto to read one value at all. So a
+ * session opens on nothing and takes its choices a beat after —
+ * `PiSession.ready` is the moment they are in hand.
  */
 export interface PiStorage {
-  get(name: string): string | undefined;
+  get(name: string): Promise<string | undefined>;
   /**
-   * Put a value in. A store that lands the write itself returns nothing, and a
-   * store that only sends it off returns a promise that rejects when it did not
-   * land — `chrome.storage` is the second kind. Nothing waits for it except the
+   * Put a value in. The promise rejects where the write did not land — a full
+   * `chrome.storage` is the one that does. Nothing waits for it except the
    * history, which gives up an older conversation when the store is full.
    */
-  set(name: string, value: string): void | Promise<void>;
+  set(name: string, value: string): Promise<void>;
   /**
    * Take a value out. Optional, because a store of two methods is the whole of
    * what the picker needs — a conversation dropped from a store without it is
    * written empty instead, which reads back as nothing.
    */
-  remove?(name: string): void;
+  remove?(name: string): Promise<void>;
 }
 
 const PREFIX = "agentak:";
@@ -34,12 +39,14 @@ const PREFIX = "agentak:";
 export function memoryStorage(): PiStorage {
   const values = new Map<string, string>();
   return {
-    get: (name) => values.get(name),
+    get: (name) => Promise.resolve(values.get(name)),
     set: (name, value) => {
       values.set(name, value);
+      return Promise.resolve();
     },
     remove: (name) => {
       values.delete(name);
+      return Promise.resolve();
     },
   };
 }
@@ -51,21 +58,24 @@ export function memoryStorage(): PiStorage {
  */
 export function browserStorage(): PiStorage {
   return {
-    get(name) {
+    // Each answers with a promise the api itself does not need, because that is
+    // what a `PiStorage` is: a store that reads at once still reads later here.
+    async get(name) {
       try {
         return globalThis.localStorage?.getItem(PREFIX + name) ?? undefined;
       } catch {
         return undefined; // storage is denied here
       }
     },
-    set(name, value) {
+    async set(name, value) {
       try {
         globalThis.localStorage?.setItem(PREFIX + name, value);
       } catch {
-        // Nothing to do: the value lives for this session only.
+        // Nothing to do: the value lives for this session only. A full store is
+        // read back short instead, which is what the history looks for.
       }
     },
-    remove(name) {
+    async remove(name) {
       try {
         globalThis.localStorage?.removeItem(PREFIX + name);
       } catch {
@@ -78,18 +88,26 @@ export function browserStorage(): PiStorage {
 /** The default store, shared by every session that names none. */
 export const pageStorage = memoryStorage();
 
-/** The choices a store holds, named. */
+/**
+ * The choices a store holds, named. Every one of them answers with a promise,
+ * because the store under it does.
+ *
+ * A write is one nobody waits for, so a write that did not land is swallowed
+ * here rather than left as a rejection nothing handles: a choice the store
+ * refused is one this browser forgets, which is what a page with denied storage
+ * already gets.
+ */
 export interface PiChoices {
-  storedApiKey(provider: string): string | undefined;
-  storeApiKey(provider: string, key: string): void;
+  storedApiKey(provider: string): Promise<string | undefined>;
+  storeApiKey(provider: string, key: string): Promise<void>;
   /** Take a key back out, so the browser holds it no longer. */
-  forgetApiKey(provider: string): void;
-  storedProviderId(): string | undefined;
-  storeProviderId(id: string): void;
-  storedModelId(provider: string): string | undefined;
-  storeModelId(provider: string, id: string): void;
-  storedThinkingLevel(provider: string, model: string): string | undefined;
-  storeThinkingLevel(provider: string, model: string, level: string): void;
+  forgetApiKey(provider: string): Promise<void>;
+  storedProviderId(): Promise<string | undefined>;
+  storeProviderId(id: string): Promise<void>;
+  storedModelId(provider: string): Promise<string | undefined>;
+  storeModelId(provider: string, id: string): Promise<void>;
+  storedThinkingLevel(provider: string, model: string): Promise<string | undefined>;
+  storeThinkingLevel(provider: string, model: string, level: string): Promise<void>;
 }
 
 /**
@@ -98,26 +116,29 @@ export interface PiChoices {
  */
 export function createChoices(storage: PiStorage = pageStorage): PiChoices {
   // A store need not answer `remove`, and an empty value reads back as nothing.
-  const drop = (name: string) => {
-    if (storage.remove) storage.remove(name);
-    else storage.set(name, "");
-  };
+  const drop = (name: string) => (storage.remove ? storage.remove(name) : storage.set(name, ""));
+
+  // A store that refuses a read holds nothing this session can use, and one
+  // that refuses a write holds nothing after it. Neither is a failure the chat
+  // shows: the choice is simply one this browser does not have.
+  const read = (name: string) => storage.get(name).catch(() => undefined);
+  const write = (done: Promise<void>) => done.catch(() => {});
 
   return {
-    storedApiKey: (provider) => storage.get(`api-key:${provider}`),
-    storeApiKey: (provider, key) => storage.set(`api-key:${provider}`, key),
-    forgetApiKey: (provider) => drop(`api-key:${provider}`),
+    storedApiKey: (provider) => read(`api-key:${provider}`),
+    storeApiKey: (provider, key) => write(storage.set(`api-key:${provider}`, key)),
+    forgetApiKey: (provider) => write(drop(`api-key:${provider}`)),
 
-    storedProviderId: () => storage.get("provider"),
-    storeProviderId: (id) => storage.set("provider", id),
+    storedProviderId: () => read("provider"),
+    storeProviderId: (id) => write(storage.set("provider", id)),
 
-    storedModelId: (provider) => storage.get(`model:${provider}`),
-    storeModelId: (provider, id) => storage.set(`model:${provider}`, id),
+    storedModelId: (provider) => read(`model:${provider}`),
+    storeModelId: (provider, id) => write(storage.set(`model:${provider}`, id)),
 
     // Per model, not per provider: one provider carries reasoning models beside
     // models that take no level at all.
-    storedThinkingLevel: (provider, model) => storage.get(`thinking:${provider}:${model}`),
+    storedThinkingLevel: (provider, model) => read(`thinking:${provider}:${model}`),
     storeThinkingLevel: (provider, model, level) =>
-      storage.set(`thinking:${provider}:${model}`, level),
+      write(storage.set(`thinking:${provider}:${model}`, level)),
   };
 }

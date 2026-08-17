@@ -83,7 +83,7 @@ composer must not take a column of the page away.
 
 Two words of host code: `history: true` on `createPiSession()`, beside the
 `browserStorage()` the keys already use. The session keeps every conversation there and
-lists them on the chat's own history page — the clock at the head of the bar — so the page
+lists them on the chat's own history page — the clock in the bar — so the page
 holds no list, no ids and no wiring of its own. See [`pi.md`](pi.md) for what it stores and
 [`session.md`](session.md) for the seam it travels on.
 
@@ -279,8 +279,8 @@ person who opens the panel and then browses would find the agent blind to everyt
 the one tab it started on, which is the whole of what it is for. The cost is the install
 warning that names every site, and it is the honest one — this agent reads pages.
 
-**The catalogs.** The five keyed providers read theirs from esm.sh, and an MV3 content
-security policy allows no remote module, so the panel would list no model for any of them.
+**The catalogs.** The two keyed gateways read theirs from esm.sh, and an MV3 content
+security policy allows no remote module, so the panel would list no model for either.
 `catalogs.ts` passes its own source to `useCatalogSource()`: one `import()` per provider,
 written out rather than built from the name, because a bundler follows a literal and
 nothing else. Each is its own chunk, so a catalog is still only read when its provider is
@@ -290,10 +290,12 @@ a panel that lists anything at all. The free providers are unaffected; their mod
 
 **The store.** `chrome.storage.local` rather than `localStorage`: it is one area per
 extension rather than one per document, and it survives what clearing browsing data takes
-away. `PiStorage` reads synchronously and `chrome.storage` does not, so the area is read
-in full before anything mounts — a chat that mounted first would show every choice
-forgotten, then change it under the reader — and after that the map is the answer while
-every write goes both places. The panel keeps its conversations there too.
+away. `PiStorage` answers with promises and so does the area, so it is read and written as
+it is, with nothing kept in front of it. The panel mounts on `session.ready` instead — a
+chat that mounted first would show every choice forgotten, then change it under the reader.
+The map that used to stand in front was the one thing that could lie: it read back a
+transcript the area had refused for want of room, and the history learns a store is full by
+reading a write back. The panel keeps its conversations there too.
 
 **The history, per site.** One area is right for the keys and the choices — a key typed on
 one tab answers on the next — and wrong for the conversations. The panel reads the tab in

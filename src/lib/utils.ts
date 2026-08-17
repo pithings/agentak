@@ -40,3 +40,16 @@ export function media(query: string): boolean {
 export function isTouch(): boolean {
   return media("(pointer: coarse)");
 }
+
+/**
+ * A phone or a small tablet — the device itself, not a narrow surface.
+ *
+ * A coarse pointer alone is a touch display, which a laptop may also have. The
+ * screen and NOT the viewport answers the rest: a phone is small because the
+ * device is, while a surface can be small because it was docked — the
+ * extension's side panel is ~400px on a desktop, and a chat in a page's sidebar
+ * is no wider. Either would read as a phone through a `max-width` query.
+ */
+export function isPhone(): boolean {
+  return isTouch() && (globalThis.screen?.width ?? Infinity) <= 820;
+}

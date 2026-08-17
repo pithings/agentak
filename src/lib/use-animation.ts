@@ -1,7 +1,7 @@
 import type { RefCallback } from "preact";
 import { useMemo } from "preact/hooks";
 
-import { media } from "./utils.ts";
+import { isPhone, media } from "./utils.ts";
 
 /**
  * `@keyframes` has no inline form — see `styles/base.ts` — so this is its
@@ -82,15 +82,9 @@ export function prefersReducedMotion(): boolean {
  *
  * The hints are what the browser gives away for free — no benchmark, no probe:
  * `deviceMemory` (chromium only, in GB, and capped at 8) and
- * `hardwareConcurrency`. Neither is reported by every engine, so a coarse
- * pointer on a small screen answers for the rest: a phone is treated as low
- * power whatever it claims, since its GPU is also driving the tallest DPI.
- *
- * The screen and NOT the viewport, which is what `max-width` would have read.
- * A phone is small because the device is; a surface can be small because it was
- * docked — the extension's side panel is ~400px on a desktop, and a chat in a
- * page's sidebar is no wider. Either would have answered a viewport query the
- * way a phone does, and lost the fade on hardware built to run it.
+ * `hardwareConcurrency`. Neither is reported by every engine, so `isPhone()`
+ * answers for the rest: a phone is treated as low power whatever it claims,
+ * since its GPU is also driving the tallest DPI.
  *
  * Deliberately not cached. Hardware does not change mid-session, but the reads
  * cost nothing next to a render, and a test can then stub them. `media()` keeps
@@ -102,5 +96,5 @@ export function isLowPowerDevice(): boolean {
 
   if (agent.deviceMemory !== undefined && agent.deviceMemory <= 4) return true;
   if (agent.hardwareConcurrency !== undefined && agent.hardwareConcurrency <= 4) return true;
-  return media("(pointer: coarse)") && (globalThis.screen?.width ?? Infinity) <= 820;
+  return isPhone();
 }

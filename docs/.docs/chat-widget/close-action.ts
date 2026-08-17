@@ -1,31 +1,29 @@
-import { computed, type Ref, type ShallowRef } from "vue";
+import { computed, type ShallowRef } from "vue";
 import type { ChatUi } from "./use-chat-agent.ts";
 
 /**
- * The minimise button, on the chat's own header.
+ * The close button, on the chat's own header.
  *
  * The surface heads itself, so the site adds no second title bar: `actions`
- * goes at the end of that header, beside the chat's own buttons. It is a preact
+ * goes at the end of that header, after the chat's own buttons. It is a preact
  * child, whatever renders the page around it — `Button` is the one the buttons
  * beside it use, so they match.
  *
- * The chevron points at where the chat goes: out to the right edge for the
- * rail, down to the button for the sheet.
+ * A cross, not a chevron: the button sits where a panel's close sits, and it
+ * reads the same in the rail and in the sheet. The chat is hidden and not
+ * unmounted, so the transcript is there again on the way back.
  */
-export function minimiseAction(
-  ui: ShallowRef<ChatUi | undefined>,
-  shell: { close: () => void; wide: Ref<boolean> },
-) {
+export function closeAction(ui: ShallowRef<ChatUi | undefined>, shell: { close: () => void }) {
   return computed(() => {
     if (!ui.value) return undefined;
     const { Button, h } = ui.value;
     return h(
       Button as never,
       {
-        "aria-label": "Minimise the assistant",
+        "aria-label": "Close the assistant",
         onClick: shell.close,
         size: "icon-sm",
-        title: "Minimise",
+        title: "Close",
         variant: "ghost",
       },
       h(
@@ -38,7 +36,7 @@ export function minimiseAction(
           "stroke-width": "2",
           viewBox: "0 0 24 24",
         },
-        h("path", { d: shell.wide.value ? "m9 18 6-6-6-6" : "m6 9 6 6 6-6" }),
+        h("path", { d: "M18 6 6 18M6 6l12 12" }),
       ),
     );
   });

@@ -13,7 +13,7 @@
  * a catalog is still only read when its provider is picked. OpenRouter's alone
  * is 136 KB.
  *
- * Only the five keyed providers are here. The free ones carry their models in
+ * Only the two keyed gateways are here. The free ones carry their models in
  * `pi/free-models.ts`, which the panel already bundles.
  */
 import { useCatalogSource } from "@/pi/providers.ts";
@@ -21,9 +21,6 @@ import { useCatalogSource } from "@/pi/providers.ts";
 type Module = Promise<Record<string, unknown>>;
 
 const CATALOGS: Record<string, () => Module> = {
-  cerebras: () => import("@earendil-works/pi-ai/providers/cerebras.models"),
-  groq: () => import("@earendil-works/pi-ai/providers/groq.models"),
-  openai: () => import("@earendil-works/pi-ai/providers/openai.models"),
   openrouter: () => import("@earendil-works/pi-ai/providers/openrouter.models"),
   "vercel-ai-gateway": () => import("@earendil-works/pi-ai/providers/vercel-ai-gateway.models"),
 };

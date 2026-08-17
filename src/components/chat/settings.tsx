@@ -370,7 +370,7 @@ export function ChatSettings({
         <section style={S.section}>
           <h3 style={sx(reset.text, S.heading)}>Provider</h3>
           {/* A dropdown, not a list: which provider is set is one line, and the
-              nine to choose between are worth a click rather than a third of
+              eight to choose between are worth a click rather than a third of
               the page above the models they are chosen for.
 
               Open on arrival where nothing is running, which is the first visit

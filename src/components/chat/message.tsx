@@ -41,6 +41,7 @@ import {
   RotateCcwIcon,
   SquareIcon,
   Volume2Icon,
+  XIcon,
 } from "../../lib/icons.tsx";
 import { renderMarkdownText, useMarkdown } from "../../lib/markdown.ts";
 import { useCopy } from "../../lib/use-copy.ts";
@@ -82,14 +83,14 @@ const S = {
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: "0.75rem",
+    gap: "0.5rem",
     borderRadius: "var(--radius-md)",
-    padding: "0.625rem 0.75rem",
+    padding: "0.375rem 0.625rem",
   },
   gatePending: {
     justifyContent: "space-between",
-    // The answer row carries a text field now, so it drops under the ask when
-    // the surface is a narrow panel rather than squeezing the two together.
+    // The ask and its answer share a line until the surface is too narrow for
+    // both — a side panel, or the row once it is asking for a reason.
     flexWrap: "wrap",
     gap: "0.5rem",
     borderColor: "color-mix(in oklab, var(--warning) 35%, var(--border))",
@@ -105,11 +106,14 @@ const S = {
   },
   // The ask is the line to read, so it takes the foreground the alert muted.
   gateTitle: { color: "var(--foreground)", fontWeight: "500" },
-  // Takes the room the ask leaves, down to the width the reason field needs —
-  // under that, the whole row wraps.
-  gateActions: { flex: "1 1 15rem", alignSelf: "center", minWidth: "0" },
-  // Only a denial carries it, so it says so rather than asking for a note the
-  // reader would think Allow also sends.
+  // Three small buttons beside the ask, so the gate is one line.
+  gateActions: { alignSelf: "center", flexWrap: "wrap", gap: "0.375rem" },
+  // Asking for a reason, the row is the field, so it takes the whole width
+  // rather than the room the ask leaves.
+  gateAsking: { flex: "1 1 12rem", minWidth: "0" },
+  // Quieter than the two answers next to it: it answers nothing by itself, it
+  // only opens the field.
+  gateWhy: { color: "var(--muted-foreground)" },
   gateReason: { flex: "1", minWidth: "0", height: "1.75rem", fontSize: "0.75rem" },
   // A run reads as one more call in the column, so its trigger repeats the
   // `ToolHeader` line: status then title on the left, chevron on the right.
@@ -540,9 +544,6 @@ function ChatToolPart({ part, onRespond }: { part: ViewToolPart; onRespond?: Cha
     if (pending) setOpen(true);
   }, [pending]);
 
-  const [reason, setReason] = useState("");
-  const deny = () => onRespond?.(part.toolCallId, false, reason.trim() || undefined);
-
   return (
     <Tool onOpenChange={setOpen} open={open} style={S.tool}>
       <ToolHeader input={part.args} name={part.name} state={state} style={S.toolHeader} />
@@ -572,26 +573,7 @@ function ChatToolPart({ part, onRespond }: { part: ViewToolPart; onRespond?: Cha
         >
           <ConfirmationRequest>
             <ConfirmationTitle style={S.gateTitle}>Run {part.name}?</ConfirmationTitle>
-            <ConfirmationActions style={S.gateActions}>
-              {/* Optional, and Deny stays one click without it. Enter denies,
-                  because typing a reason is already the answer. */}
-              <Input
-                aria-label={`Why not run ${part.name}?`}
-                onInput={(event) => setReason(event.currentTarget.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") deny();
-                }}
-                placeholder="Why not? Optional"
-                style={S.gateReason}
-                value={reason}
-              />
-              <ConfirmationAction onClick={deny} variant="outline">
-                Deny
-              </ConfirmationAction>
-              <ConfirmationAction onClick={() => onRespond?.(part.toolCallId, true)}>
-                Allow
-              </ConfirmationAction>
-            </ConfirmationActions>
+            <ChatToolGate name={part.name} onRespond={onRespond} toolCallId={part.toolCallId} />
           </ConfirmationRequest>
           <ConfirmationAccepted>Allowed</ConfirmationAccepted>
           {/* The reason went to the model, so it is shown where it was given. */}
@@ -601,5 +583,82 @@ function ChatToolPart({ part, onRespond }: { part: ViewToolPart; onRespond?: Cha
         </Confirmation>
       </ToolContent>
     </Tool>
+  );
+}
+
+/**
+ * The answer to a gate. Two buttons and a third that only opens a field, so the
+ * ask and its answer share one line: a reason is the rare denial, and a box
+ * standing open beside Allow both takes the width of the row and reads as
+ * though every answer carried a note.
+ *
+ * The row reads in the order the answers are wanted in — Allow, Deny, and last
+ * the one that answers nothing until something is typed into it.
+ *
+ * Asked for, the field replaces the three — the reader is writing the denial
+ * now, so Allow is not the click to leave under the caret. Enter sends it,
+ * Escape puts it away again, and either way Deny stays one click from where the
+ * row started.
+ */
+function ChatToolGate({
+  name,
+  toolCallId,
+  onRespond,
+}: {
+  name: string;
+  toolCallId: string;
+  onRespond?: ChatRespond;
+}) {
+  // `null` is a row that is not asking; a string is the reason being written.
+  const [reason, setReason] = useState<string | null>(null);
+  const deny = () => onRespond?.(toolCallId, false, reason?.trim() || undefined);
+
+  if (reason === null) {
+    return (
+      <ConfirmationActions style={S.gateActions}>
+        <ConfirmationAction onClick={() => onRespond?.(toolCallId, true)} size="xs">
+          Allow
+        </ConfirmationAction>
+        <ConfirmationAction onClick={deny} size="xs" variant="outline">
+          Deny
+        </ConfirmationAction>
+        <ConfirmationAction
+          onClick={() => setReason("")}
+          size="xs"
+          style={S.gateWhy}
+          variant="ghost"
+        >
+          Deny with reason
+        </ConfirmationAction>
+      </ConfirmationActions>
+    );
+  }
+
+  return (
+    <ConfirmationActions style={sx(S.gateActions, S.gateAsking)}>
+      <Input
+        aria-label={`Why not run ${name}?`}
+        autoFocus
+        onInput={(event) => setReason(event.currentTarget.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") deny();
+          if (event.key === "Escape") setReason(null);
+        }}
+        placeholder="Why not?"
+        style={S.gateReason}
+        value={reason}
+      />
+      <ConfirmationAction onClick={deny} size="xs" variant="outline">
+        Deny
+      </ConfirmationAction>
+      <ConfirmationAction
+        aria-label="Cancel"
+        onClick={() => setReason(null)}
+        size="icon-xs"
+        variant="ghost"
+      >
+        <XIcon />
+      </ConfirmationAction>
+    </ConfirmationActions>
   );
 }

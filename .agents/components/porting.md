@@ -47,7 +47,17 @@ Worth knowing before reading a ported file against its registry source.
   bundled, so the limits and the money arrive as props — `usedTokens`, `maxTokens`,
   `usage`, and a `costs` object in USD — and `modelId` is only a label.
 - **No floating panels where a `Collapsible` does.** `context` hangs its breakdown off
-  one, so the panel opens on click and sits in the flow. Its progress bar is a two-div
+  one, so the panel sits in the flow. It opens where the pointer arrives and shuts where
+  it leaves, each after a 150 ms rest — the open wait keeps a pointer crossing the
+  composer's footer from opening it, and the close wait carries a pointer over the gap
+  between the meter and a panel positioned off it. The root watches the pointer, not the
+  trigger, because the panel is a child of the root: a pointer that goes on into the
+  breakdown has not left. A click still toggles, which is what touch and the keyboard
+  have, so a tap is left to the click behind it and the pointer is only read off a mouse.
+  The panel is frosted glass — `--background` mixed to 70% with a `backdrop-filter` blur,
+  so it follows the theme with no dark rule and takes the colour of the transcript under
+  it; the footer's `--secondary` is thinned with it, and 70% is the floor because that is
+  what a browser without `backdrop-filter` is left with. Its progress bar is a two-div
   meter.
 - **No `dangerouslySetInnerHTML`.** `schema-display` splits on a captured
   `/(\{[^}]+\})/` and renders spans.

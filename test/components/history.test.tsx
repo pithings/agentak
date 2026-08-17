@@ -33,13 +33,18 @@ describe("the history page", () => {
     expect(screen.queryByRole("button", { name: "Conversations" })).toBeNull();
   });
 
-  it("keeps the button at the head of the bar before the conversation is named", () => {
+  it("keeps the button with the others at the end of the bar", () => {
     surface({ history: HISTORY });
     const header = screen.getByRole("button", { name: "Conversations" }).parentElement;
-    // The title holds the two ends apart, so an unnamed conversation needs the
-    // room it would have taken — else the row packs right and the button with it.
-    expect(header?.firstElementChild?.getAttribute("aria-label")).toBe("Conversations");
-    expect(header?.children[1].getAttribute("style")).toContain("flex: 1");
+    // The title leads and the buttons follow it, in the order they are reached
+    // for. An unnamed conversation still takes the room the title would have,
+    // else the row packs right and nothing holds its two ends apart.
+    expect(header?.firstElementChild?.getAttribute("style")).toContain("flex: 1");
+    expect([...(header?.children ?? [])].map((el) => el.getAttribute("aria-label"))).toEqual([
+      null,
+      "New conversation",
+      "Conversations",
+    ]);
   });
 
   it("lists the stored conversations, and says which one is live", () => {
@@ -84,6 +89,50 @@ describe("the history page", () => {
     surface({ history: HISTORY });
     open();
     expect(screen.queryByRole("button", { name: /^Forget/ })).toBeNull();
+  });
+
+  it("offers the newest few under the greeting, and the way to the rest", () => {
+    const opened: string[] = [];
+    const many = [
+      ...HISTORY,
+      { id: "c", title: "Third", updated: Date.now() - 3 * MINUTE },
+      { id: "d", title: "Fourth", updated: Date.now() - 4 * MINUTE },
+    ];
+    surface({ history: many, onOpenConversation: (id) => opened.push(id) });
+
+    const recent = screen.getByRole("group", { name: "Recent chats" });
+    expect(recent.textContent).toContain("Third");
+    // Three, and no more — the fourth is what the page is for.
+    expect(recent.textContent).not.toContain("Fourth");
+
+    fireEvent.click(screen.getByRole("button", { name: /Two plans/ }));
+    expect(opened).toEqual(["a"]);
+  });
+
+  it("shows no recent block where nothing opens a row", () => {
+    surface({ history: HISTORY });
+    expect(screen.queryByRole("group", { name: "Recent chats" })).toBeNull();
+  });
+
+  it("shows no recent block where nothing is stored yet", () => {
+    surface({ history: [], onOpenConversation: () => {} });
+    expect(screen.queryByRole("group", { name: "Recent chats" })).toBeNull();
+  });
+
+  it("goes with the greeting once something is said", () => {
+    surface({
+      history: HISTORY,
+      messages: [{ id: "m1", parts: [{ kind: "text", text: "Hello" }], role: "user" }],
+      onOpenConversation: () => {},
+    });
+    expect(screen.queryByRole("group", { name: "Recent chats" })).toBeNull();
+  });
+
+  it("opens the page from the last row", () => {
+    surface({ history: HISTORY, onOpenConversation: () => {} });
+
+    fireEvent.click(screen.getByRole("button", { name: "All conversations" }));
+    expect(screen.getByRole("heading", { name: "Conversations" })).toBeTruthy();
   });
 
   it("holds one page at a time", () => {

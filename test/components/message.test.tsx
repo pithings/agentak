@@ -189,6 +189,32 @@ describe("ChatMessage tool part", () => {
     ]);
   });
 
+  it("asks for a reason only where one is wanted", () => {
+    const answers: [string, boolean, string | undefined][] = [];
+    render(
+      <ChatMessage
+        message={message({ ...call, status: "pending" })}
+        onRespond={(id, approved, reason) => answers.push([id, approved, reason])}
+      />,
+    );
+
+    // The field is what the third button opens, and Escape closes it again
+    // without answering the gate.
+    expect(document.querySelector("input")).toBeNull();
+    fireEvent.click(screen.getByText("Deny with reason"));
+    const field = document.querySelector("input") as HTMLInputElement;
+    fireEvent.keyDown(field, { key: "Escape" });
+    expect(document.querySelector("input")).toBeNull();
+    expect(answers).toEqual([]);
+
+    fireEvent.click(screen.getByText("Deny with reason"));
+    fireEvent.input(document.querySelector("input") as HTMLInputElement, {
+      target: { value: "  not this page  " },
+    });
+    fireEvent.keyDown(document.querySelector("input") as HTMLInputElement, { key: "Enter" });
+    expect(answers).toEqual([["call-1", false, "not this page"]]);
+  });
+
   it("reports the outcome once the call is done", () => {
     render(
       <ChatMessage

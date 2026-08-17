@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button.tsx";
-import { ChevronDownIcon } from "@/lib/icons.tsx";
+import { XIcon } from "@/lib/icons.tsx";
 
 /**
- * The host's own chrome for the chatbox — back to the live agent, and minimise.
+ * The host's own chrome for the chatbox — back to the live agent, and close.
  *
  * It goes on the agent's header, beside the new conversation and the stored
  * ones, so the box has one title bar. The element projects it there through
@@ -40,14 +40,18 @@ export function ChatActions({ onLive, onClose }: { onLive?: () => void; onClose:
           </svg>
         </Button>
       )}
+      {/* A cross, not a chevron: the button is at the end of the bar, where a
+          panel's close is, and it reads as "put this away" whichever layout the
+          surface is in. Nothing is lost — the box hides and keeps its
+          transcript. */}
       <Button
-        aria-label="Minimise the assistant"
+        aria-label="Close the assistant"
         onClick={onClose}
         size="icon-sm"
-        title="Minimise"
+        title="Close"
         variant="ghost"
       >
-        <ChevronDownIcon />
+        <XIcon />
       </Button>
     </>
   );

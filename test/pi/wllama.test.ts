@@ -1,5 +1,5 @@
 import type { AssistantMessageEvent, Context, Model } from "@earendil-works/pi-ai";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   useWllamaSource,
@@ -120,6 +120,26 @@ describe("useWllamaSource", () => {
     expect(wllamaSupported()).toBe(true);
 
     Object.defineProperty(globalThis, "location", { configurable: true, value: location });
+    delete (globalThis as { Worker?: unknown }).Worker;
+  });
+
+  it("offers no row on a phone, whatever the phone can load", () => {
+    globalThis.Worker = class {} as unknown as typeof Worker;
+    expect(wllamaSupported()).toBe(true);
+
+    // A coarse pointer over a screen the size of the device, which is the one
+    // thing a host cannot answer for by shipping its own build.
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("coarse") }));
+    vi.stubGlobal("screen", { width: 390 });
+    expect(wllamaSupported()).toBe(false);
+    useWllamaSource({ module: async () => ({}) });
+    expect(wllamaSupported()).toBe(false);
+
+    // A laptop with a touch display is not one.
+    vi.stubGlobal("screen", { width: 1512 });
+    expect(wllamaSupported()).toBe(true);
+
+    vi.unstubAllGlobals();
     delete (globalThis as { Worker?: unknown }).Worker;
   });
 });

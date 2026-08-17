@@ -40,7 +40,8 @@ function shelfStorage(storage: PiStorage, origin: string): PiStorage {
   };
   // Answered only where the area answers it: a store without `remove` is one
   // the history writes an empty value to instead, and this must not hide that.
-  if (storage.remove) shelf.remove = (name) => storage.remove?.(key(name));
+  const remove = storage.remove?.bind(storage);
+  if (remove) shelf.remove = (name) => remove(key(name));
   return shelf;
 }
 
@@ -55,7 +56,7 @@ export interface OriginHistory extends PiHistory {
 /**
  * The conversations of whichever site is in front. Pass it as the `history`
  * option of `createPiSession()`, and give it the origin the panel opened on —
- * `activeOrigin()` — because a `PiHistory` answers synchronously and
+ * `activeOrigin()` — because a `PiHistory` lists synchronously and
  * `chrome.tabs` does not.
  */
 export function originHistory(storage: PiStorage, origin: string): OriginHistory {
@@ -79,6 +80,13 @@ export function originHistory(storage: PiStorage, origin: string): OriginHistory
   const shelfOf = (id: string) => shelf(owners.get(id) ?? here);
 
   return {
+    // The shelf in front, because that is the list the panel opens on. Read
+    // rather than held: another site's shelf is another wait, and `follow()`
+    // does that one itself.
+    get ready() {
+      return shelf(here).ready;
+    },
+
     list: () => shelf(here).list(),
 
     read: (id) => shelfOf(id).read(id),
@@ -103,10 +111,17 @@ export function originHistory(storage: PiStorage, origin: string): OriginHistory
         if (mine !== turn || site === here) return;
         here = site;
 
+        // A shelf reached for the first time reads its index out of the area,
+        // and an unread shelf lists nothing — which would open a new
+        // conversation on a site that already has some.
+        const moving = shelf(site);
+        await moving.ready;
+        if (mine !== turn) return;
+
         // The transcript belongs to the site it was had on, so the panel moves
         // to this site's own: the newest conversation it holds, or a new one.
         // Both write the conversation being left first, so nothing is lost.
-        const newest = shelf(site).list()[0];
+        const newest = moving.list()[0];
         if (newest && session.openConversation) session.openConversation(newest.id);
         else session.reset();
       };

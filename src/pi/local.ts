@@ -12,6 +12,8 @@
  * alone, and every entry says what it weighs before the click.
  */
 
+import { isPhone } from "../lib/utils.ts";
+
 /** Pinned: the module, the wasm and the model loader must be one build. */
 const WLLAMA_VERSION = "3.5.1";
 
@@ -67,10 +69,19 @@ export const useWllamaSource = (next: WllamaSource | undefined): void => {
  * that passed a source of its own has already answered that question, and the
  * row is offered wherever it says: the side panel ships wllama, its wasm and
  * its worker, so it does. See `extension/wllama/`.
+ *
+ * A phone is left out whatever it can load. The smallest model here is a 229 MB
+ * download over what is often a metered connection, the rest are hundreds of MB
+ * more, and the weights then sit in a wasm heap a mobile browser is quick to
+ * reclaim — a background tab is discarded and the download starts again. What a
+ * phone does not reclaim it answers slowly, on the one core the page gets and
+ * on a battery. The row would be a long wait for a turn the free providers
+ * answer at once, so it is not offered; every other provider still is.
  */
 export const wllamaSupported = (): boolean =>
   typeof WebAssembly === "object" &&
   typeof Worker === "function" &&
+  !isPhone() &&
   (source !== fromCdn || globalThis.location?.protocol !== "chrome-extension:");
 
 /** What one entry is written from. The rest is the same for every local model. */

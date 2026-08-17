@@ -48,7 +48,7 @@ for a value. Everything comes from a subpath:
   anthropic and openai sdks are ~100 KB each and land in chunks of their own.
 
 wllama goes one further: it is not a dependency of this package at all, so `local.ts`
-imports a CDN url at runtime. See **The sixth runs llama.cpp here** below.
+imports a CDN url at runtime. See **The local one runs llama.cpp here** below.
 
 ### The catalogs come from esm.sh
 
@@ -62,9 +62,9 @@ to write a version and pin it. The export is named from the module — `<id>.mod
 its retry runs again.
 
 This is the whole of the keyed providers' loading. There is no bundled copy behind it, so
-the five catalog chunks a build used to carry — 220 KB, OpenRouter's 136 KB of it — are
-gone from `playground/dist` and `extension/dist` alike, and `dist/` names the subpath
-nowhere.
+the catalog chunks a build used to carry — 200 KB over the two gateways, OpenRouter's
+136 KB of it — are gone from `playground/dist` and `extension/dist` alike, and `dist/`
+names the subpath nowhere.
 
 The cost is that a runtime with no network, or one whose policy allows no remote module,
 has no catalog at all. `useCatalogSource()` is the seam for both: a host passes its own
@@ -96,23 +96,30 @@ so `streamFor()` picks the module per turn and a gateway model costs no extra co
 
 | Provider                                 | Api                                |
 | ---------------------------------------- | ---------------------------------- |
+| Vercel AI Gateway, OpenRouter (gateways) | per model — whichever api it names |
+| On Device (wllama)                       | wllama — on the device             |
+| LLM7, OVHcloud, Kilo, OpenCode Zen       | openai-completions — free, no key  |
 | Chrome Built-in AI                       | chrome-prompt — on the device      |
-| Local (wllama)                           | wllama — on the device             |
-| LLM7, Kilo, OVHcloud, OpenCode Zen       | openai-completions — free, no key  |
-| Vercel AI Gateway, OpenRouter (gateways) | per model — any of the three below |
-| OpenAI                                   | openai-responses                   |
-| Groq, Cerebras                           | openai-completions                 |
+
+That is the picker's order too, and it is deliberate: a key reaches every vendor's newest
+model, so the two gateways lead, and the six that ask for none follow. Inside the free
+group the device's own comes first, then the two a page can reach, then the two only the
+extension can, and Chrome's own last — a 4 GB download that answers text alone.
 
 `SUPPORTED_APIS` is `anthropic-messages`, `chrome-prompt`, `openai-completions`,
 `openai-responses` and `wllama`; a catalog entry outside them is filtered out of the
-settings page.
+settings page. Today no provider here lists an `openai-responses` model — the gateways
+carry `anthropic-messages` and `openai-completions` — but the api stays in the list
+because a gateway catalog read at `@latest` may name one tomorrow.
 Adding a provider is an entry plus its `defaultModelId`. `test/pi/providers.test.ts`
 loads every catalog and fails if a default no longer exists, or if a listed model needs
 an api this build lacks.
 
-Left out on purpose: providers that need an account id in the url (Cloudflare), an
-OAuth flow (Copilot, Codex), signed requests (Bedrock, Vertex), or another sdk for one
-provider each (Google, Mistral).
+Left out on purpose: the single-vendor providers a gateway already covers (OpenAI, Groq,
+Cerebras — one key each for one vendor's models, where OpenRouter's key reaches all of
+them), providers that need an account id in the url (Cloudflare), an OAuth flow (Copilot,
+Codex), signed requests (Bedrock, Vertex), or another sdk for one provider each (Google,
+Mistral).
 
 ### CORS decides who is listed
 
@@ -121,7 +128,7 @@ preflight the `Authorization` header forces. `Access-Control-Allow-Origin` is th
 server's to send: a provider that sends none cannot be reached from a page, and no
 request header changes that.
 
-Seven of the nine that answer over the network send it. `cors: false` names the two that
+Four of the six that answer over the network send it. `cors: false` names the two that
 do not — **Kilo Gateway** and **OpenCode Zen** — and `availableProviders()` drops them
 from what a page offers, rather than letting the page take a click that ends in a console
 error. `createPiSession()` reads that list for its rows _and_ for the provider it opens
@@ -129,9 +136,9 @@ on, so one stored in the panel is not restored on a page.
 
 `corsFree()` is the exception, and the whole of the runtime check: a
 `chrome-extension:` document fetches through `host_permissions`, which the preflight
-never gates, so the panel lists all nine. Both blocked origins are in
+never gates, so the panel lists all six. Both blocked origins are in
 `extension/manifest.json`. The panel served by vite in dev is an ordinary page, so it
-sees the seven — load it unpacked to get the other two. The local row is there as well:
+sees the four — load it unpacked to get the other two. The local row is there as well:
 the panel ships wllama rather than importing it, which is what `wllamaSupported()` reads.
 See [`../.agents/playground.md`](playground.md).
 
@@ -145,7 +152,7 @@ curl -sI -X OPTIONS https://opencode.ai/zen/v1/chat/completions \
 ```
 
 A consumer embedding the chat in their own page is in the same position as the
-playground: the seven, unless they proxy the rest themselves.
+playground: the four, unless they proxy the rest themselves.
 
 **The origin header is not the only one a preflight refuses.** A provider that answers
 one still names which request headers it takes, and **Vercel AI Gateway** takes a short
@@ -199,7 +206,7 @@ open the page.
 The four sections are on the screen together, shortest first, so the model list is last
 and the page scrolls as one column. A catalog lands in that list, under a spinner. The
 providers are a `DropdownMenu` rather than a list of their own: which one is set is one
-line, and nine rows above the models would be most of the page.
+line, and eight rows above the models would be most of the page.
 
 **Nothing is chosen on a fresh surface** — no provider, and so no model. The first
 message opens the settings page instead of going to a provider nobody picked; the text is
@@ -259,7 +266,7 @@ Their paid models are not listed: LLM7 and Zen answer `invalid_api_key` for thos
 only the free tier is written down. Free tiers rotate — a model that starts to 404 is
 a line to delete.
 
-### The fifth is not a request at all
+### Chrome's own is not a request at all
 
 **Chrome Built-in AI** is Gemini Nano, running in the browser. Chrome exposes it as the
 `LanguageModel` global — the Prompt API — so the turn never leaves the device: no
@@ -306,9 +313,9 @@ callback, which cannot yield, so the percentage is read on a timer and the block
 as soon as `create()` settles. The mapping back to the api drops thinking, so the model
 never reads its own download log.
 
-### The sixth runs llama.cpp here
+### The local one runs llama.cpp here
 
-**Local (wllama)** is [wllama](https://github.com/ngxson/wllama), which is llama.cpp
+**On Device (wllama)** is [wllama](https://github.com/ngxson/wllama), which is llama.cpp
 compiled to WebAssembly. A GGUF model is downloaded once and answers in a worker in this
 tab, so the turn never leaves the device: no endpoint, no key, no preflight and no rate
 limit. `free: true` for the same reason as the rest, and every rate is zero because
@@ -366,14 +373,23 @@ model waits for hundreds of MB, which is told as a thinking block on a timer, th
 Gemini Nano download is; wllama caches the file in the browser, so the second visit loads
 from disk and the block never appears. `unloadWllama()` frees it all.
 
-**Two things gate it.** `wllamaSupported()` keeps the row out of the picker where there is
+**`wllamaSupported()` gates it**, and keeps the row out of the picker where there is
 no `WebAssembly`, no `Worker`, or the document is an MV3 page running on the CDN default —
 an extension may load neither a remote script nor a worker built at run time. A host that
 passed a source of its own has answered that for its own document, and the gate takes its
 word: the side panel ships wllama, its wasm and its worker, and offers the row. See
 [`../.agents/playground.md`](playground.md) for the worker, which is the hard half.
-The second gate is the machine: a laptop answers a 0.6B model at a readable speed, and a
-phone may not.
+
+**A phone is left out** whatever it can load, which is the one part of the gate a host
+cannot answer for by shipping its own build. The smallest model is a 229 MB download over
+a connection that is often metered, the rest are hundreds of MB more, and the weights then
+sit in a wasm heap a mobile browser reclaims as soon as the tab goes to the back — the
+download then starts again. What it does not reclaim it answers slowly, on the one core
+the page gets and on a battery. So the row is a long wait for a turn the free providers
+answer at once, and it is not offered; every other provider still is. `isPhone()` in
+`lib/utils.ts` is the test — a coarse pointer over a screen, the device's and not the
+viewport's, of at most 820px, so a docked side panel and a laptop with a touch display
+are neither of them one.
 
 ## The page's tools
 
@@ -447,15 +463,35 @@ running: a browser that carries no WebMCP must not pay for one that does.
 
 `storage.ts` names the four things the picker decides — the key per provider, the
 provider, the model per provider and the level per model — and holds them in a `PiStorage`,
-a store with `get(name)` and `set(name, value)`. The library writes nothing to the browser
-on its own: the default is one memory store shared by every session on the page, so a key
-typed in one conversation answers in the next and goes when the page goes.
+a store with `get(name)` and `set(name, value)`, both asynchronous. The library writes
+nothing to the browser on its own: the default is one memory store shared by every session
+on the page, so a key typed in one conversation answers in the next and goes when the page
+goes.
 
 A host that wants more passes the `storage` option: `browserStorage()` for `localStorage`,
-as the playground and the panel do, or a store of its own. Both methods are synchronous,
-so an async store such as `chrome.storage` is read by the host and passed through `apiKey`
-instead. `remove` is a third method and an optional one: a store without it drops a value
-by writing it empty, which reads back as nothing.
+as the playground does, or a store of its own — `chrome.storage.local`, as the panel does.
+`remove` is a third method and an optional one: a store without it drops a value by writing
+it empty, which reads back as nothing.
+
+**Every method answers with a promise**, because most stores worth passing cannot answer at
+once: `chrome.storage` and IndexedDB reply later, and a store that encrypts what it holds
+waits on WebCrypto to read one value at all. So the session is built on nothing and takes
+what the store held a beat after — the keys and the provider first, then the catalog, the
+model and the level that follow from it, exactly as they follow a provider picked by hand.
+Nothing has to wait for that: the surface redraws when each lands. `PiSession.ready` is for
+a host that would rather not show a chat with every choice forgotten and then change it
+under the reader — the panel mounts on it, because a side panel is the whole document.
+
+Two things guard the window between asking the store and hearing back. A key typed while
+the store is answering sits **over** what it held, rather than under it, and a provider,
+model or level chosen by hand in that window is counted — `picked` — so the answer arriving
+after it is dropped rather than applied. Without that, a person who picks while the store
+reads is overruled by a file.
+
+A write is one nobody waits for, so `createChoices` swallows a write that did not land: a
+choice the store refused is one this browser forgets, which is what a page with denied
+storage already gets. The history is the one caller that does wait, and it waits for the
+opposite reason — see below.
 
 The thinking level is the one choice with a default worth naming. A model runs at the level
 the conversation was written at, then the level this browser last used it at, then the last
@@ -494,8 +530,8 @@ what `retryFrom` does, would otherwise send into the one being replaced.
 
 ## The conversations a session keeps
 
-`history: true` on `createPiSession()`, and the chat grows a history page: the clock at the
-head of the header, listing what this session has stored, with the live one marked. Picking
+`history: true` on `createPiSession()`, and the chat grows a history page: the clock in the
+header, listing what this session has stored, with the live one marked. Picking
 one is `restore()` under the covers, so the chat never unmounts. `history.ts` is the store
 behind it, over the same `PiStorage` as the keys — memory by default, `localStorage` where
 a host passed `browserStorage()`, or a `PiHistory` of the host's own where neither will do.
@@ -529,9 +565,18 @@ Off by default: the library stores nothing unasked, and a host already keeping i
 
 Two keys, not one: an index of what exists, and one entry per conversation. The page reads
 the index alone, so listing never parses a transcript, and one is dropped by its own key
-rather than by rewriting the rest. Twenty are kept; past that the oldest goes. `set` reports
-nothing — `localStorage` throws when it is full and `browserStorage()` swallows it — so a
-write is read back, and one that will not fit gives up older conversations until it lands.
+rather than by rewriting the rest. Twenty are kept; past that the oldest goes. A full store
+is reported in one of two ways — `localStorage` throws and `browserStorage()` swallows it,
+`chrome.storage` rejects — so the write is both awaited and read back, and one that will
+not fit gives up older conversations until it lands. The eviction awaits the removal it
+asked for: room is only free once the transcript that held it is really gone.
+
+`list()` is a snapshot field, so it answers from memory: the index is read once, into
+`items`, and `ready` is when that landed. `read()` is the one that fetches, because a
+transcript is only wanted when a row is picked. A conversation kept or forgotten before the
+index arrives is remembered in `decided` and the index is merged around it rather than
+assigned over it — nearly never taken, since a chat lists nothing until it has read the
+index, but the alternative is a row that opens nothing.
 
 [`session.md`](session.md) is the other half: `history`, `conversationId` and
 `openConversation` are the seam the page runs on, and a harness that stores nothing reports

@@ -111,8 +111,9 @@ keeps the wasm parse and the syntax pass off a re-render.
 popover over it: a provider list and a list of conversations are read, and a panel the
 height of a phone keyboard is not where either belongs. `chat.tsx` holds one flag per page
 and opens only one at a time — opening either puts the other away, so the transcript is
-never behind two pages. The header follows: the back arrow takes the leading spot from the
-history button while a page is up, and the title says which page it is.
+never behind two pages. The header follows: while a page is up the back arrow leads the
+bar, in front of the title, which says which page it is — and the buttons the page stands
+for go off the bar until it is closed.
 
 The settings page also puts the composer away — its `hidden` prop, which is `display: none`
 and not an unmount, so the uncontrolled textarea keeps its draft. Nothing is said to a

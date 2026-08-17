@@ -30,10 +30,19 @@ const S = {
     fontWeight: "500",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+    // The name is written by whoever sent the first message, so it arrives in
+    // whatever case they typed. The bar heads it the way a heading is headed —
+    // the drawing only, so what is stored and what the tooltip says are the
+    // words themselves. `capitalize` heads each word and lowers none, so a name
+    // that already carries "API" keeps it.
+    textTransform: "capitalize",
+    // A label of the bar rather than part of the conversation: a drag across it
+    // is a drag on chrome, and it must not carry a cut-off title away.
+    userSelect: "none",
   },
-  // The title is what holds the two ends of the bar apart, so a conversation
-  // with no name yet needs the room it would have taken — without it the row
-  // packs to the right and the leading button travels with it.
+  // A conversation with no name yet takes the room the title would have taken,
+  // so a leading back arrow stays at the leading edge and the buttons at the
+  // other one — the row is the same row, named or not.
   gap: { flex: "1" },
 } satisfies Record<string, Sx>;
 
@@ -45,8 +54,8 @@ export interface ChatHeaderProps {
   actions?: ComponentChildren;
   /**
    * The way out of the settings page. With it the bar leads with a back arrow
-   * and drops the new-conversation button — the page is not a conversation, and
-   * one title bar serves both.
+   * and drops the buttons the page replaces — the page is not a conversation,
+   * and one title bar serves both.
    */
   onBack?: () => void;
   /**
@@ -56,14 +65,22 @@ export interface ChatHeaderProps {
    */
   onSettings?: () => void;
   /**
-   * The way to the stored conversations. It leads the bar, because the list is
-   * where a conversation comes from and the settings are where it is set up.
-   * Absent where a harness stores none, and while a page is up.
+   * The way to the stored conversations. Absent where a harness stores none,
+   * and while a page is up.
    */
   onHistory?: () => void;
 }
 
-/** The chat's title bar: the title, the chat's own buttons, and the host's. */
+/**
+ * The chat's title bar: the title first, then every button after it.
+ *
+ * One rule holds the row together — what the bar *is* leads it, and what the
+ * bar *does* trails it. So the title is at the leading edge, and the controls
+ * collect at the other in the order they are reached for: a new conversation,
+ * the stored ones, the settings, and last of all the host's own chrome. The
+ * back arrow is the one thing before the title, because on a page it is not a
+ * control of the chat but the way out of the page the title names.
+ */
 export function ChatHeader({
   onReset,
   title,
@@ -77,16 +94,6 @@ export function ChatHeader({
       {onBack ? (
         <Button aria-label="Back" onClick={onBack} size="icon-sm" title="Back" variant="ghost">
           <ArrowLeftIcon />
-        </Button>
-      ) : onHistory ? (
-        <Button
-          aria-label="Conversations"
-          onClick={onHistory}
-          size="icon-sm"
-          title="Conversations"
-          variant="ghost"
-        >
-          <ClockIcon />
         </Button>
       ) : null}
 
@@ -110,6 +117,18 @@ export function ChatHeader({
           <PlusIcon />
         </Button>
       )}
+
+      {onHistory ? (
+        <Button
+          aria-label="Conversations"
+          onClick={onHistory}
+          size="icon-sm"
+          title="Conversations"
+          variant="ghost"
+        >
+          <ClockIcon />
+        </Button>
+      ) : null}
 
       {/* After the chat's own buttons and before the host's: the page belongs to
           the chat, and whatever chrome the host owns stays at the end. */}

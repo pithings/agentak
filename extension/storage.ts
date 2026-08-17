@@ -7,64 +7,35 @@
  * one area per extension rather than one per document — so two side panels, in
  * two windows, are looking at the same keys.
  *
- * `PiStorage` reads synchronously and `chrome.storage` does not, so the area is
- * read once, in full, before the panel mounts. After that the map is the
- * answer and every write goes both places: into the map, which is what the next
- * read sees, and out to the area, which answers later.
- *
- * That answer is handed back rather than dropped. The map would otherwise read
- * back a transcript the area refused for want of room, and the history reads a
- * write back to learn it has to give up an older conversation — so a full area
- * would look like a stored one, and the chat would list a conversation that was
- * not there to open. A write that fails for any other reason is a value that
- * lives as long as the panel does, which is what a page whose storage is denied
- * already gets.
+ * The area is read and written as it is, with nothing kept in front of it: a
+ * `PiStorage` answers with promises and so does `chrome.storage`. What the panel
+ * used to hold in a map is what the session holds anyway, and the map was the
+ * one thing that could lie — it read back a transcript the area had refused for
+ * want of room, and the history learns a store is full by reading a write back.
+ * Now a full area rejects, which is the answer the history is looking for. A
+ * write that fails for any other reason is a value that lives as long as the
+ * panel does, which is what a page whose storage is denied already gets.
  *
  * No prefix on the names. The area belongs to this extension alone, unlike the
  * `localStorage` of a host page that a chat is only a guest in.
  */
 import type { PiStorage } from "@/pi/storage.ts";
 
-/** Everything the area holds, then a store over it. Await before mounting. */
-export async function chromeStorage(): Promise<PiStorage> {
-  const values = new Map<string, string>();
-
-  // Guarded whole: a panel that cannot reach its area still has to open. It
-  // then forgets on close, which is what a page with denied storage gets.
-  try {
-    for (const [name, value] of Object.entries(await chrome.storage.local.get(null))) {
-      if (typeof value === "string") values.set(name, value);
-    }
-
-    // The other window's panel writes to the same area. Hearing it keeps a key
-    // typed there from being unknown here.
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (area !== "local") return;
-      for (const [name, change] of Object.entries(changes)) {
-        if (typeof change.newValue === "string") values.set(name, change.newValue);
-        else values.delete(name);
-      }
-    });
-  } catch {
-    // Nothing stored, then.
-  }
-
+export function chromeStorage(): PiStorage {
   return {
-    get: (name) => values.get(name),
-
-    set(name, value) {
-      values.set(name, value);
-      const written = chrome.storage.local.set({ [name]: value });
-      // Handled here so a caller that ignores the answer — every caller but the
-      // history — leaves no unhandled rejection behind. The promise handed back
-      // still rejects for the one caller that awaits it.
-      written.catch(() => {});
-      return written;
+    async get(name) {
+      try {
+        const value: unknown = (await chrome.storage.local.get(name))[name];
+        return typeof value === "string" ? value : undefined;
+      } catch {
+        // A panel that cannot reach its area still has to open. It then forgets
+        // on close, which is what a page with denied storage gets.
+        return undefined;
+      }
     },
 
-    remove(name) {
-      values.delete(name);
-      void chrome.storage.local.remove(name).catch(() => {});
-    },
+    set: (name, value) => chrome.storage.local.set({ [name]: value }),
+
+    remove: (name) => chrome.storage.local.remove(name),
   };
 }

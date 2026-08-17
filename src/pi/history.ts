@@ -25,10 +25,19 @@ export interface PiHistoryEntry {
 }
 
 export interface PiHistory {
+  /**
+   * Resolved once the list is in hand. The store answers later, so the page
+   * lists nothing until it does — `PiSession.ready` waits on this, and a host
+   * that mounts on it never shows an empty history that fills in afterwards.
+   *
+   * Optional: a history of the host's own that has its list from the start
+   * answers nothing here, and `await` on nothing is nothing.
+   */
+  ready?: Promise<void>;
   /** Newest first. The same array until something changes it. */
   list(): PiHistoryEntry[];
   /** One transcript, if the shape is still one this build reads. */
-  read(id: string): PiSnapshot | undefined;
+  read(id: string): Promise<PiSnapshot | undefined>;
   /** Write one under its id. An empty conversation is not kept. */
   keep(id: string, snapshot: PiSnapshot, title: string): void;
   forget(id: string): void;
@@ -64,11 +73,25 @@ export function createHistory(storage: PiStorage = pageStorage, limit = LIMIT): 
    * the array is a snapshot field, so a fresh one each read would redraw the
    * list under the reader. One store shared by two sessions is the host's to
    * think about, exactly as the keys already are.
+   *
+   * Empty until the store answers, because the index is read rather than held.
    */
-  let items = storedIndex();
+  let items: PiHistoryEntry[] = [];
 
-  function storedIndex(): PiHistoryEntry[] {
-    const raw = storage.get(INDEX);
+  /**
+   * What this session decided before the store answered: a conversation it kept,
+   * and one it forgot. The index lands after either, and must undo neither — so
+   * it is merged around them rather than assigned over them. Nearly always
+   * empty: a chat lists nothing until it has read the index, so there is nothing
+   * to decide about yet.
+   */
+  const decided = new Set<string>();
+
+  /** A store that will not answer holds nothing, exactly as an empty one does. */
+  const read = (name: string) => storage.get(name).catch(() => undefined);
+
+  async function storedIndex(): Promise<PiHistoryEntry[]> {
+    const raw = await read(INDEX);
     if (!raw) return [];
     try {
       const value: unknown = JSON.parse(raw);
@@ -78,18 +101,40 @@ export function createHistory(storage: PiStorage = pageStorage, limit = LIMIT): 
     }
   }
 
-  const writeIndex = () => storage.set(INDEX, JSON.stringify(items));
+  const ready = storedIndex().then((stored) => {
+    if (decided.size === 0) {
+      items = stored;
+      return;
+    }
+    // What was decided here is the newer, so it heads the list.
+    items = [...items, ...stored.filter((entry) => !decided.has(entry.id))];
+    for (const gone of items.slice(limit)) void forget(gone.id);
+    writeIndex();
+  });
+
+  // Nobody waits for the index to land, so a store that refuses it is a store
+  // this session lists from memory alone.
+  const writeIndex = () => void storage.set(INDEX, JSON.stringify(items)).catch(() => {});
 
   // A store need not answer `remove`, and an empty value reads back as nothing.
-  const drop = (name: string) => {
-    if (storage.remove) storage.remove(name);
-    else storage.set(name, "");
+  const drop = async (name: string) => {
+    try {
+      await (storage.remove ? storage.remove(name) : storage.set(name, ""));
+    } catch {
+      // As gone as this store will let it be.
+    }
   };
 
-  const forget = (id: string) => {
+  /**
+   * Out of the index now, out of the store when it answers. The promise is what
+   * the full-store retry below waits on: room is only free once the transcript
+   * that held it is really gone.
+   */
+  const forget = (id: string): Promise<void> => {
+    decided.add(id);
     items = items.filter((entry) => entry.id !== id);
-    drop(entryKey(id));
     writeIndex();
+    return drop(entryKey(id));
   };
 
   /**
@@ -98,9 +143,8 @@ export function createHistory(storage: PiStorage = pageStorage, limit = LIMIT): 
    * A full store is reported in one of two ways, and neither is an error the
    * caller sees. `localStorage` throws and `browserStorage()` swallows it, so
    * the write is read back: what came back short was never written.
-   * `chrome.storage` sends the write off and answers later, so the promise is
-   * awaited. Both are checked, because a store answers one way or the other and
-   * this does not need to know which.
+   * `chrome.storage` rejects instead. Both are checked, because a store answers
+   * one way or the other and this does not need to know which.
    */
   async function landed(id: string, json: string): Promise<boolean> {
     try {
@@ -108,7 +152,7 @@ export function createHistory(storage: PiStorage = pageStorage, limit = LIMIT): 
     } catch {
       return false;
     }
-    return storage.get(entryKey(id))?.length === json.length;
+    return (await read(entryKey(id)))?.length === json.length;
   }
 
   /**
@@ -129,23 +173,25 @@ export function createHistory(storage: PiStorage = pageStorage, limit = LIMIT): 
     while (wanted()) {
       const stored = await landed(id, json);
       if (!wanted()) {
-        if (stored) drop(entryKey(id)); // written after it was dropped
+        if (stored) void drop(entryKey(id)); // written after it was dropped
         break;
       }
       if (stored) return true;
 
       const oldest = items.filter((entry) => entry.id !== id).at(-1);
       if (!oldest) return false;
-      forget(oldest.id);
+      await forget(oldest.id);
     }
     return true;
   }
 
   return {
+    ready,
+
     list: () => items,
 
-    read(id) {
-      const raw = storage.get(entryKey(id));
+    async read(id) {
+      const raw = await read(entryKey(id));
       if (!raw) return undefined;
       try {
         return readPiSnapshot(JSON.parse(raw));
@@ -159,8 +205,9 @@ export function createHistory(storage: PiStorage = pageStorage, limit = LIMIT): 
       // and the one it held is already stored under its own id.
       if (snapshot.messages.length === 0) return;
 
+      decided.add(id);
       items = [{ id, title, updated: Date.now() }, ...items.filter((entry) => entry.id !== id)];
-      for (const gone of items.slice(limit)) forget(gone.id);
+      for (const gone of items.slice(limit)) void forget(gone.id);
 
       // The index goes out now rather than after the answer: a store that
       // answers later would otherwise leave the live conversation unlisted
@@ -168,10 +215,12 @@ export function createHistory(storage: PiStorage = pageStorage, limit = LIMIT): 
       // index never keeps a row whose transcript is not there to open.
       writeIndex();
       void put(id, JSON.stringify(snapshot)).then((stored) => {
-        if (!stored) forget(id);
+        if (!stored) void forget(id);
       });
     },
 
-    forget,
+    forget(id) {
+      void forget(id);
+    },
   };
 }

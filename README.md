@@ -14,7 +14,7 @@ included Pi agent or connect the UI to your own agent.
 - Streams answers and renders Markdown and code blocks
 - Supports tool calls, approvals, queued messages, and conversation restore
 - Includes provider, model, thinking level, and API key controls
-- Works with 9 AI providers, including free options that need no API key
+- Works with 8 AI providers, including free options that need no API key
 - Uses inline styles, with light and dark themes
 - Includes a Chrome MV3 side panel
 

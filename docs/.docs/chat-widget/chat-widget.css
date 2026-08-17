@@ -77,7 +77,12 @@
 }
 
 /* A pill that says what it opens, rather than a circle the reader must read an
-   icon out of. The brain is the mark the chat gives its own thinking. */
+   icon out of. The brain is the mark the chat gives its own thinking.
+
+   The bottom-right corner is its place at every width. The top-right one is the
+   site's navigation on a narrow screen and the rail's own header on a wide one,
+   so a button that moved between them would be looked for in the corner it had
+   left. It stays where the sheet grows from, which is `--chat-origin`. */
 .chat-button {
   position: fixed;
   right: 1rem;
@@ -184,17 +189,6 @@
     visibility: visible;
     transform: none;
     transition: transform var(--chat-move) ease-out;
-  }
-}
-
-/* The button stands where the rail's own header was, so minimising and opening
-   again happen at the same corner of the screen. Only on a screen wide enough
-   to hold it beside the header: below that the top-right corner is the site's
-   navigation, so the button keeps to the bottom, out of its way. */
-@media (min-width: 90.625rem) {
-  .chat-button {
-    top: 1rem;
-    bottom: auto;
   }
 }
 

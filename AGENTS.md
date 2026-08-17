@@ -102,8 +102,16 @@ import-graph tests make sure each framework is only imported by its own wrapper.
 
 `AgentChat` receives `actions` and `emptyActions` with its required `session` prop.
 `actions` appears at the end of the chat header. Use it for host controls such as a
-minimize button. `emptyActions` appears below the greeting and is only shown before the
+close button. `emptyActions` appears below the greeting and is only shown before the
 first message.
+
+The header reads in one direction: what the bar is, then what the bar does. The title
+leads it, and every button follows in the order it is reached for — a new conversation,
+the stored ones, the settings, and the host's `actions` last. Only the back arrow of a
+page comes before the title, because it is the way out of the page the title names, and
+that page also takes the buttons it replaces off the bar. The title is drawn as a heading
+— headed word by word and not selectable — while the stored name and the tooltip stay the
+words the person or the model wrote.
 
 Each finished answer carries a row of two buttons under it: copy, and read aloud. Both
 take the text parts of that turn and leave out the thinking and the tool calls. Copy puts
@@ -207,14 +215,25 @@ its store and steps off the provider, which then needs a key again. A session wi
 `forgetKey` shows only "Change key".
 
 The stored conversations are the second page, `components/chat/history.tsx`. A clock
-button at the head of the header opens it, and the page again replaces the transcript —
+button in the header opens it, and the page again replaces the transcript —
 the composer stays, because opening a conversation is one click and what is typed is for
 the chat, not the page.
-Each row is one conversation, with the live one marked and a button to forget it. Picking
+Each row is one conversation, with the live one marked and a button to forget it. A row
+heads the name word by word, as the bar heads the live one. Picking
 one closes the page: the session then replaces its own state with that conversation, so
 the chat is never unmounted or swapped. Only one page shows at a time. A session that
 reports no `history` shows no button. `createPiSession({ history: true })` is the built-in
 store behind it; see [`.agents/pi.md`](.agents/pi.md).
+
+The head of that page is also shown where the reader is already looking. A chat with
+stored conversations opens on nothing said and everything said already one page away, so
+the empty state carries the three newest at its foot, under the host's `emptyActions` and
+the agent card — `ChatRecent`, exported from the same file and rendered by
+`components/chat/empty.tsx`. A row opens its conversation
+exactly as the page's own row does, and the row under them opens the page for the rest.
+The block goes with the greeting once the first message is sent. It is left out where the
+session answers no `openConversation`, because a shortcut to nowhere is noise, and where
+nothing is stored yet.
 
 The first user message becomes the default conversation title. If `generateTitle` is
 true, the model creates a title after the first answer. This uses one extra request and is
@@ -272,27 +291,42 @@ extension/                      MV3 side panel, package name `@agentak/extension
 
 ## Current status
 
-The agent works end to end with 11 providers. Six providers are free
+The agent works end to end with 8 providers. Six providers are free
 and do not need an API key. A new chat starts without a provider. The first message opens
 the settings page, and a free provider can be selected with one click.
+
+Only two of the eight take a key, and both are gateways: Vercel AI Gateway and OpenRouter.
+A single-vendor provider is not offered, because a gateway key already reaches that
+vendor's models — which is why OpenAI, Groq and Cerebras were dropped. The picker reads in
+that order too: the two gateways lead, since one key is the choice worth making, and the
+six that need none follow. Inside those six the device's own comes first (wllama), then the
+two a page can reach (LLM7, then OVHcloud on the published limit), then the two only the
+extension can (Kilo, OpenCode Zen), and Chrome's own last — a 4 GB download that answers
+text alone.
 
 Two of the six send no request to a model server. Chrome Built-in AI runs Gemini Nano
 through the Prompt API, and is listed only where the browser carries that API, which today
 means a Chrome with both flags set. It answers text alone — no tool calls and no images.
-Local (wllama) runs llama.cpp in the tab as WebAssembly: the module comes from a CDN, the
+On Device (wllama) runs llama.cpp in the tab as WebAssembly: the module comes from a CDN, the
 weights from Hugging Face, and the browser keeps both. It is listed on any page with a
-worker. An MV3 page may load neither a remote module nor a worker built at run time, so
-the panel ships all three itself — wllama, its wasm and its worker — and says so through
-`useWllamaSource()`, which is also what puts the row back in its picker. See
+worker, except on a phone. An MV3 page may load neither a remote module nor a worker built
+at run time, so the panel ships all three itself — wllama, its wasm and its worker — and
+says so through `useWllamaSource()`, which is also what puts the row back in its picker.
+The phone is the part no source answers for: the download is hundreds of MB and often
+metered, a mobile browser reclaims the wasm heap the moment the tab goes to the back, and
+the turn is slow on the core and the battery a page is given — a long wait for what the
+free providers answer at once. `isPhone()` in `lib/utils.ts` is the test, a coarse pointer
+over a screen of at most 820px, so a docked side panel and a laptop with a touch display
+are neither of them one. See
 [`.agents/playground.md`](.agents/playground.md).
 
 Kilo and OpenCode Zen do not answer CORS preflight requests. Regular web pages therefore
-show 7 of the network providers, plus wllama, while the extension shows all 9 — plus
-Chrome's own, where it is there, and wllama as well. See
+show 4 of the network providers, plus wllama off a phone, while the extension shows all
+6 — plus Chrome's own, where it is there, and wllama as well. See
 [`.agents/pi.md`](.agents/pi.md). The chat UI, Markdown renderer, and side panel have not
 yet been tested in a real browser.
 
-The five keyed providers read their catalogs from esm.sh at the version published now,
+The two keyed gateways read their catalogs from esm.sh at the version published now,
 so a model released after this build is still offered and no catalog json ships. The panel
 cannot import that url — an MV3 policy allows no remote module — so it passes its own
 source through `useCatalogSource()` and ships the catalogs of the pi-ai it was built
@@ -336,8 +370,10 @@ stores them in the same `PiStorage` as the keys and lists them on the chat's his
 It still opens on a new conversation — a chat that was just opened is a chat to start — and
 picking one from the page replaces the session state in place. The playground
 does this with `browserStorage()` and keeps no list of its own; the panel does it with a
-store of its own over `chrome.storage.local`, read once before it mounts, because
-`PiStorage` answers synchronously and `chrome.storage` does not. The panel passes a
+store of its own over `chrome.storage.local`. Every `PiStorage` method answers with a
+promise, so a store that replies later — or that decrypts what it holds — needs nothing in
+front of it: the session opens on no choices and takes them a beat after, and a host that
+would rather not show that mounts on `PiSession.ready`, as the panel does. The panel passes a
 `PiHistory` of its own rather than `true`, because its conversations are segmented per
 site: the keys and the choices are one browser's, while a conversation is about the tab it
 was had on. The chat follows the tab in front from one site's shelf to the next. A host that
