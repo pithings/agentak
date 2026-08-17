@@ -62,20 +62,28 @@ export function SettingsProvider({
   chosen,
   onPick,
   providers,
+  unkeyed,
 }: {
   /** What the page is about — the provider running, or the one just clicked. */
   chosen?: ChatProvider;
   onPick: (provider: ChatProvider) => void;
   providers: ChatProvider[];
+  /** The chosen provider cannot answer: it is keyed and holds no key here. */
+  unkeyed?: boolean;
 }) {
   return (
     <SettingsSection title="Provider">
       {/* Open on arrival where nothing is running, which is the first visit and
           the reason the page opened at all — the question the page is asking is
           which provider, so it asks it rather than showing a shut box that has
-          to be found. `defaultOpen` is read once, at mount, so closing it stays
-          closed and a page opened with a provider set opens nothing. */}
-      <DropdownMenu defaultOpen={!chosen} style={P.menu}>
+          to be found. A provider that is set and cannot answer is the same
+          question: a chat opens on the head of the picker whether or not this
+          browser holds its key, so the row standing there is a recommendation
+          and not a choice made, and the free ones are what the list offers
+          against typing a key. `defaultOpen` is read once, at mount, so closing
+          it stays closed and a page opened on a provider that can run opens
+          nothing. */}
+      <DropdownMenu defaultOpen={!chosen || unkeyed} style={P.menu}>
         <ProviderTrigger provider={chosen} />
         <DropdownMenuContent align="start" side="bottom" style={P.menuContent}>
           {providers.map((entry) => (

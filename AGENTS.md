@@ -306,11 +306,30 @@ These choices come from the Pi session. A custom session without providers shows
 provider section and no key section.
 A model without reasoning support shows no thinking-level choice.
 
-The model section is the one list that can run to hundreds of rows, so it is read as a
-recommendation until it is asked to be a catalog. What it opens on is the newest model of
-each line a person asks for by name — `LINES` in that file, Claude's four sizes and then
-GPT, Gemini, Grok, Qwen, DeepSeek, Kimi, GLM, Llama, Mistral, MiniMax, Gemma — and one row
-at the foot of the list says how many are behind it and opens them. A catalog short enough
+The provider section is a dropdown, and it opens itself where nothing is running and where
+what is running cannot answer — a keyed row this browser holds no key for. A chat opens on
+the head of the picker whether or not that key is stored, so such a row is a recommendation
+and not a choice made: the list is down over the key field under it, because a free
+provider is the other answer and it is one click in that list. A provider that can answer
+is a choice made, and opens nothing.
+
+The model section is a dropdown, as the provider over it is: which model answers is one
+line, and the catalog of hundreds is a click rather than the rest of the page. The panel
+opens itself where no model is running, which is the question the section is then the
+answer to — a page opened by a model the provider refused, or by a first message on a
+provider with nothing picked under it — and it is left shut while a provider is still being
+chosen, since the list above is what opens then. The search field at the head of the panel
+takes the focus as it opens, and Enter there takes the top row of what was typed; on a
+finger neither happens, because a keyboard over the rows is worse than the rows. The panel
+is capped at the room the popover measured and the rows scroll in what the field leaves —
+the one list that can run to hundreds of rows must not run off the end of the surface.
+
+That list is read as a recommendation until it is asked to be a catalog. What it opens on
+is the newest model of each line a person asks for by name — `LINES` in that file, Claude's
+four sizes and then GPT, Gemini, Grok, Qwen, DeepSeek, Kimi, GLM, Llama, Mistral, MiniMax,
+Gemma — and one row at the foot of the list says how many are behind it and opens them.
+That row is the one in the menu that chooses nothing, so it is the one that keeps the panel
+up. A catalog short enough
 to read is left alone, and so is one where those names are the exception: the free
 providers list what they have, since a short list of models nobody has heard of is still
 the whole of what that provider offers. The search field is the other question and reads

@@ -50,15 +50,23 @@ const GATEWAY = [
   { contextWindow: 128_000, id: "tencent/hy3", name: "Hy3" },
 ];
 
+/** The model dropdown: one control, and the list it opens. */
+const menu = (container: Element) =>
+  container.querySelector('[data-slot="chat-settings-models"]') as HTMLElement;
+
+/** What names the model that is running, and opens the list. */
+const face = (container: Element) =>
+  menu(container).querySelector('[data-slot="dropdown-menu-trigger"]') as HTMLElement;
+
 /** The model rows in order, by their name and not the meta beside it. */
 const names = (container: Element) =>
-  [...container.querySelectorAll('[data-slot="chat-settings-row"]')].map(
+  [...menu(container).querySelectorAll('[role="menuitemradio"]')].map(
     (row) => row.querySelector("span")?.textContent,
   );
 
 describe("ChatSettings", () => {
   it("shows provider, key, thinking and model at once", () => {
-    render(
+    const { container } = render(
       <ChatSettings
         modelId="gpt-5"
         models={MODELS}
@@ -69,7 +77,8 @@ describe("ChatSettings", () => {
       />,
     );
 
-    // A provider is already running, so the dropdown stays shut.
+    // A provider and a model are both already running, so both dropdowns stay
+    // shut — the page is five lines of what is set and not a page of rows.
     expect(screen.queryByRole("menuitemradio")).toBeNull();
 
     // Nothing is behind a step: every section is on the page together.
@@ -79,16 +88,13 @@ describe("ChatSettings", () => {
     expect(screen.getByText("Thinking")).toBeTruthy();
     expect(screen.getByText("Model — OpenAI")).toBeTruthy();
 
-    // What is chosen says so — the provider on the dropdown's own face, so the
-    // one line says which it is and what it costs without being opened.
+    // What is chosen says so — each on its own dropdown's face, so the line says
+    // which it is and what it costs without being opened.
     expect(screen.getByRole("button", { name: /OpenAI/ }).textContent).toBe("OpenAIKey saved");
-    expect(screen.getByRole("button", { name: /GPT-5 mini/ }).getAttribute("aria-pressed")).toBe(
-      "false",
-    );
+    expect(face(container).textContent).toBe("GPT-5400K ctx");
     expect(screen.getByRole("button", { name: "Medium" }).getAttribute("aria-pressed")).toBe(
       "true",
     );
-    expect(screen.getByText("400K ctx")).toBeTruthy();
   });
 
   it("offers to replace a saved key rather than an empty field", () => {
@@ -185,6 +191,22 @@ describe("ChatSettings", () => {
     expect(picked).toEqual(["llm7", "anthropic"]);
   });
 
+  it("opens the provider list where the provider set up cannot answer", () => {
+    render(<ChatSettings providerId="anthropic" providers={PROVIDERS} />);
+
+    // A chat opens on the head of the picker whether or not this browser holds
+    // that provider's key, so a row with no key behind it is still a question:
+    // the list is down, with the free providers in it, and the key field is the
+    // other answer under it.
+    expect(screen.getAllByRole("menuitemradio").length).toBe(PROVIDERS.length);
+    expect(screen.getByText("Anthropic API key")).toBeTruthy();
+
+    // One that can answer is a choice made, and opens nothing.
+    cleanup();
+    render(<ChatSettings providerId="openai" providers={PROVIDERS} />);
+    expect(screen.queryByRole("menuitemradio")).toBeNull();
+  });
+
   it("lists the newest of each model, and the older ones behind one button", () => {
     const { container } = render(<ChatSettings models={CATALOG} providerLabel="Gateway" />);
 
@@ -198,8 +220,9 @@ describe("ChatSettings", () => {
       "GPT 5.6 Luna",
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: /Show 2 more models/ }));
-    // Opened, each model is one run of rows with its newest at the head.
+    fireEvent.click(screen.getByRole("menuitem", { name: /Show 2 more models/ }));
+    // Opened, each model is one run of rows with its newest at the head. The row
+    // chose no model, so the panel it was clicked in is still up.
     expect(names(container)).toEqual([
       "Claude Sonnet 5",
       "Claude Sonnet 4.5",
@@ -209,7 +232,7 @@ describe("ChatSettings", () => {
       "GPT 5.5",
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: /Show fewer/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Show fewer/ }));
     expect(names(container).length).toBe(4);
   });
 
@@ -221,15 +244,15 @@ describe("ChatSettings", () => {
     expect(names(container)).toEqual(["Gemini 3.7 Flash", "Claude Sonnet 5", "GPT 5.6 Sol"]);
 
     // The rest is one click away — the tail and the older releases together.
-    fireEvent.click(screen.getByRole("button", { name: /Show 10 more models/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Show 10 more models/ }));
     expect(names(container).length).toBe(GATEWAY.length);
 
     // A search is the other question, so it reads the whole catalog. The
     // grouping still holds: Sonnet 4.5 is behind the button, under Sonnet 5.
-    fireEvent.click(screen.getByRole("button", { name: /Show fewer/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Show fewer/ }));
     fireEvent.input(screen.getByLabelText("Search models"), { target: { value: "sonnet" } });
     expect(names(container)).toEqual(["Claude Sonnet 5"]);
-    fireEvent.click(screen.getByRole("button", { name: /Show 1 more model$/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Show 1 more model$/ }));
     expect(names(container)).toEqual(["Claude Sonnet 5", "Claude Sonnet 4.5"]);
   });
 
@@ -242,17 +265,21 @@ describe("ChatSettings", () => {
       />,
     );
 
-    // Collapsed, and the tick is still on the page.
+    // A model is running, so the control is shut and says which one.
+    expect(face(container).textContent).toBe("Claude Sonnet 4.5200K ctx");
+
+    // Collapsed, and the tick is still in the list.
+    fireEvent.click(face(container));
     expect(names(container)).toContain("Claude Sonnet 4.5");
     expect(
-      screen.getByRole("button", { name: /Claude Sonnet 4.5/ }).getAttribute("aria-pressed"),
+      screen.getByRole("menuitemradio", { name: /Claude Sonnet 4.5/ }).getAttribute("aria-checked"),
     ).toBe("true");
-    expect(screen.getByRole("button", { name: /Show 1 more model$/ })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: /Show 1 more model$/ })).toBeTruthy();
   });
 
   it("collapses what the filter matched, and says when it matches none", () => {
     const { container } = render(<ChatSettings models={manyModels()} providerLabel="Local" />);
-    const rows = () => container.querySelectorAll('[data-slot="chat-settings-row"]');
+    const rows = () => menu(container).querySelectorAll('[role="menuitemradio"]');
 
     const search = screen.getByLabelText("Search models") as HTMLInputElement;
     fireEvent.input(search, { target: { value: "Model 1" } });
@@ -260,7 +287,7 @@ describe("ChatSettings", () => {
     // is the row, and the two behind the button are what the filter also matched.
     expect(rows().length).toBe(1);
     expect(rows()[0]?.textContent).toContain("Model 11");
-    fireEvent.click(screen.getByRole("button", { name: /Show 2 more models/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Show 2 more models/ }));
     expect(rows().length).toBe(3);
 
     fireEvent.input(search, { target: { value: "nothing" } });
@@ -271,19 +298,17 @@ describe("ChatSettings", () => {
     const many = manyModels();
 
     // jsdom carries no `matchMedia`, which reads as a pointer that is not coarse.
-    const { container, rerender } = render(<ChatSettings models={many} providerLabel="Local" />);
+    render(<ChatSettings models={many} providerLabel="Local" />);
+    // No model is running, so the panel is the question the section opens on, and
+    // a dozen rows are read by typing at them.
     expect(document.activeElement).toBe(screen.getByLabelText("Search models"));
-
-    // A key is what the page is waiting on, so the field for it keeps the focus.
-    rerender(<ChatSettings models={many} providerId="openai" providers={PROVIDERS} />);
-    fireEvent.click(screen.getByRole("button", { name: "Change key" }));
-    expect(document.activeElement).toBe(container.querySelector('input[type="password"]'));
 
     cleanup();
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("coarse") }));
     render(<ChatSettings models={many} providerLabel="Local" />);
-    // A keyboard over the list it filters is worse than the list.
-    expect(document.activeElement).toBe(document.body);
+    // A keyboard over the list it filters is worse than the list, so the panel
+    // keeps the focus itself.
+    expect(document.activeElement).toBe(screen.getByRole("menu"));
   });
 });
 
@@ -346,7 +371,8 @@ describe("Chat", () => {
     );
 
     fireEvent.click(screen.getByTitle("Provider, model and thinking level"));
-    fireEvent.click(screen.getByRole("button", { name: /GPT-5 mini/ }));
+    fireEvent.click(face(container));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /GPT-5 mini/ }));
 
     expect(chosen).toEqual(["gpt-5-mini"]);
     // Back to the conversation, with the cursor where the next message goes.

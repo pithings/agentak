@@ -126,14 +126,18 @@ that scrolls has to end against one, so the bar takes a seam while the composer 
 through the `style` `chat.tsx` merges over it. The history page keeps the composer.
 
 The settings page is a column of five sections, and each one is a file of its own under
-`chat/settings/`: the provider menu, the key, the device lock, the thinking level, and the
-model list. `chat/settings.tsx` is what they share — which provider the page is about,
+`chat/settings/`: the provider menu, the model menu, the thinking level, the key, and the
+device lock. `chat/settings.tsx` is what they share — which provider the page is about,
 whose key field is open — and the order they are read in, plus the trigger that opens the
-page from the bar. `settings/section.tsx` holds the heading and the styles more than one
-section draws with, so a section is its own markup and nothing else's; `settings/catalog.ts`
-holds what a model id says about itself — its family and its version — which is what the
-model list is grouped, collapsed and recommended by, and the one part of the page that is
-worth reading on its own.
+page from the bar. The two menus are the same control twice: a line that names what is set,
+and `ui/dropdown-menu.tsx` under it, because the rows a page of five sections has room for
+are not the eight a provider list has or the hundreds a catalog does. The model section is
+keyed on the provider in `settings.tsx`, so a catalog swapped under the control is never
+read through the search typed at the one before it. `settings/section.tsx` holds the heading
+and the styles more than one section draws with, so a section is its own markup and nothing
+else's; `settings/catalog.ts` holds what a model id says about itself — its family and its
+version — which is what the model list is grouped, collapsed and recommended by, and the one
+part of the page that is worth reading on its own.
 
 Each flag is controllable, so a session can own it instead — see [`session.md`](session.md).
 

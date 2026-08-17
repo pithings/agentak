@@ -14,9 +14,9 @@ import { sx, type Sx } from "../../styles/sx.ts";
 
 const S = {
   // A page, not a panel: it takes the room the transcript had, and scrolls as
-  // one column. The sections are ordered short to long, so the model list — the
-  // only one that can run to hundreds of rows — is last and needs no scroller
-  // of its own inside this one.
+  // one column. The sections are ordered as the turn is: what answers first —
+  // the provider, the model under it, and how hard that model thinks — and then
+  // what the provider is set up with, the key and the lock over it.
   page: {
     boxSizing: "border-box",
     display: "flex",
@@ -101,12 +101,16 @@ export type ChatSettingsPageProps = ChatSettingsProps & {
 /**
  * The whole of the choosing, as a page rather than a panel.
  *
- * Provider, key, device lock, thinking level and model are five sections of one
+ * Provider, model, thinking level, key and device lock are five sections of one
  * scrolling column, shown where the transcript was — see `chat.tsx`. Each is a
  * component of its own in `settings/`; this is the state they share and the
- * order they are read in. Nothing drills down: every section states what it is
- * set to, and the models — the one list worth reading through — are open on the
- * page rather than inside a popover the height of a phone keyboard.
+ * order they are read in: the three that say what the next turn runs on lead,
+ * and the key the provider needs follows with the lock over it. A provider
+ * holding no key drops the model section, so that key is then the row under the
+ * provider it belongs to. Nothing drills down: every section states on its own
+ * face what it is set to, so the page is read as five lines of what is running
+ * and not as a page of rows — the two lists long enough to need one, the
+ * providers and the models, are each a line and a menu.
  */
 export function ChatSettings({
   models,
@@ -187,7 +191,30 @@ export function ChatSettings({
   return (
     <div data-slot="chat-settings" style={sx(S.page, style)}>
       {providers && providers.length > 0 && (
-        <SettingsProvider chosen={chosen} onPick={pick} providers={providers} />
+        <SettingsProvider chosen={chosen} onPick={pick} providers={providers} unkeyed={unkeyed} />
+      )}
+
+      {/* A provider still waiting on its key has no models to show: what is
+          loaded is either the provider before it, under a heading naming this
+          one, or this one's own catalog — a list to pick from and then fail a
+          turn on. So the section goes rather than standing there saying it is
+          empty, and the key field is what the provider row then leads to. */}
+      {!unkeyed && (
+        <SettingsModels
+          // Remounted per provider, so a catalog swapped under the control is
+          // not read through the search typed at the one before it.
+          key={providerId}
+          label={where}
+          loading={modelsLoading}
+          modelId={modelId}
+          models={models}
+          needsProvider={Boolean(providers && !provider)}
+          onSelect={onModelChange}
+        />
+      )}
+
+      {levels && (
+        <SettingsThinking level={thinkingLevel} levels={levels} onChange={onThinkingLevelChange} />
       )}
 
       {target && (
@@ -207,28 +234,6 @@ export function ChatSettings({
 
       {keyLock && keyed && (
         <SettingsLock lock={keyLock} onChange={onKeyLockChange} onUnlock={onUnlockKeys} />
-      )}
-
-      {levels && (
-        <SettingsThinking level={thinkingLevel} levels={levels} onChange={onThinkingLevelChange} />
-      )}
-
-      {/* A provider still waiting on its key has no models to show: what is
-          loaded is either the provider before it, under a heading naming this
-          one, or this one's own catalog — a list to pick from and then fail a
-          turn on. So the section goes rather than standing there saying it is
-          empty, and the key field above it is then the one thing to do next. */}
-      {!unkeyed && (
-        <SettingsModels
-          keying={Boolean(keying)}
-          label={where}
-          loading={modelsLoading}
-          modelId={modelId}
-          models={models}
-          needsProvider={Boolean(providers && !provider)}
-          onSelect={onModelChange}
-          providerId={providerId}
-        />
       )}
     </div>
   );

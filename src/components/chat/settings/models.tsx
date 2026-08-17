@@ -1,69 +1,100 @@
 // Docs: @docs/3.widget.md
 import type { ComponentChildren } from "preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useState } from "preact/hooks";
 
 import { byFamily, latest, SEARCH_FROM, wellKnown } from "./catalog.ts";
 import type { ChatModel } from "../types.ts";
 import { noZoom, S, SettingsSection } from "./section.tsx";
+import { buttonSx } from "../../ui/button.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../ui/dropdown-menu.tsx";
 import { Input } from "../../ui/input.tsx";
+import { usePopover } from "../../ui/popover.tsx";
 import { Spinner } from "../../ui/spinner.tsx";
 import { CheckIcon, ChevronDownIcon } from "../../../lib/icons.tsx";
 import { isTouch } from "../../../lib/utils.ts";
 import { useInteraction } from "../../../lib/use-interaction.ts";
-import { reset } from "../../../styles/base.ts";
 import { sx, type Sx } from "../../../styles/sx.ts";
 
 const M = {
-  // One frame around the rows, and the rows carry the seams between them.
-  list: {
+  // The `Popover` root is the anchor and is `inline-block`, which would shrink
+  // the whole control to its trigger's text. Block, so the row is the section's
+  // width and the panel below can take it too.
+  menu: { display: "block", width: "100%" },
+  // `buttonSx()` over the `outline` variant, plus what a value-and-chevron row
+  // needs and a centred label does not.
+  menuTrigger: {
+    width: "100%",
+    justifyContent: "flex-start",
+    gap: "0.5rem",
+  },
+  menuValue: {
+    minWidth: "0",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  // `width` against the root, which is the trigger's row — the panel is as wide
+  // as the control that opened it, whatever the longest name is. A column
+  // capped at the room the popover measured: the field keeps its height and the
+  // rows give up the rest, since a list of hundreds must scroll inside the panel
+  // and not off the end of the surface.
+  menuContent: {
     display: "flex",
     flexDirection: "column",
-    overflow: "hidden",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius-md)",
-    background: "var(--surface)",
-  },
-  // `minHeight` rather than `height`: a long name wraps, and the row grows.
-  row: {
-    boxSizing: "border-box",
-    display: "flex",
+    gap: "0.25rem",
     width: "100%",
-    minHeight: "2.5rem",
-    alignItems: "center",
-    gap: "0.5rem",
-    padding: "0.5rem 0.625rem",
-    outline: "none",
-    textAlign: "left",
-    fontSize: "0.8125rem",
-    transition: "background-color var(--transition), color var(--transition)",
+    maxWidth: "100%",
+    maxHeight: "var(--popover-available, none)",
   },
-  rowHover: { background: "var(--hover)", color: "var(--hover-foreground)" },
-  // Inset, because the row is flush with the frame — an outset ring would be
-  // clipped by the list's own `overflow: hidden`.
-  rowFocus: { outline: "2px solid var(--ring)", outlineOffset: "-2px" },
-  // Every row but the first: one seam per pair, and none against the frame.
-  rowLine: { borderTop: "1px solid var(--border)" },
-  // The last row of the list is about the list and not a model, so it is the
-  // one row in a quieter colour. Its chevron stands in the check's column, so
-  // the words still line up with the names above them.
-  moreRow: { color: "var(--muted-foreground)", fontSize: "0.75rem" },
+  search: { height: "2rem", fontSize: "0.8125rem" },
+  // The one part of the panel that scrolls. `minHeight: 0` is what lets it give
+  // height back to the field above it.
+  list: {
+    display: "flex",
+    minHeight: "0",
+    flexDirection: "column",
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+  },
+  // A menu row is a finger target first, so it keeps the height a list row has.
+  item: {
+    minHeight: "2.25rem",
+    gap: "0.5rem",
+    fontSize: "0.8125rem",
+  },
+  // The last row is about the list and not a model, so it is the one row in a
+  // quieter colour. Its chevron stands in the check's column, so the words still
+  // line up with the names above them.
+  more: { color: "var(--muted-foreground)", fontSize: "0.75rem" },
   moreOpen: { transform: "rotate(180deg)" },
+  chevron: { width: "0.875rem", height: "0.875rem", flexShrink: "0", opacity: "0.5" },
+  // With nothing chosen there is no state beside the label to push it over.
+  chevronAlone: { marginLeft: "auto" },
   loading: {
     display: "flex",
     alignItems: "center",
     gap: "0.5rem",
-    padding: "0.625rem",
+    padding: "0.5rem 0",
     color: "var(--muted-foreground)",
     fontSize: "0.75rem",
   },
+  empty: { padding: "0.5rem" },
 } satisfies Record<string, Sx>;
 
 const compact = new Intl.NumberFormat("en-US", { notation: "compact" });
 
+/** How big a model answers, on the far side of its row and of the trigger. */
+const ctx = (model: ChatModel) => `${compact.format(model.contextWindow)} ctx`;
+
 export interface SettingsModelsProps {
   /** The models of the chosen provider. */
   models?: ChatModel[];
-  /** The catalog is still on its way — the list says so instead of looking empty. */
+  /** The catalog is still on its way — the section says so instead of looking empty. */
   loading?: boolean;
   modelId?: string;
   onSelect?: (id: string) => void;
@@ -71,90 +102,29 @@ export interface SettingsModelsProps {
   label?: string;
   /** Nothing is chosen yet: the list is empty for a reason worth saying. */
   needsProvider?: boolean;
-  /** The catalog changes with it, so the search field takes the focus again. */
-  providerId?: string;
-  /** A key is being typed above — the focus belongs there and not here. */
-  keying?: boolean;
 }
 
 /**
- * The models, open on the page rather than inside a popover the height of a
- * phone keyboard — this is the one list worth reading through.
+ * Which model answers, as one line and a menu.
  *
- * It is read as a recommendation until it is asked to be a catalog: the newest
- * of each well-known line, with everything else behind the row at its foot. The
- * search field is the other question and reads every model.
+ * A dropdown, as the provider above it is: which model is set is one line, and
+ * a catalog of hundreds is a click rather than the rest of the page. The panel
+ * is read as a recommendation until it is asked to be a catalog — the newest of
+ * each well-known line, with everything else behind the row at its foot — and
+ * the field at its head is the other question, which reads every model.
  */
 export function SettingsModels({
-  keying,
   label,
   loading,
   modelId,
   models,
   needsProvider,
   onSelect,
-  providerId,
 }: SettingsModelsProps) {
-  const [search, setSearch] = useState("");
-  // The older generations, asked for. A catalog is mostly models nobody picks
-  // any more, so the list opens on one row per family.
-  const [more, setMore] = useState(false);
-
-  // A catalog reads oldest first, so a family's newest model is at the foot of
-  // it — Sonnet 4.5 over Sonnet 5. Reversed and then grouped, the list leads
-  // with the models worth reading, which is what a picker of hundreds of rows
-  // is opened for.
-  const ordered = models && byFamily([...models].reverse());
-
-  const query = search.trim().toLowerCase();
-  const shown = query
-    ? ordered?.filter(
-        (entry) =>
-          entry.name.toLowerCase().includes(query) || entry.id.toLowerCase().includes(query),
-      )
-    : ordered;
-
-  // Collapsed after the filter, so what the field matched is what is collapsed:
-  // a search for one family reads as that family's newest, and the older rows of
-  // it are what the button then offers.
-  const heads = shown && latest(shown, modelId);
-  // With nothing typed the list is a recommendation rather than a catalog, so it
-  // is the lines a person asks for by name — Claude, GPT, Gemini, Qwen — and the
-  // long tail of a gateway's hundreds is behind the button with the older
-  // releases. A search is the other question and reads the whole catalog.
-  const known = !query && heads && wellKnown(heads, modelId);
-  const rows = more ? shown : known || heads;
-  // Counted off the collapsed list either way, so the button says the same
-  // number whichever state it is in.
-  const rest = shown ? shown.length - (known || heads || shown).length : 0;
-
-  // A list this long is read by typing at it, so the field takes the focus as
-  // soon as a provider has one — on arrival, and again when another provider's
-  // catalog lands. Not on a finger, where focus raises the keyboard over the
-  // models the field is there to filter, and not while a key is being typed.
-  const searchable = !!models && models.length > SEARCH_FROM;
-
-  // Preact forwards no ref through a component, so the field is read off the
-  // section.
-  const ref = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (!searchable || keying || isTouch()) return;
-    ref.current?.querySelector("input")?.focus();
-  }, [searchable, keying, providerId]);
+  const model = models?.find((entry) => entry.id === modelId);
 
   return (
-    <SettingsSection elementRef={ref} title={label ? `Model — ${label}` : "Model"}>
-      {searchable && (
-        <Input
-          aria-label="Search models"
-          onInput={(event) => setSearch((event.target as HTMLInputElement).value)}
-          placeholder="Search models…"
-          style={noZoom}
-          type="search"
-          value={search}
-        />
-      )}
-
+    <SettingsSection title={label ? `Model — ${label}` : "Model"}>
       {loading ? (
         <div style={M.loading}>
           <Spinner />
@@ -164,20 +134,163 @@ export function SettingsModels({
         <p style={S.note}>
           {needsProvider ? "Choose a provider to see its models." : "No models to choose from."}
         </p>
-      ) : shown && shown.length === 0 ? (
-        <p style={S.note}>No models match “{search.trim()}”.</p>
       ) : (
-        <div aria-label="Model" role="group" style={M.list}>
-          {rows?.map((entry, index) => (
-            <SettingsRow
-              checked={entry.id === modelId}
-              first={index === 0}
+        /* Open on arrival where no model is running, which is the question this
+           section is then the answer to — a page opened by a refused model, or
+           by a first message on a provider with nothing picked under it. Left
+           shut while a provider is still being chosen, since the list above is
+           what opens then. `defaultOpen` is read once, at mount, so closing it
+           stays closed. */
+        <DropdownMenu
+          data-slot="chat-settings-models"
+          defaultOpen={!modelId && !needsProvider}
+          style={M.menu}
+        >
+          <ModelTrigger model={model} />
+          {/* Never to a finger: the field would raise a keyboard over the rows
+              it is there to filter, so the panel keeps the focus itself. */}
+          <DropdownMenuContent
+            align="start"
+            autoFocus={!isTouch()}
+            side="bottom"
+            style={M.menuContent}
+          >
+            {/* Mounted with the panel, so a fresh open reads the recommendation
+                again rather than the last search typed into it. */}
+            <ModelMenu modelId={modelId} models={models} onSelect={onSelect} />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </SettingsSection>
+  );
+}
+
+/**
+ * The chosen model, and the way to the rest.
+ *
+ * A trigger cannot itself render `<Button>` — this project has no `asChild`, so
+ * `DropdownMenuTrigger` is the button — and takes the same look from
+ * `buttonSx()` paired with `useInteraction`.
+ */
+function ModelTrigger({ model }: { model?: ChatModel }) {
+  const { focusVisible, handlers, hovered } = useInteraction<HTMLButtonElement>();
+
+  return (
+    <DropdownMenuTrigger
+      style={sx(
+        buttonSx({ focusVisible, hasIcon: true, hovered, variant: "outline" }),
+        M.menuTrigger,
+      )}
+      {...handlers}
+    >
+      <span style={M.menuValue}>{model?.name ?? "Select a model"}</span>
+      {model && <span style={S.rowMeta}>{ctx(model)}</span>}
+      <ChevronDownIcon style={sx(M.chevron, !model && M.chevronAlone)} />
+    </DropdownMenuTrigger>
+  );
+}
+
+/**
+ * What is in the panel: the field, the rows it leaves, and the row that opens
+ * the rest of the catalog.
+ */
+function ModelMenu({
+  modelId,
+  models,
+  onSelect,
+}: {
+  modelId?: string;
+  models: ChatModel[];
+  onSelect?: (id: string) => void;
+}) {
+  const { setOpen } = usePopover("SettingsModels");
+  const [search, setSearch] = useState("");
+  // The older generations, asked for. A catalog is mostly models nobody picks
+  // any more, so the panel opens on one row per family.
+  const [more, setMore] = useState(false);
+
+  // A catalog reads oldest first, so a family's newest model is at the foot of
+  // it — Sonnet 4.5 over Sonnet 5. Reversed and then grouped, the list leads
+  // with the models worth reading, which is what a picker of hundreds of rows
+  // is opened for.
+  const ordered = byFamily([...models].reverse());
+
+  const query = search.trim().toLowerCase();
+  const shown = query
+    ? ordered.filter(
+        (entry) =>
+          entry.name.toLowerCase().includes(query) || entry.id.toLowerCase().includes(query),
+      )
+    : ordered;
+
+  // Collapsed after the filter, so what the field matched is what is collapsed:
+  // a search for one family reads as that family's newest, and the older rows of
+  // it are what the button then offers.
+  const heads = latest(shown, modelId);
+  // With nothing typed the list is a recommendation rather than a catalog, so it
+  // is the lines a person asks for by name — Claude, GPT, Gemini, Qwen — and the
+  // long tail of a gateway's hundreds is behind the button with the older
+  // releases. A search is the other question and reads the whole catalog.
+  const known = !query && wellKnown(heads, modelId);
+  const rows = more ? shown : known || heads;
+  // Counted off the collapsed list either way, so the button says the same
+  // number whichever state it is in.
+  const rest = shown.length - (known || heads).length;
+
+  const pick = (id: string) => {
+    setOpen(false);
+    onSelect?.(id);
+  };
+
+  return (
+    <>
+      {models.length > SEARCH_FROM && (
+        <Input
+          aria-label="Search models"
+          onInput={(event) => setSearch((event.target as HTMLInputElement).value)}
+          onKeyDown={(event) => {
+            // The panel walks its rows on the arrows, and this is a field: Home
+            // and End belong to the text being typed rather than to the ends of
+            // the list, so they are kept from the menu above.
+            if (event.key === "Home" || event.key === "End") {
+              event.stopPropagation();
+              return;
+            }
+            // Enter takes the top row of what was typed — a name looked for is
+            // usually the only one it matched. With nothing typed there is
+            // nothing being looked for, and the key is left alone.
+            if (event.key !== "Enter" || !query) return;
+            event.stopPropagation();
+            const first = rows[0];
+            if (!first) return;
+            event.preventDefault();
+            pick(first.id);
+          }}
+          placeholder="Search models…"
+          style={sx(M.search, noZoom)}
+          type="search"
+          value={search}
+        />
+      )}
+
+      {shown.length === 0 ? (
+        <p style={sx(S.note, M.empty)}>No models match “{search.trim()}”.</p>
+      ) : (
+        <div style={M.list}>
+          {rows.map((entry) => (
+            <DropdownMenuItem
+              aria-checked={entry.id === modelId}
               key={entry.id}
-              meta={`${compact.format(entry.contextWindow)} ctx`}
-              onClick={() => onSelect?.(entry.id)}
+              onClick={() => pick(entry.id)}
+              // A menu already answers the arrow keys, so the role a set of one
+              // is owed costs nothing here — see `ui/dropdown-menu.tsx`.
+              role="menuitemradio"
+              style={M.item}
             >
-              {entry.name}
-            </SettingsRow>
+              <CheckIcon style={sx(S.check, entry.id !== modelId && S.checkOff)} />
+              <span style={S.rowName}>{entry.name}</span>
+              <span style={S.rowMeta}>{ctx(entry)}</span>
+            </DropdownMenuItem>
           ))}
           {rest > 0 && (
             <MoreRow onClick={() => setMore(!more)} open={more}>
@@ -186,60 +299,17 @@ export function SettingsModels({
           )}
         </div>
       )}
-    </SettingsSection>
-  );
-}
-
-interface SettingsRowProps {
-  checked?: boolean;
-  /** The first row carries no seam — the list's own frame is the line above it. */
-  first?: boolean;
-  /** The far side of the row: what it costs, how big it is, what it needs. */
-  meta?: ComponentChildren;
-  onClick: () => void;
-  title?: string;
-  children: ComponentChildren;
-}
-
-/**
- * One choice. A hook cannot run inside `.map()`, so the hover and focus states
- * of a row need a component of their own.
- *
- * A pressed button rather than a radio: a radio group owes the reader arrow-key
- * navigation and one tab stop, and claiming the role without them reads worse
- * than a plain list of buttons that tab in order and say what they are set to.
- */
-function SettingsRow({ checked = false, first, meta, onClick, title, children }: SettingsRowProps) {
-  const { focusVisible, handlers, hovered } = useInteraction<HTMLButtonElement>();
-
-  return (
-    <button
-      aria-pressed={checked}
-      data-slot="chat-settings-row"
-      onClick={onClick}
-      style={sx(
-        reset.button,
-        M.row,
-        !first && M.rowLine,
-        hovered && M.rowHover,
-        focusVisible && M.rowFocus,
-      )}
-      title={title}
-      type="button"
-      {...handlers}
-    >
-      <CheckIcon style={sx(S.check, !checked && S.checkOff)} />
-      <span style={S.rowName}>{children}</span>
-      {meta ? <span style={S.rowMeta}>{meta}</span> : null}
-    </button>
+    </>
   );
 }
 
 /**
  * The generations behind the list, as its last row.
  *
- * A row and not a button under the frame: it belongs to the list it opens, and
- * the chevron takes the tick's column so the words line up with the names.
+ * A row and not a button under the panel: it belongs to the list it opens, and
+ * the chevron takes the tick's column so the words line up with the names. The
+ * click is the one in this menu that chooses nothing, so it keeps the panel up —
+ * `preventDefault` is what a menu item says that with.
  */
 function MoreRow({
   onClick,
@@ -250,26 +320,17 @@ function MoreRow({
   open: boolean;
   children: ComponentChildren;
 }) {
-  const { focusVisible, handlers, hovered } = useInteraction<HTMLButtonElement>();
-
   return (
-    <button
+    <DropdownMenuItem
       aria-expanded={open}
-      data-slot="chat-settings-more"
-      onClick={onClick}
-      style={sx(
-        reset.button,
-        M.row,
-        M.rowLine,
-        M.moreRow,
-        hovered && M.rowHover,
-        focusVisible && M.rowFocus,
-      )}
-      type="button"
-      {...handlers}
+      onClick={(event) => {
+        event.preventDefault();
+        onClick();
+      }}
+      style={sx(M.item, M.more)}
     >
       <ChevronDownIcon style={sx(S.check, open && M.moreOpen)} />
       <span style={S.rowName}>{children}</span>
-    </button>
+    </DropdownMenuItem>
   );
 }
