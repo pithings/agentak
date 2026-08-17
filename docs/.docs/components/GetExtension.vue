@@ -23,6 +23,7 @@
  * `puzzle` is one of the icons undocs bundles, so it draws with no request. An
  * icon outside that list falls back to the Iconify HTTP API.
  */
+import { onMounted, ref } from "vue";
 import Icon from "undocs/src/app/components/global/Icon.vue";
 import { buttonVariants } from "undocs/src/app/components/ui/Button.ts";
 
@@ -30,11 +31,27 @@ const linkClass = [
   buttonVariants({ color: "brand", size: "lg" }),
   "text-brand-foreground! no-underline!",
 ].join(" ");
+
+/**
+ * Every build writes a new zip under the same name, so a browser or a cdn that
+ * kept the last one would hand it back. The url carries the moment the page was
+ * loaded, which no earlier download was under.
+ *
+ * It is written after mount, not in setup: the page is prerendered, and a moment
+ * baked into that html is the moment the site was built. The first client render
+ * matches what the server wrote, and the query lands before a click can.
+ */
+const zip = "/agentak-extension.zip";
+const href = ref(zip);
+
+onMounted(() => {
+  href.value = `${zip}?t=${Date.now()}`;
+});
 </script>
 
 <template>
   <div class="not-prose my-6 flex flex-wrap items-center gap-x-4 gap-y-2">
-    <a :class="linkClass" href="/agentak-extension.zip" download="agentak-extension.zip">
+    <a :class="linkClass" :href="href" download="agentak-extension.zip">
       <Icon name="i-lucide-puzzle" />
       Download for Chrome
     </a>
