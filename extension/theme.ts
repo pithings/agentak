@@ -1,3 +1,4 @@
+// Docs: @docs/7.extension.md
 /**
  * Light and dark, for the side panel.
  *

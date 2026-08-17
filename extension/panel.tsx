@@ -1,3 +1,4 @@
+// Docs: @docs/7.extension.md
 /**
  * The side panel entry. Mounts the chat surface over the pi loop.
  *
@@ -8,8 +9,8 @@
  *
  * The session is where the panel differs from a page, and nearly the only place
  * it does: the tools come from the tab in front rather than this document, the
- * catalogs are bundled rather than read from a url this document may not import,
- * and the keys are kept where an extension keeps things.
+ * catalogs and wllama are bundled rather than read from urls this document may
+ * not import, and the keys are kept where an extension keeps things.
  */
 import { render } from "preact";
 import { useEffect, useState } from "preact/hooks";
@@ -24,10 +25,16 @@ import { originHistory } from "./history.ts";
 import { chromeStorage } from "./storage.ts";
 import { activeOrigin, activeTabTools, watchActiveUrl } from "./tab-tools.ts";
 import { followColorScheme, useSystemColors } from "./theme.ts";
+import { useLocalModels } from "./wllama/index.ts";
 
 // Before the session, because a provider picked on the first frame loads its
 // catalog at once. The default source is a url this document may not import.
 useBundledCatalogs();
+
+// The same, for the provider that answers on the device: the panel ships
+// wllama rather than importing it, which is also what puts the row back in the
+// picker. Before the session, for the same reason as the catalogs.
+useLocalModels();
 
 // Before the first paint, so the panel never opens light and then turns dark.
 // The library ships both palettes and the host says which is on; the browser

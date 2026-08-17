@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import { useEffect, useId, useRef, useState } from "preact/hooks";
 
 import {
@@ -149,6 +150,12 @@ export interface ChatComposerProps extends ChatSettingsProps {
 interface FocusProps {
   focusKey?: number;
   /**
+   * A message to put in the field, over whatever is in it — what a fork hands
+   * back. The key is what makes it a request rather than a value: the field is
+   * uncontrolled, so the same text twice is two of them.
+   */
+  draft?: { text: string; key: number };
+  /**
    * Out of the way, while a page stands where the transcript is — the settings
    * page takes the whole surface under the header, composer included. Hidden
    * rather than unmounted, because the textarea is uncontrolled: unmounting it
@@ -160,6 +167,7 @@ interface FocusProps {
 /** The last row of the surface: what to say, which model says it, and send. */
 export function ChatComposer({
   autoFocus,
+  draft,
   focusKey,
   hidden,
   isStreaming,
@@ -265,6 +273,24 @@ export function ChatComposer({
     setTyped(null);
     command.run();
   };
+
+  // A message handed back — the fork button. It replaces the field rather than
+  // adding to it, because it is the message being said again, and the caret
+  // lands after it where the next word goes. On a phone the field is filled and
+  // left alone: the keyboard would be over the transcript it was rewound from.
+  const draftKey = draft?.key;
+  useEffect(() => {
+    const field = input();
+    if (draftKey === undefined || !field) return;
+    const text = draft?.text ?? "";
+    field.value = text;
+    // The list reads the field, and a message put back is not a command.
+    setTyped(null);
+    setActive(0);
+    if (isTouch()) return;
+    field.focus();
+    field.setSelectionRange(text.length, text.length);
+  }, [draftKey]);
 
   // Tab writes the rest of the name and stops there, so the row is read once
   // more before it runs. Enter is what runs it.

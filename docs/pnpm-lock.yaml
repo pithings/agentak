@@ -12,8 +12,8 @@ importers:
         specifier: link:..
         version: link:..
       undocs:
-        specifier: npm:undocs-nightly@0.10.1-20260816-182622-f31d703
-        version: undocs-nightly@0.10.1-20260816-182622-f31d703(@oxc-project/types@0.144.0)(chokidar@5.0.0)(csstype@3.2.3)(dotenv@17.4.2)(giget@3.3.1)(h3@2.0.1-rc.26(crossws@0.4.10(srvx@0.11.22)))(jiti@2.7.0)(lightningcss@1.33.0)(ocache@0.2.0)(rolldown@1.2.4)
+        specifier: npm:undocs-nightly@0.10.1-20260817-094901-8249fa4
+        version: undocs-nightly@0.10.1-20260817-094901-8249fa4(@oxc-project/types@0.144.0)(chokidar@5.0.0)(csstype@3.2.3)(dotenv@17.4.2)(giget@3.3.1)(h3@2.0.1-rc.26(crossws@0.4.10(srvx@0.11.22)))(jiti@2.7.0)(lightningcss@1.33.0)(ocache@0.2.0)(rolldown@1.2.4)
 
 packages:
 
@@ -59,8 +59,8 @@ packages:
   '@iconify-json/lucide@1.2.123':
     resolution: {integrity: sha512-0CozmpKXEOEEhltrfT2zt+/t1hez67Y+hM2VJWoIcBKdBrb83VYuKf+b5A0QU9HfQm+RNn2GjFWlTOwi+Ss6IA==}
 
-  '@iconify-json/vscode-icons@1.2.72':
-    resolution: {integrity: sha512-IWsfSq21QZtZ8WWNtNm09E9I1PKXNSx9PQnOAD6vWSSNrL4bMDpK5nEbmyNV4XBYuQ/jAc1Foj233C/QtRAQOg==}
+  '@iconify-json/vscode-icons@1.2.73':
+    resolution: {integrity: sha512-qoJ5ZYQbes3Wi3+5A65c0vBKG8iCNXcpEIObgJ8e8fltLIG3U/zgA3Ft3+tUCupEl/kO9vIPht85n1kjJVyDMw==}
 
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
@@ -1117,8 +1117,8 @@ packages:
   ufo@1.6.4:
     resolution: {integrity: sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA==}
 
-  undocs-nightly@0.10.1-20260816-182622-f31d703:
-    resolution: {integrity: sha512-wkSp/wKkgyQQjP8a50G5WkfG+wa14nH+VPew53FyD17YGMyPprmLIq/PDXRRvOJSH/4QNro8sl634oHX6i0kfA==}
+  undocs-nightly@0.10.1-20260817-094901-8249fa4:
+    resolution: {integrity: sha512-QnzQAGfFxfrYkrBB9b2Q71LuWUIFZ/8wjTV+Xv5gFp8nQBGx69BnZZxpi10cHae3X4sQPrrcgkxJnpbV6bC0Jg==}
     hasBin: true
 
   unenv@2.0.0-rc.24:
@@ -1338,7 +1338,7 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
-  '@iconify-json/vscode-icons@1.2.72':
+  '@iconify-json/vscode-icons@1.2.73':
     dependencies:
       '@iconify/types': 2.0.0
 
@@ -2202,13 +2202,13 @@ snapshots:
 
   ufo@1.6.4: {}
 
-  undocs-nightly@0.10.1-20260816-182622-f31d703(@oxc-project/types@0.144.0)(chokidar@5.0.0)(csstype@3.2.3)(dotenv@17.4.2)(giget@3.3.1)(h3@2.0.1-rc.26(crossws@0.4.10(srvx@0.11.22)))(jiti@2.7.0)(lightningcss@1.33.0)(ocache@0.2.0)(rolldown@1.2.4):
+  undocs-nightly@0.10.1-20260817-094901-8249fa4(@oxc-project/types@0.144.0)(chokidar@5.0.0)(csstype@3.2.3)(dotenv@17.4.2)(giget@3.3.1)(h3@2.0.1-rc.26(crossws@0.4.10(srvx@0.11.22)))(jiti@2.7.0)(lightningcss@1.33.0)(ocache@0.2.0)(rolldown@1.2.4):
     dependencies:
       '@floating-ui/dom': 1.8.0
       '@fontsource-variable/geist': 5.3.0
       '@fontsource-variable/geist-mono': 5.3.0
       '@iconify-json/lucide': 1.2.123
-      '@iconify-json/vscode-icons': 1.2.72
+      '@iconify-json/vscode-icons': 1.2.73
       '@iconify/utils': 3.1.4
       '@iconify/vue': 5.0.1(vue@3.5.41)
       '@tailwindcss/vite': 4.3.3(vite@8.2.1(jiti@2.7.0))

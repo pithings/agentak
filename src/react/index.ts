@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import { type CSSProperties, createElement, type ReactElement, useEffect, useRef } from "react";
 
 import { AgentChat } from "../agent-chat.tsx";

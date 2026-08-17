@@ -1,3 +1,4 @@
+// Docs: @docs/4.agents/2.pi-agent/9.advanced-api.md
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 

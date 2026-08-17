@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 
 const engine = (): SpeechSynthesis | undefined =>

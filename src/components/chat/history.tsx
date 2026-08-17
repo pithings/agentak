@@ -1,3 +1,5 @@
+// Docs: @docs/3.widget.md
+// Docs: @docs/4.agents/2.pi-agent/7.conversations.md
 import type { ChatHistoryEntry } from "./types.ts";
 import { Button } from "../ui/button.tsx";
 import { XIcon } from "../../lib/icons.tsx";

@@ -68,10 +68,10 @@ nowhere.
 
 The cost is that a runtime with no network, or one whose policy allows no remote module,
 has no catalog at all. `useCatalogSource()` is the seam for both: a host passes its own
-import and pins the models it ships, the way `useWllamaModule()` takes wllama from
-somewhere else. **The MV3 panel is in that position and is not yet handled** — its content
-security policy blocks the url, so the five keyed providers fail to load there until the
-panel passes a source of its own.
+import and pins the models it ships, the way `useWllamaSource()` takes wllama from
+somewhere else. The MV3 panel is in that position on both counts: its content security
+policy blocks the url, so it passes `extension/catalogs.ts` and ships the catalogs of the
+pi-ai it was built against.
 
 `catalog.ts` caches per provider for the life of the page, so this is one request per
 provider at most, and only for a provider that is picked. Node imports no url, so
@@ -131,9 +131,9 @@ on, so one stored in the panel is not restored on a page.
 `chrome-extension:` document fetches through `host_permissions`, which the preflight
 never gates, so the panel lists all nine. Both blocked origins are in
 `extension/manifest.json`. The panel served by vite in dev is an ordinary page, so it
-sees the seven — load it unpacked to get the other two. It trades one row for two:
-`wllamaSupported()` is false in that same document, because an MV3 page may import no
-module it does not ship.
+sees the seven — load it unpacked to get the other two. The local row is there as well:
+the panel ships wllama rather than importing it, which is what `wllamaSupported()` reads.
+See [`../.agents/playground.md`](playground.md).
 
 A provider that starts to send the header is a `cors: false` line to delete. Check it
 with a preflight of your own:
@@ -316,15 +316,16 @@ nothing is billed.
 
 | File        | What                                                               |
 | ----------- | ------------------------------------------------------------------ |
-| `local.ts`  | the models, the two urls, `wllamaSupported()`, `useWllamaModule()` |
+| `local.ts`  | the models, the two urls, `wllamaSupported()`, `useWllamaSource()` |
 | `wllama.ts` | pi's context in, pi's events out                                   |
 
 **Nothing here depends on wllama.** The esm bundle is imported at a url, pinned to one
 version, and the wasm is fetched from the same place — `WLLAMA_MODULE_URL` and
 `WLLAMA_WASM_URL` in `local.ts`. The import is a variable rather than a literal, so no
 bundler follows it; the `@vite-ignore` comment says the same thing to vite. A host that
-ships wllama itself, or serves a page that allows no remote module, hands its own import
-to `useWllamaModule()` — which is also how the tests stand a model up.
+ships wllama itself, or serves a document that allows no remote module, hands its own
+module and wasm to `useWllamaSource()` — which is also how the tests stand a model up,
+and what the side panel does.
 
 **The models are written by hand**, like the free catalogs, and each names a public GGUF
 on Hugging Face: LFM2.5 350M, Qwen3.5 0.8B, MiniCPM5 1B, Qwen3.5 2B and Qwen3.5 4B — five
@@ -366,8 +367,11 @@ Gemini Nano download is; wllama caches the file in the browser, so the second vi
 from disk and the block never appears. `unloadWllama()` frees it all.
 
 **Two things gate it.** `wllamaSupported()` keeps the row out of the picker where there is
-no `WebAssembly`, no `Worker`, or the document is an MV3 page — an extension may load no
-remote script, so the panel is offered the providers that answer over the network instead.
+no `WebAssembly`, no `Worker`, or the document is an MV3 page running on the CDN default —
+an extension may load neither a remote script nor a worker built at run time. A host that
+passed a source of its own has answered that for its own document, and the gate takes its
+word: the side panel ships wllama, its wasm and its worker, and offers the row. See
+[`../.agents/playground.md`](playground.md) for the worker, which is the hard half.
 The second gate is the machine: a laptop answers a 0.6B model at a readable speed, and a
 phone may not.
 
@@ -484,7 +488,9 @@ session, and it is what the history page below runs on.
 
 **A swap waits for the turn it interrupts.** `store.ts` grew `load()` for this: pi refuses
 to reset while a run is active and `abort()` only asks, so a swap over a streaming answer
-lands on `waitForIdle()` and an idle one — every swap a person makes — lands at once.
+lands on `waitForIdle()` and an idle one — every swap a person makes — lands at once. That
+wait is why `load()` takes `after`: a caller that sends into the new transcript, which is
+what `retryFrom` does, would otherwise send into the one being replaced.
 
 ## The conversations a session keeps
 
@@ -506,6 +512,20 @@ Off by default: the library stores nothing unasked, and a host already keeping i
 - **New conversation** files the one it replaces away rather than dropping it; an empty
   conversation is never written, so nothing lists a chat that was never spoken to.
 - Forgetting the live conversation leaves an empty chat on a new id.
+- **Retrying a user message** cuts the transcript back to just before it and sends it
+  again, in the conversation on screen: `store.load()` with the slice, and the send handed
+  to `load`'s `after` — a rewind over a streaming answer aborts the turn, and pi settles a
+  beat later, so a message sent at once would go into the transcript being replaced. It
+  goes through the same `submit()` the composer does, so a chat that lost its key holds it
+  the same way. Nothing is kept: the answer being replaced is gone, and the next settle
+  writes the shorter transcript over the stored conversation.
+- **Forking a user message** files the whole conversation away and opens a new one on the
+  turns before that message, under the same provider, model and level. `fork` is
+  `restore()` again, over `capture()` with the transcript cut and the title dropped: the
+  branch names itself, because its first message may be one the title never spoke for. The
+  message is not in it — the surface hands its words back to the composer. An id naming
+  anything but a user message is no rewind and does nothing, because a click can land a
+  beat after an event that changed the transcript.
 
 Two keys, not one: an index of what exists, and one entry per conversation. The page reads
 the index alone, so listing never parses a transcript, and one is dropped by its own key
@@ -611,7 +631,9 @@ the port. Register the renderer with the tool that emits it.
 - **The view is rebuilt, never accumulated.** Every pi event carries the whole message,
   so `toViewMessages()` reads `agent.state` from the start each time. Ids come from the
   index, so a growing message keeps its identity. `streamingMessage` stays separate
-  from `messages` until `message_end`, so it is appended, not merged.
+  from `messages` until `message_end`, so it is appended, not merged. `piMessageIndex()`
+  is the way back — `u12` is `messages[12]` — which is how a fork reaches the message the
+  reader clicked.
 - **A run is still streaming inside its own `agent_end` listener.** It settles after
   every listener returns, so `store.ts` waits on `waitForIdle()` for the last
   redraw. Without it the composer keeps its stop button forever.

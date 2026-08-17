@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@earendil-works/pi-ai": "^0.84.1",
+    "@wllama/wllama": "3.5.1",
     "agentak": "workspace:*",
     "preact": "^10.29.8"
   },

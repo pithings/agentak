@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import { memo } from "preact/compat";
 import { useEffect, useState } from "preact/hooks";
 
@@ -36,6 +37,8 @@ import {
   CheckIcon,
   Chevron,
   CopyIcon,
+  GitBranchIcon,
+  RotateCcwIcon,
   SquareIcon,
   Volume2Icon,
 } from "../../lib/icons.tsx";
@@ -128,6 +131,9 @@ const S = {
   // button's own padding back over the column edge, so the glyph sits under the
   // first character of the text rather than beside it.
   actions: { marginLeft: "-0.375rem", color: "var(--muted-foreground)" },
+  // The user turn is the bubble on the right, so its own row ends where the
+  // bubble does and the inset goes the other way.
+  userActions: { justifyContent: "flex-end", marginRight: "-0.375rem", marginLeft: "0" },
 } satisfies Record<string, Sx>;
 
 const TOOL_STATE = {
@@ -137,6 +143,13 @@ const TOOL_STATE = {
   error: "output-error",
   denied: "output-denied",
 } as const satisfies Record<ViewToolPart["status"], ToolState>;
+
+/**
+ * The size of every action under a turn. The row is a quiet one — it sits under
+ * what was said and is read after it, never instead of it — so it takes the
+ * smallest icon button rather than the composer's own.
+ */
+const ACTION_SIZE = "icon-xs" as const;
 
 /**
  * Answer a tool confirmation, by tool call id. `reason` goes only with a denial
@@ -196,6 +209,17 @@ export interface ChatMessageProps {
   /** This is the message still growing — its trailing part is the live one. */
   isStreaming?: boolean;
   onRespond?: ChatRespond;
+  /**
+   * Rewind to this message: everything before it, said again. Only a user turn
+   * carries the button, and only where the surface was given the callback — the
+   * text rides along, because it is what goes back into the composer.
+   */
+  onFork?: (messageId: string, text: string) => void;
+  /**
+   * The same rewind, in the conversation on screen, and sent rather than typed
+   * back. No text: the harness still holds the message it is running again.
+   */
+  onRetryFrom?: (messageId: string) => void;
 }
 
 /** Two objects with the same keys and the same values under them. */
@@ -251,8 +275,9 @@ function sameMessage(a: ViewMessage, b: ViewMessage): boolean {
 }
 
 /**
- * What "copy" puts on the clipboard: the answer alone, without the thinking or
- * the tool calls that produced it, as the markdown the model wrote.
+ * The words of a turn: the text alone, without the thinking or the tool calls
+ * around it, as the markdown it was written in. What "copy" puts on the
+ * clipboard, and what a fork types back into the composer.
  */
 function answerText(parts: ViewPart[]): string {
   return parts
@@ -307,7 +332,13 @@ export function spokenText(markdown: string): string {
 }
 
 /** One turn of the transcript, part by part. */
-function ChatMessageView({ message, isStreaming, onRespond }: ChatMessageProps) {
+function ChatMessageView({
+  message,
+  isStreaming,
+  onFork,
+  onRespond,
+  onRetryFrom,
+}: ChatMessageProps) {
   const lastPart = message.parts.length - 1;
 
   const isUser = message.role === "user";
@@ -315,6 +346,10 @@ function ChatMessageView({ message, isStreaming, onRespond }: ChatMessageProps) 
   // Offered on a finished answer only — mid-stream it would copy half a reply,
   // and a turn that only called tools has nothing to copy.
   const answer = isUser || isStreaming ? "" : answerText(message.parts);
+  // The other row: what this turn said, to be said again — here or in a
+  // conversation of its own. An image it carried is not said again, so a turn
+  // that was only an image carries no row.
+  const said = isUser && (onFork || onRetryFrom) ? answerText(message.parts) : "";
 
   return (
     <Message from={message.role} style={isUser ? undefined : S.turn}>
@@ -342,6 +377,29 @@ function ChatMessageView({ message, isStreaming, onRespond }: ChatMessageProps) 
           <ChatCopyAction text={answer} />
           <ChatSpeakAction text={answer} />
         </MessageActions>
+      ) : said ? (
+        <MessageActions style={sx(S.actions, S.userActions)}>
+          {/* Here and away: the same rewind, run in this conversation or
+              opened as another one. */}
+          {onRetryFrom ? (
+            <MessageAction
+              onClick={() => onRetryFrom(message.id)}
+              size={ACTION_SIZE}
+              tooltip="Retry from here"
+            >
+              <RotateCcwIcon />
+            </MessageAction>
+          ) : null}
+          {onFork ? (
+            <MessageAction
+              onClick={() => onFork(message.id, said)}
+              size={ACTION_SIZE}
+              tooltip="Fork from here"
+            >
+              <GitBranchIcon />
+            </MessageAction>
+          ) : null}
+        </MessageActions>
       ) : null}
     </Message>
   );
@@ -352,7 +410,11 @@ function ChatCopyAction({ text }: { text: string }) {
   const { copied, copy } = useCopy();
 
   return (
-    <MessageAction onClick={() => void copy(text)} tooltip={copied ? "Copied" : "Copy response"}>
+    <MessageAction
+      onClick={() => void copy(text)}
+      size={ACTION_SIZE}
+      tooltip={copied ? "Copied" : "Copy response"}
+    >
       {copied ? <CheckIcon /> : <CopyIcon />}
     </MessageAction>
   );
@@ -372,6 +434,7 @@ function ChatSpeakAction({ text }: { text: string }) {
   return (
     <MessageAction
       onClick={() => toggle(spokenText(text))}
+      size={ACTION_SIZE}
       tooltip={speaking ? "Stop reading" : "Read aloud"}
     >
       {speaking ? <SquareIcon /> : <Volume2Icon />}
@@ -388,14 +451,16 @@ function ChatSpeakAction({ text }: { text: string }) {
  * which keeps a token, a keyboard or a resize from redrawing every turn above
  * the one that moved.
  *
- * `onRespond` is compared by presence alone: `AgentChat` builds a fresh closure
- * on every render and each one calls the same session.
+ * The callbacks are compared by presence alone: each is built fresh on every
+ * render above, and each one calls the same session.
  */
 export const ChatMessage = memo(
   ChatMessageView,
   (prev, next) =>
     prev.isStreaming === next.isStreaming &&
     Boolean(prev.onRespond) === Boolean(next.onRespond) &&
+    Boolean(prev.onFork) === Boolean(next.onFork) &&
+    Boolean(prev.onRetryFrom) === Boolean(next.onRetryFrom) &&
     sameMessage(prev.message, next.message),
 );
 

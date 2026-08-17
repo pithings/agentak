@@ -1,3 +1,6 @@
+// Docs: @docs/4.agents/2.pi-agent/1.index.md
+// Docs: @docs/4.agents/2.pi-agent/7.conversations.md
+// Docs: @docs/4.agents/2.pi-agent/8.runtime-behavior.md
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { clampThinkingLevel, getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 
@@ -16,7 +19,7 @@ import {
 import { createChoices, type PiChoices, type PiStorage } from "./storage.ts";
 import { createAgentStore } from "./store.ts";
 import { generateTitle, titleRequest, toTitle } from "./title.ts";
-import { toViewMessages } from "./transcript.ts";
+import { piMessageIndex, piUserText, toViewMessages } from "./transcript.ts";
 import { documentTools } from "./webmcp.ts";
 import type { ChatAgent, ChatProvider } from "../components/chat/types.ts";
 import type { ChatSession, ChatSessionOptions, ChatSnapshot } from "../session.ts";
@@ -320,6 +323,25 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   };
 
   /**
+   * Say something, or hold it until something can answer. The question is the
+   * menu itself: a message with nothing chosen opens the settings page and
+   * waits, rather than answering from a provider nobody picked.
+   *
+   * Both ways of saying something go through here — the composer, and a rewind
+   * running a message again — so a chat that lost its key mid-conversation
+   * holds either one the same way.
+   */
+  const submit = (text: string) => {
+    if (ready()) {
+      store.send(text);
+      return;
+    }
+    pending = text;
+    pickerOpen = true;
+    notify();
+  };
+
+  /**
    * Follow the provider, but only as far as this browser has been: the model it
    * last used with it. A provider chosen for the first time ends on its model
    * list, because nothing here picks a model for anyone.
@@ -583,18 +605,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       return cached;
     },
 
-    send(text) {
-      if (ready()) {
-        store.send(text);
-        return;
-      }
-      // The question is the menu itself: a first message with nothing chosen
-      // opens the picker and waits, rather than answering from a provider
-      // nobody picked.
-      pending = text;
-      pickerOpen = true;
-      notify();
-    },
+    send: submit,
 
     stop: () => store.stop(),
 
@@ -612,6 +623,57 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       // A new conversation owes the stored one nothing, catalog landed or not.
       opening = undefined;
       store.reset();
+    },
+
+    /**
+     * Rewind to a user message: a new conversation carrying the turns before
+     * it, under the same provider, model and level. The message itself is left
+     * out — the surface hands its words back to the composer, and the reader
+     * sends them again with or without a change.
+     *
+     * The conversation being left is kept whole, under the id it had, exactly
+     * as the header's plus button keeps it: a fork is a branch and never an
+     * edit of what was already said. A turn in flight is stopped, as it is on
+     * any other move between conversations.
+     *
+     * An id that names no user message is no rewind, so nothing happens: the
+     * transcript is rebuilt on every event and a click can land a beat after
+     * one that changed it.
+     */
+    fork(messageId) {
+      const at = piMessageIndex(messageId);
+      const messages = runtime.agent.state.messages;
+      if (at === undefined || messages[at]?.role !== "user") return;
+
+      keep();
+      conversationId = mintConversationId();
+      // The fork names itself: its first message may be one this conversation's
+      // title never spoke for.
+      restore({ ...capture(), messages: messages.slice(0, at), title: undefined });
+    },
+
+    /**
+     * The same rewind, in the conversation on screen: the turns before that
+     * message, and then the message itself, sent again. The answer it got is
+     * replaced rather than joined, and what was said after it goes with it —
+     * this is the branch nobody keeps, which is the whole of the difference
+     * from `fork`.
+     *
+     * The send waits on the swap: a rewind over a streaming answer aborts the
+     * turn first, and pi settles a beat later, so a message sent at once would
+     * be sent into the transcript being replaced.
+     */
+    retryFrom(messageId) {
+      const at = piMessageIndex(messageId);
+      if (at === undefined) return;
+      const messages = runtime.agent.state.messages;
+      const message = messages[at];
+      // Nothing to run again: an answer, a turn that is gone, or a message that
+      // was only an image.
+      const said = message ? piUserText(message) : "";
+      if (!said) return;
+
+      store.load(messages.slice(0, at), () => submit(said));
     },
 
     respondToTool: (id, approved, reason) => store.respond(id, approved, reason),

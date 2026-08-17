@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import type { ComponentChildren } from "preact";
 
 import { Button } from "../ui/button.tsx";

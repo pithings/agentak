@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import { useEffect, useState } from "preact/hooks";
 
 import { isTouch } from "./utils.ts";

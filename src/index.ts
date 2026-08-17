@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 // The surface and nothing behind it. This entry loads no agent runtime: `Chat`
 // takes a `ViewMessage[]` from anything, and `AgentChat` takes a `ChatSession`
 // from anything. The built-in loop is `agentak/pi` — `createPiSession()` — and a

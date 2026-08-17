@@ -1,3 +1,4 @@
+// Docs: @docs/7.extension.md
 /**
  * The tool that reads the tab in front.
  *

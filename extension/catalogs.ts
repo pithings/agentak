@@ -1,3 +1,4 @@
+// Docs: @docs/7.extension.md
 /**
  * The model catalogs, for the side panel.
  *

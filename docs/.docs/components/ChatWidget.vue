@@ -10,15 +10,15 @@ import { useChatShell } from "../chat-widget/use-chat-shell.ts";
  * The chat is the real thing, not a screenshot: `ChatPanel` from `agentak/vue`
  * over a Pi session this component makes and ends itself. The first message of
  * a first visit opens the picker, where the free providers need no API key; the
- * choice is kept in `localStorage`, so a reader is asked once. The conversations
- * go to the same store, so the chat carries its own history page and a reader
- * comes back to the last one on the next page of the site.
+ * choice is kept in `localStorage`, so a reader is asked once. Conversations
+ * go to the same store and remain available from the chat's history page; each
+ * new session still starts with an empty conversation.
  *
  * The site is in the prompt as well as in the tools: `docs-prompt.ts` names the
  * project and tells the assistant how to search and read its documentation.
  *
- * `.docs/layouts/docs.vue` renders it beside the page, so the button is on
- * every documentation page.
+ * `.docs/layouts/docs.vue` renders it beside documentation pages, and the
+ * custom `.docs/pages/index.vue` renders it beside the landing page.
  *
  * The parts are in `.docs/chat-widget/`: the session and its lazy imports, the
  * state the reader drives, the minimise button, the prompt and the stylesheet.

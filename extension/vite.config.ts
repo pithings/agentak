@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 import preact from "@preact/preset-vite";
 import { defineConfig, type Plugin } from "vite";
 
+import { wllamaAssets, wllamaWorkers } from "./wllama/build.ts";
+
 const root = fileURLToPath(new URL(".", import.meta.url));
 
 // The panel is not shipped in the package — it builds inside its own package,
@@ -14,7 +16,12 @@ const outDir = fileURLToPath(new URL("./dist", import.meta.url));
  * panel hosts the surface itself, and is not a consumer of `dist`.
  */
 export default defineConfig({
-  plugins: [preact({ reactAliasesEnabled: false }), copyStatic()],
+  plugins: [
+    preact({ reactAliasesEnabled: false }),
+    copyStatic(),
+    wllamaWorkers(),
+    wllamaAssets(outDir),
+  ],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("../src", import.meta.url)),

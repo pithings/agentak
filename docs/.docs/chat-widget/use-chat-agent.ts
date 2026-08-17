@@ -33,9 +33,9 @@ export function useChatAgent() {
       ]);
     ui.value = { Button, h: preact.h };
     // `localStorage`, so the provider, model and key a reader picks are still
-    // there on the next page of the documentation — and so are the conversations:
-    // `history` keeps them in that same store, opens on the last one, and lists
-    // the rest on the chat's own history page.
+    // there on the next page of the documentation — and so are the conversations.
+    // A session starts a new conversation; the chat's history page lists the
+    // stored ones.
     //
     // `page: true` offers the model whatever this site publishes on
     // `document.modelContext` — the chat is in the document the tools are in, so

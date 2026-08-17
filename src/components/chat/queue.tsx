@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import {
   Queue,
   QueueItem,

@@ -1,3 +1,4 @@
+// Docs: @docs/4.agents/2.pi-agent/3.on-device-models.md
 /**
  * llama.cpp in the browser, as far as the picker needs to know it.
  *
@@ -28,32 +29,49 @@ export const WLLAMA_MODEL_ID = "qwen3.5-2b";
 /** How the module arrives. The shape of it is `wllama.ts`'s to know. */
 export type WllamaLoader = () => Promise<unknown>;
 
-const fromCdn: WllamaLoader = () => import(/* @vite-ignore */ WLLAMA_MODULE_URL);
+/** Where wllama comes from, for a host that does not take it from the CDN. */
+export interface WllamaSource {
+  /** The esm bundle. */
+  module: WllamaLoader;
+  /** The wasm the runtime is built from, where it is not the CDN's. */
+  wasm?: string;
+}
 
-let loader = fromCdn;
+const fromCdn: WllamaSource = {
+  module: () => import(/* @vite-ignore */ WLLAMA_MODULE_URL),
+  wasm: WLLAMA_WASM_URL,
+};
 
-export const loadWllamaModule = (): Promise<unknown> => loader();
+let source = fromCdn;
+
+export const loadWllamaModule = (): Promise<unknown> => source.module();
+
+/** The wasm `wllama.ts` builds the runtime from. */
+export const wllamaWasmUrl = (): string => source.wasm ?? WLLAMA_WASM_URL;
 
 /**
- * Where wllama comes from. The default imports the url above, which is a url
- * and not a package so that no bundler follows it. A host that ships wllama
- * itself — an offline build, or a page whose policy allows no remote module —
- * passes its own import here instead.
+ * Where wllama comes from. The default imports the urls above, which are urls
+ * and not packages so that no bundler follows them. A host that ships wllama
+ * itself — an offline build, or a document whose policy allows no remote
+ * module — passes its own here instead.
  */
-export const useWllamaModule = (next: WllamaLoader | undefined): void => {
-  loader = next ?? fromCdn;
+export const useWllamaSource = (next: WllamaSource | undefined): void => {
+  source = next ?? fromCdn;
 };
 
 /**
  * Whether this runtime can run the loop at all: wasm to run it in, a worker to
- * hold it, and a document that may import a module it does not ship. An MV3
- * page may not — its content security policy allows no remote script — so the
- * side panel is offered the providers that answer over the network instead.
+ * hold it, and a document that may load what the loop is made of. An MV3 page
+ * may not — its content security policy allows neither a remote module nor a
+ * worker built at runtime — so the CDN default is not offered there. A host
+ * that passed a source of its own has already answered that question, and the
+ * row is offered wherever it says: the side panel ships wllama, its wasm and
+ * its worker, so it does. See `extension/wllama/`.
  */
 export const wllamaSupported = (): boolean =>
   typeof WebAssembly === "object" &&
   typeof Worker === "function" &&
-  globalThis.location?.protocol !== "chrome-extension:";
+  (source !== fromCdn || globalThis.location?.protocol !== "chrome-extension:");
 
 /** What one entry is written from. The rest is the same for every local model. */
 interface Spec {

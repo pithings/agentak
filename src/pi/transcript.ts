@@ -1,3 +1,4 @@
+// Docs: @docs/4.agents/2.pi-agent/8.runtime-behavior.md
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { DEFAULT_COMPACTION_SETTINGS, shouldCompact } from "@earendil-works/pi-agent-core";
 import type { ImageContent, TextContent, Usage } from "@earendil-works/pi-ai";
@@ -161,6 +162,24 @@ export function toViewMessages(
 
   return view;
 }
+
+/**
+ * The transcript index a view id was built from — `u12` is `messages[12]`.
+ *
+ * The ids above come from the index, so this is the way back for a caller
+ * holding one: the fork button, which rewinds to a user message. `undefined`
+ * for anything else, including an id another harness wrote.
+ */
+export function piMessageIndex(id: string): number | undefined {
+  return /^[uac]\d+$/.test(id) ? Number(id.slice(1)) : undefined;
+}
+
+/**
+ * The words of a user message, without the images beside them — what a rewind
+ * sends again, and the same text the view carries for that turn.
+ */
+export const piUserText = (message: AgentMessage): string =>
+  message.role === "user" ? textOf(message.content) : "";
 
 /** What the context meter reads. */
 export interface ContextUsageView {

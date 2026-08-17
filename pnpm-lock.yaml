@@ -78,6 +78,9 @@ importers:
       '@earendil-works/pi-ai':
         specifier: ^0.84.1
         version: 0.84.1(supports-color@7.2.0)(ws@8.21.3)(zod@4.4.3)
+      '@wllama/wllama':
+        specifier: 3.5.1
+        version: 3.5.1
       agentak:
         specifier: workspace:*
         version: link:..
@@ -1296,6 +1299,9 @@ packages:
 
   '@vue/shared@3.5.41':
     resolution: {integrity: sha512-IOnwSCma8j+9xJT6b8H0dEYidC80NsYmNMlZxRsukYcSoGaDBohog5hDxzeUXdFeGWFA++vWvxqOmrr96VlqMA==}
+
+  '@wllama/wllama@3.5.1':
+    resolution: {integrity: sha512-m5L0KKtmUTKz5lGvVVa/Y3qRtoobu80Jne51U0CSR6O930aOUURzhMEAolNsN4v0kfQ9u58wi2IdpUicLfaXUw==}
 
   '@yuku-codegen/binding-android-arm64@0.8.4':
     resolution: {integrity: sha512-rsYkGl2kOkDRsh1mxriYnk1qBS78vjlBJ3+T2XwtwKwqOliy2n+2Ae0EDxJ/uX1DZLm3KkBZarGO5isEnmHchA==}
@@ -3954,6 +3960,8 @@ snapshots:
       '@vue/shared': 3.5.41
 
   '@vue/shared@3.5.41': {}
+
+  '@wllama/wllama@3.5.1': {}
 
   '@yuku-codegen/binding-android-arm64@0.8.4':
     optional: true

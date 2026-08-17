@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import {
   type ComponentObjectPropsOptions,
   defineComponent,
@@ -69,6 +70,7 @@ const VIEW_PROPS: Required<ComponentObjectPropsOptions<ChatViewProps>> = {
   onDismissError: null,
   onForgetConversation: null,
   onForgetKey: null,
+  onFork: null,
   onHistoryOpenChange: null,
   onModelChange: null,
   onOpenConversation: null,
@@ -77,6 +79,7 @@ const VIEW_PROPS: Required<ComponentObjectPropsOptions<ChatViewProps>> = {
   onRespond: null,
   onReset: REQUIRED,
   onRetry: null,
+  onRetryFrom: null,
   onSaveKey: null,
   onSend: REQUIRED,
   onStop: REQUIRED,

@@ -1,3 +1,4 @@
+// Docs: @docs/7.extension.md
 /**
  * The panel's conversations, one shelf per site.
  *

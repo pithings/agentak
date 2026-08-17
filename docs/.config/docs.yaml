@@ -1,9 +1,64 @@
 # yaml-language-server: $schema=https://unpkg.com/undocs/schema/config.json
 
 name: "Agentak"
-shortDescription: "Add an AI chat to any web page."
-description: "A complete AI chat UI for React, Vue, Preact, and plain JavaScript."
+shortDescription: "A complete AI chat widget that runs in the browser."
+description: "Embed a streaming AI chat with an in-browser Pi agent, provider settings, tools, and conversation history."
 github: "pithings/agentak"
 themeColor: cyan
 url: "https://agentak.dev"
-# crossOriginIsolation: true
+redirects:
+  "/chat-components": "/widget"
+  "/chrome-extension": "/extension"
+  "/pi-agent": "/agents/pi-agent"
+  "/pi-agent/providers-and-models": "/agents/pi-agent/providers-and-models"
+  "/pi-agent/on-device-models": "/agents/pi-agent/on-device-models"
+  "/pi-agent/tools-and-approvals": "/agents/pi-agent/tools-and-approvals"
+  "/pi-agent/webmcp": "/agents/pi-agent/webmcp"
+  "/pi-agent/storage-and-api-keys": "/agents/pi-agent/storage-and-api-keys"
+  "/pi-agent/conversations": "/agents/pi-agent/conversations"
+  "/pi-agent/runtime-behavior": "/agents/pi-agent/runtime-behavior"
+  "/pi-agent/advanced-api": "/agents/pi-agent/advanced-api"
+  "/custom-agents": "/agents/custom-agents"
+  "/conversations": "/agents/pi-agent/conversations"
+
+landing:
+  title: "Agentak — browser-native AI chat"
+  description: "Add a complete AI chat to any web page. The widget and Pi agent loop run client-side, with direct providers and on-device models."
+  heroTitle: "Agentak"
+  heroSubtitle: "AI chat, in your browser."
+  heroDescription: "Drop a complete chat widget into any page. The UI, Pi agent loop, settings, tools, and history run client-side—use an on-device model or connect directly to an AI provider."
+  heroLinks:
+    chrome:
+      label: "Chrome Extension"
+      icon: "i-reicon-chrome"
+      to: "/extension"
+      order: 10
+  heroCode:
+    title: "browser.ts"
+    lang: "ts"
+    content: |
+      import { mountChat } from "agentak";
+      import { createPiSession } from "agentak/pi";
+
+      const session = createPiSession({ history: true });
+      mountChat("#chat", { session });
+  featuresTitle: "Everything a browser agent needs"
+  features:
+    - title: "Browser-native runtime"
+      icon: "system-uicons:browser"
+      description: "No Agentak server is required. Run a local model or call a provider directly from the page."
+    - title: "Included Pi agent"
+      icon: "i-lucide-bot"
+      description: "Streaming, reasoning, providers, model selection, tool calls, approvals, usage, and errors in one session."
+    - title: "On-device models"
+      icon: "i-lucide-cpu"
+      description: "Use Chrome Built-in AI or run small GGUF models through llama.cpp and WebAssembly with wllama."
+    - title: "Complete chat UX"
+      icon: "i-lucide-message-square"
+      description: "Markdown, code, thinking, tool output, queues, retry, copy, read aloud, slash commands, and mobile keyboard support."
+    - title: "Tools from the page"
+      icon: "i-lucide-wrench"
+      description: "Add typed Pi tools or let the agent discover WebMCP tools published by the current document."
+    - title: "Your framework or none"
+      icon: "i-lucide-blocks"
+      description: "Use React, Vue, Preact, plain JavaScript, or connect the UI to a custom agent through ChatSession."

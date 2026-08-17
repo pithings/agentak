@@ -361,5 +361,34 @@ own probe for it still fails, still logs one CSP warning to the panel console, a
 falls back to its dynamic checks. That warning is expected and is not this bug.
 
 The CSP blocks third-party requests, which is one reason no component fetches a remote
-asset. wllama is not offered here for the same reason: `wllamaSupported()` answers no on
-a `chrome-extension:` document.
+asset.
+
+**wllama is shipped rather than fetched**, and `extension/wllama/` is the whole of it.
+The library's default takes the module and its wasm from a CDN, which the policy above
+allows no more than it allows a remote catalog. That much is `useWllamaSource()`, the
+same shape as `useCatalogSource()`.
+
+The worker is the half that is not a url. wllama never loads one from a file: it joins
+the emscripten glue and its own worker code into one string per run and starts it as a
+`blob:` url. A worker script is matched against `worker-src`, which falls back to
+`script-src 'self'`, and `blob:` is not `'self'` — nor may an MV3 policy be widened to
+say otherwise, so this is not a manifest line that was missed.
+
+So the build writes that worker out as a file, which `'self'` covers. `build.ts` holds
+two vite plugins: one writes `dist/wllama/` — the llama worker, the OPFS worker and the
+7.6 MB wasm — and the other rewrites the package's `createWorker()` to call `worker.ts`
+beside it. Nothing is patched in `node_modules`; the rewrite is a transform, and the
+version is pinned exactly so an update arrives through the lockfile and is read.
+
+One thing the build cannot know is `RUN_OPTIONS` — where the wasm is and how many threads
+to run — which wllama writes into the first line of the code it hands `createWorker()`.
+`worker.ts` reads it off that line and puts it on the worker's url as a query, and the
+generated file reads it back from its own `location`. That is also where the two guards
+live: threads mean pthreads, which emscripten starts from a blob in turn, and compat mode
+is a different glue than the one the build baked. Neither can happen here — wllama asks
+for `SharedArrayBuffer` first and the manifest declares no cross-origin isolation — and
+both throw with the reason rather than failing inside the worker.
+
+Every read in `build.ts` asserts. A wllama that moves one of these pieces fails the build
+naming what moved, rather than shipping a panel whose local models throw on the first
+turn.

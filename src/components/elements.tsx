@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import type { ComponentChildren } from "preact";
 
 import { Checkpoint, CheckpointIcon, CheckpointTrigger } from "./ai-elements/checkpoint.tsx";

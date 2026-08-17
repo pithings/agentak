@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 /**
  * What a relative link is relative to.
  *

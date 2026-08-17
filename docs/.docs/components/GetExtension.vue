@@ -52,7 +52,7 @@ onMounted(() => {
 <template>
   <div class="not-prose my-6 flex flex-wrap items-center gap-x-4 gap-y-2">
     <a :class="linkClass" :href="href" download="agentak-extension.zip">
-      <Icon name="i-lucide-puzzle" />
+      <Icon name="i-reicon-chrome" />
       Download for Chrome
     </a>
   </div>

@@ -116,7 +116,24 @@ the four things the render cannot: a code fence is named rather than read, the l
 quote marks it keeps are cut, a table row is spoken as cells rather than tabs, and emoji
 go — a voice either names one or says nothing. Where md4x failed to load the markdown goes
 as it is, which is how the message itself is shown then too. A turn that is still
-streaming, a user turn, and a turn that only called tools show no row.
+streaming and a turn that only called tools show no row.
+
+A user turn carries a row of its own, on the bubble's side. Both buttons in it rewind the
+conversation to that message; they differ in where the rewind lands. **Retry** stays here:
+the turns before it, and then the message itself, sent again — the answer it got is
+replaced rather than joined, and what was said after it goes with it. **Fork** takes it
+away: everything before that message becomes a new conversation, and the message goes back
+into the composer with the caret after it, to be sent again with or without a change. So
+retry is the branch nobody keeps, and fork is the one that is kept — the conversation
+being left is filed away exactly as the header's plus button files one, and a session with
+`history` then lists both.
+
+The seam is `fork` and `retryFrom`, each optional, each shown only where it is answered.
+`retryFrom` is not `retry`: the error row's button runs a turn that failed, this one runs a
+turn that answered. Only fork needs the surface for anything, because only fork types
+something back: `Chat` hands the composer a draft with a counter beside it, since the field
+is uncontrolled and forking the same message twice is two requests. A session with no
+`history` loses the conversation a fork leaves, the way `/new` loses one.
 
 `lib/use-copy.ts` holds the clipboard call and the short "copied" state.
 `lib/use-speech.ts` holds the reading: it speaks through `window.speechSynthesis`, and the
@@ -264,11 +281,14 @@ through the Prompt API, and is listed only where the browser carries that API, w
 means a Chrome with both flags set. It answers text alone — no tool calls and no images.
 Local (wllama) runs llama.cpp in the tab as WebAssembly: the module comes from a CDN, the
 weights from Hugging Face, and the browser keeps both. It is listed on any page with a
-worker, which is every page but an MV3 one — the side panel may import no remote module.
+worker. An MV3 page may load neither a remote module nor a worker built at run time, so
+the panel ships all three itself — wllama, its wasm and its worker — and says so through
+`useWllamaSource()`, which is also what puts the row back in its picker. See
+[`.agents/playground.md`](.agents/playground.md).
 
 Kilo and OpenCode Zen do not answer CORS preflight requests. Regular web pages therefore
 show 7 of the network providers, plus wllama, while the extension shows all 9 — plus
-Chrome's own, where it is there, and without wllama. See
+Chrome's own, where it is there, and wllama as well. See
 [`.agents/pi.md`](.agents/pi.md). The chat UI, Markdown renderer, and side panel have not
 yet been tested in a real browser.
 
@@ -336,7 +356,14 @@ stores conversations elsewhere still uses `save()` and `restore()`. See
    and the mark belongs to that tab alone. The seventh is the per-site history: a
    conversation had on one site is not listed on another, a tab that comes forward on
    another site moves the chat with it, and browsing away mid-answer still files that
-   answer under the site it was about.
+   answer under the site it was about. The eighth is the one nothing here can check at
+   all: **the panel's own wllama**. The row is listed and the pieces are written into
+   `extension/dist/wllama/`, but no browser has yet started that worker — so the console
+   is the answer. A CSP line naming `worker-src` means the file is not being reached; a
+   `RUN_OPTIONS` that is undefined means the query did not arrive; a wasm that will not
+   instantiate means `wasm-unsafe-eval` or the path. Then the turn itself: pick LFM2.5
+   350M, the smallest, and check that the download reports its percentage, that the
+   second open loads from OPFS without one, and that a tool call still parses.
 2. **Add conversation compaction.** Pi exports `compact()`, but it needs a `Models` store
    and the session's own `Entry[]`. Long conversations can still reach the context limit.
    The warning is already implemented: the context meter turns amber when

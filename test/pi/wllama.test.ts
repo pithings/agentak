@@ -1,7 +1,14 @@
 import type { AssistantMessageEvent, Context, Model } from "@earendil-works/pi-ai";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { useWllamaModule, WLLAMA_MODEL_ID, WLLAMA_MODELS } from "../../src/pi/local.ts";
+import {
+  useWllamaSource,
+  WLLAMA_MODEL_ID,
+  WLLAMA_MODELS,
+  WLLAMA_WASM_URL,
+  wllamaSupported,
+  wllamaWasmUrl,
+} from "../../src/pi/local.ts";
 import type { AnyModel } from "../../src/pi/providers.ts";
 import { streamSimple, toMessages, unloadWllama, type WllamaModule } from "../../src/pi/wllama.ts";
 
@@ -38,26 +45,28 @@ interface Fake {
 const stub = (over: Partial<Fake> = {}): Fake => {
   const fake: Fake = { chunks: [], loaded: [], calls: [], exited: 0, ...over };
 
-  useWllamaModule(async () => {
-    const module: WllamaModule = {
-      Wllama: class {
-        async loadModelFromUrl(url: string, params: Record<string, any>) {
-          fake.loaded.push({ url, params });
-          params.progressCallback?.({ loaded: 50, total: 100 });
-          if (fake.failure) throw fake.failure;
-        }
-        async createChatCompletion(options: Record<string, any>) {
-          fake.calls.push(options);
-          return (async function* () {
-            yield* fake.chunks;
-          })();
-        }
-        async exit() {
-          fake.exited += 1;
-        }
-      } as unknown as WllamaModule["Wllama"],
-    };
-    return module;
+  useWllamaSource({
+    module: async () => {
+      const module: WllamaModule = {
+        Wllama: class {
+          async loadModelFromUrl(url: string, params: Record<string, any>) {
+            fake.loaded.push({ url, params });
+            params.progressCallback?.({ loaded: 50, total: 100 });
+            if (fake.failure) throw fake.failure;
+          }
+          async createChatCompletion(options: Record<string, any>) {
+            fake.calls.push(options);
+            return (async function* () {
+              yield* fake.chunks;
+            })();
+          }
+          async exit() {
+            fake.exited += 1;
+          }
+        } as unknown as WllamaModule["Wllama"],
+      };
+      return module;
+    },
   });
 
   return fake;
@@ -74,7 +83,7 @@ const collect = async (
 
 afterEach(async () => {
   await unloadWllama();
-  useWllamaModule(undefined);
+  useWllamaSource(undefined);
   delete WLLAMA_MODELS[PLAIN_ID];
 });
 
@@ -85,6 +94,33 @@ describe("WLLAMA_MODELS", () => {
       expect(model.size, model.id).toBeTruthy();
       expect(model.api).toBe("wllama");
     }
+  });
+});
+
+describe("useWllamaSource", () => {
+  it("takes the wasm of the host that ships it, and the CDN's without one", () => {
+    expect(wllamaWasmUrl()).toBe(WLLAMA_WASM_URL);
+    useWllamaSource({ module: async () => ({}), wasm: "/wllama.wasm" });
+    expect(wllamaWasmUrl()).toBe("/wllama.wasm");
+  });
+
+  it("is what says an mv3 page can run the loop", () => {
+    const location = globalThis.location;
+    Object.defineProperty(globalThis, "location", {
+      configurable: true,
+      value: { protocol: "chrome-extension:" },
+    });
+    // jsdom carries no worker, which is the gate's other half.
+    globalThis.Worker = class {} as unknown as typeof Worker;
+
+    // The CDN default is a module and a worker an extension page may not load.
+    expect(wllamaSupported()).toBe(false);
+    // A host that ships its own has answered for its own document.
+    useWllamaSource({ module: async () => ({}) });
+    expect(wllamaSupported()).toBe(true);
+
+    Object.defineProperty(globalThis, "location", { configurable: true, value: location });
+    delete (globalThis as { Worker?: unknown }).Worker;
   });
 });
 

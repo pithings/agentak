@@ -1,3 +1,4 @@
+// Docs: @docs/4.agents/2.pi-agent/5.webmcp.md
 /**
  * WebMCP — the tools the current page publishes.
  *

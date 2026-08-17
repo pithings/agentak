@@ -1,3 +1,4 @@
+// Docs: @docs/7.extension.md
 /**
  * The service worker. It opens the side panel when the toolbar icon is clicked,
  * and it counts the tools the page in front publishes onto the icon — a mark the

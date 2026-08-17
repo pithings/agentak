@@ -1,3 +1,4 @@
+// Docs: @docs/4.agents/2.pi-agent/2.providers-and-models.md
 import { LLM7_MODELS } from "./free-models.ts";
 import { type AnyModel, SUPPORTED_APIS } from "./providers.ts";
 

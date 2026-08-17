@@ -1,3 +1,4 @@
+// Docs: @docs/7.extension.md
 /**
  * Where the panel keeps the keys, the choices and the conversations.
  *

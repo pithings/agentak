@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import type { ComponentChildren, RefObject } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
@@ -151,6 +152,18 @@ export interface ChatProps extends ChatComposerProps, ChatHistoryProps {
   /** Answer a tool confirmation, by tool call id. */
   onRespond?: ChatRespond;
   /**
+   * Rewind to a user message: the harness cuts the transcript back to just
+   * before it, and this surface puts what it said back in the composer. Without
+   * it, no message carries a fork button.
+   */
+  onFork?: (messageId: string) => void;
+  /**
+   * The same rewind in the conversation on screen: the harness cuts back to
+   * just before that message and runs it again. Nothing comes back to the
+   * composer, because nothing is left to type.
+   */
+  onRetryFrom?: (messageId: string) => void;
+  /**
    * What a relative link in an answer is relative to — an url. Only a surface
    * that is not the document it talks about needs one: a chat on a page leaves
    * this out, and the browser resolves `/config` against the page itself. See
@@ -189,6 +202,8 @@ export function Chat({
   queued = [],
   onDequeue,
   onRespond,
+  onFork,
+  onRetryFrom,
   linkBase,
   actions,
   emptyActions,
@@ -248,6 +263,20 @@ export function Chat({
     onReset();
     setFocusKey((n) => n + 1);
   };
+
+  // What a fork hands back to the composer. A counter rides with the text, so
+  // forking the same message twice is two requests rather than one — the field
+  // is uncontrolled, and the reader may have typed over the first.
+  const [draft, setDraft] = useState<{ text: string; key: number }>();
+
+  // The harness rewinds the transcript; the surface says it again. Both halves
+  // are one click, so neither is offered without the other.
+  const fork =
+    onFork &&
+    ((id: string, text: string) => {
+      onFork(id);
+      setDraft((last) => ({ text, key: (last?.key ?? 0) + 1 }));
+    });
 
   const surfaceRef = useRef<HTMLDivElement>(null);
   const footRef = useFootHeight(surfaceRef);
@@ -325,7 +354,9 @@ export function Chat({
                     isStreaming={isStreaming && message === last}
                     key={message.id}
                     message={message}
+                    onFork={fork}
                     onRespond={onRespond}
+                    onRetryFrom={onRetryFrom}
                   />
                 ))
               )}
@@ -363,6 +394,7 @@ export function Chat({
           <ChatQueue items={queued} onDequeue={onDequeue} />
 
           <ChatComposer
+            draft={draft}
             focusKey={focusKey}
             // The settings page is the whole surface under the header: there is
             // nothing to say to a provider that is still being chosen, so the

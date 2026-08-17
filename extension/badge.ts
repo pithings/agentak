@@ -1,3 +1,4 @@
+// Docs: @docs/7.extension.md
 /**
  * How many tools the page in front publishes, on the toolbar icon.
  *

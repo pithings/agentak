@@ -1,3 +1,4 @@
+// Docs: @docs/4.agents/2.pi-agent/8.runtime-behavior.md
 /**
  * Provider failures, said in a way a person can act on.
  *

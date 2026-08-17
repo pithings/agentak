@@ -1,3 +1,5 @@
+// Docs: @docs/4.agents/2.pi-agent/9.advanced-api.md
+// Docs: @docs/4.agents/2.pi-agent/8.runtime-behavior.md
 import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
 
 import type { AgentRuntime } from "./create-agent.ts";
@@ -46,8 +48,12 @@ export interface AgentStore {
    * Replace the transcript in place — a stored conversation, or nothing, which
    * is `reset()`. The messages are the caller's to cut: pi is handed whatever
    * this is given. See `usablePiMessages()`.
+   *
+   * `after` runs once the swap has landed, which is not this call where a turn
+   * was streaming through it. A caller that sends into the new transcript —
+   * rewind and run it again — has to say so here, or it sends into the old one.
    */
-  load(messages: AgentMessage[]): void;
+  load(messages: AgentMessage[], after?: () => void): void;
   /**
    * Answer a tool confirmation, by tool call id. A denial's `reason` is what the
    * model is told instead of the tool's output, so it can take another way.
@@ -140,7 +146,7 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
    * a swap over a streaming turn waits on `waitForIdle()`, and an idle one,
    * which is every swap a person makes, lands at once.
    */
-  const load = (messages: AgentMessage[]) => {
+  const load = (messages: AgentMessage[], after?: () => void) => {
     const swap = () => {
       agent.reset();
       if (messages.length > 0) agent.state.messages = [...messages];
@@ -149,6 +155,7 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
       failure = undefined;
       dismissed = undefined;
       notify();
+      after?.();
     };
 
     if (!agent.state.isStreaming) {

@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import { type Attributes, type ComponentType, h, render } from "preact";
 
 import { AgentChat, type AgentChatProps } from "./agent-chat.tsx";

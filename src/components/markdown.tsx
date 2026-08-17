@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import type { ComarkElementAttributes, ComarkNode } from "md4x/standalone";
 import type { ComponentChild, ComponentChildren, ComponentProps, VNode } from "preact";
 import { cloneElement, h, isValidElement, toChildArray } from "preact";

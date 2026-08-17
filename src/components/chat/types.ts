@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import type { ContextCosts } from "../ai-elements/context.tsx";
 import type { LanguageModelUsage, ToolDefinition } from "../../types.ts";
 

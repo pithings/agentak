@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import type { ComponentChildren } from "preact";
 import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
@@ -146,6 +147,7 @@ export function AgentChat({
         session.forgetConversation && ((id) => session.forgetConversation?.(id))
       }
       onForgetKey={session.forgetKey && ((id) => session.forgetKey?.(id))}
+      onFork={session.fork && ((id) => session.fork?.(id))}
       onHistoryOpenChange={onHistoryOpenChange}
       onModelChange={session.selectModel && ((id) => session.selectModel?.(id))}
       onOpenConversation={session.openConversation && ((id) => session.openConversation?.(id))}
@@ -157,6 +159,7 @@ export function AgentChat({
         ((id, approved, reason) => session.respondToTool?.(id, approved, reason))
       }
       onRetry={session.retry && (() => session.retry?.())}
+      onRetryFrom={session.retryFrom && ((id) => session.retryFrom?.(id))}
       onSaveKey={session.saveKey && ((id, key) => session.saveKey?.(id, key))}
       onSend={(text) => session.send(text)}
       onStop={() => session.stop()}

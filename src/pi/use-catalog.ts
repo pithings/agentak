@@ -1,3 +1,4 @@
+// Docs: @docs/4.agents/2.pi-agent/2.providers-and-models.md
 import { useEffect, useState } from "preact/hooks";
 
 import { cachedCatalog, loadCatalog } from "./catalog.ts";

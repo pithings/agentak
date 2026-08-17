@@ -1,3 +1,4 @@
+// Docs: @docs/4.agents/3.custom-agents.md
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import type { ChatProps, ChatThinkingLevel } from "./components/chat.tsx";
@@ -124,6 +125,31 @@ export interface ChatSession {
    * dismissing it. Pairs with `error`, and the surface offers it nowhere else.
    */
   retry?(): void;
+
+  /**
+   * Rewind to a user message, by the id it carries in `messages`.
+   *
+   * A new conversation carrying everything before that message, and nothing of
+   * the turn it started. The surface puts what it said back in the composer, so
+   * the reader can change a word and go again — a branch, not an edit: the
+   * conversation being left is untouched, and a harness that keeps its own
+   * stores it exactly as `reset()` does.
+   *
+   * Without it, no message carries a fork button. One that keeps no
+   * conversations still forks, and the transcript it rewinds from goes the way
+   * `reset()` sends it.
+   */
+  fork?(messageId: string): void;
+  /**
+   * The same rewind, in the conversation on screen: cut back to just before
+   * that user message and run it again, so the answer it got is replaced rather
+   * than joined. What was said after it goes with it — this is the branch
+   * nobody keeps, which is the whole of the difference from `fork`.
+   *
+   * Not `retry`, which is the error row's button and runs a turn that failed.
+   * This one runs a turn that answered.
+   */
+  retryFrom?(messageId: string): void;
 
   /** Pairs with `providers`. */
   selectProvider?(id: string): void;

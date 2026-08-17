@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 import { useLayoutEffect } from "preact/hooks";
 
 import { AgentChat } from "../agent-chat.tsx";

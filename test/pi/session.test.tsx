@@ -318,6 +318,67 @@ describe("a pi session that keeps its own conversations", () => {
     await waitFor(() => expect(next.snapshot().modelId).toBe(MODEL));
   });
 
+  it("forks from a user message into a conversation of its own", async () => {
+    const session = await ready();
+
+    session.send("what is this page?");
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(2));
+    session.send("and the tools?");
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(4));
+    const whole = session.snapshot().conversationId ?? "";
+
+    // Back to just before the second question: the answer to the first is the
+    // end of the fork, and the question itself is the surface's to say again.
+    session.fork?.("u2");
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(2));
+    const branch = session.snapshot().conversationId;
+    expect(branch).not.toBe(whole);
+    // Under the same model, and beside the conversation it came from rather
+    // than over it.
+    expect(session.snapshot().modelId).toBe(MODEL);
+    await waitFor(() => expect(session.snapshot().history).toHaveLength(2));
+
+    session.openConversation?.(whole);
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(4));
+  });
+
+  it("runs a message again in place, dropping what it said before", async () => {
+    const session = await ready();
+
+    session.send("what is this page?");
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(2));
+    session.send("and the tools?");
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(4));
+    const live = session.snapshot().conversationId;
+
+    // The second question, asked again: the answer it got is replaced rather
+    // than joined, so the transcript is the same length as before.
+    session.retryFrom?.("u2");
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(4));
+    // The same conversation throughout — this is the branch nobody keeps.
+    expect(session.snapshot().conversationId).toBe(live);
+    await waitFor(() => expect(session.snapshot().history).toHaveLength(1));
+
+    const said = session.snapshot().messages[2].parts[0];
+    expect(said.kind === "text" && said.text).toBe("and the tools?");
+  });
+
+  it("rewinds from nothing but a user message", async () => {
+    const session = await ready();
+
+    session.send("what is this page?");
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(2));
+    const live = session.snapshot().conversationId;
+
+    // An answer, a message that is gone, and an id from another harness.
+    for (const id of ["a1", "u40", ""]) {
+      session.fork?.(id);
+      session.retryFrom?.(id);
+    }
+    expect(session.snapshot().messages).toHaveLength(2);
+    expect(session.snapshot().conversationId).toBe(live);
+  });
+
   it("replaces its state on a snapshot a host holds itself", async () => {
     const session = await ready();
     session.send("what is this page?");

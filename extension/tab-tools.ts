@@ -1,3 +1,5 @@
+// Docs: @docs/7.extension.md
+// Docs: @docs/4.agents/2.pi-agent/5.webmcp.md
 /**
  * The tools of the tab in front, for the side panel.
  *

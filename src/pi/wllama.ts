@@ -1,3 +1,4 @@
+// Docs: @docs/4.agents/2.pi-agent/3.on-device-models.md
 /**
  * The `wllama` api: llama.cpp compiled to WebAssembly, spoken the way pi speaks
  * to a provider. Loaded only when a local model is picked, like every other api
@@ -5,7 +6,7 @@
  *
  * wllama is not a dependency of this package. The esm bundle is imported from a
  * CDN on the first turn and the wasm comes from the same place — `local.ts`
- * holds both urls, and `useWllamaModule()` is how a host ships its own copy
+ * holds both urls, and `useWllamaSource()` is how a host ships its own copy
  * instead. The weights come from Hugging Face and the browser keeps them, so
  * the download is once per model rather than once per page.
  *
@@ -29,7 +30,7 @@ import type {
   ToolCall,
 } from "@earendil-works/pi-ai";
 
-import { findLocalModel, loadWllamaModule, type LocalModel, WLLAMA_WASM_URL } from "./local.ts";
+import { findLocalModel, loadWllamaModule, type LocalModel, wllamaWasmUrl } from "./local.ts";
 
 /** How often the download is asked how far it has come. */
 const PROGRESS_MS = 500;
@@ -123,7 +124,7 @@ async function load(
   await unloadWllama();
 
   const module = (await loadWllamaModule()) as WllamaModule;
-  const wllama = new module.Wllama({ default: WLLAMA_WASM_URL });
+  const wllama = new module.Wllama({ default: wllamaWasmUrl() });
   try {
     await wllama.loadModelFromUrl(spec.baseUrl, {
       n_ctx: spec.contextWindow,

@@ -1,3 +1,4 @@
+// Docs: @docs/4.agents/2.pi-agent/6.storage-and-api-keys.md
 /**
  * Where the picker keeps the keys, the provider, the model and the level.
  *

@@ -1,3 +1,5 @@
+// Docs: @docs/4.agents/2.pi-agent/1.index.md
+// Docs: @docs/4.agents/2.pi-agent/9.advanced-api.md
 // The pi-agent-core loop, under the `agentak/pi` subpath — the one entry that
 // pulls pi in. `createPiSession` is what `AgentChat` runs on; the rest is for a
 // host that wants the loop under a surface of its own.
@@ -85,14 +87,16 @@ export {
   findLocalModel,
   type LocalModel,
   loadWllamaModule,
-  useWllamaModule,
+  useWllamaSource,
   WLLAMA_MODEL_ID,
   WLLAMA_MODELS,
   WLLAMA_MODULE_URL,
   WLLAMA_PROVIDER_ID,
   WLLAMA_WASM_URL,
   type WllamaLoader,
+  type WllamaSource,
   wllamaSupported,
+  wllamaWasmUrl,
 } from "./local.ts";
 export {
   ON_DEVICE_MODEL_ID,

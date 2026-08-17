@@ -37,9 +37,10 @@ forwards options by.
 
 `ChatSession` is five required members — `subscribe`, `snapshot`, `send`, `stop`,
 `reset` — plus optional ones for the parts of the surface that answer back:
-`respondToTool`, `dequeue`, `dismissError`, `retry`, `selectProvider`, `selectModel`,
-`setThinkingLevel`, `saveKey`, `forgetKey`, `setPickerOpen`, `openConversation`,
-`forgetConversation`, `setHistoryOpen`, `setOptions`. **Absent means gone, not broken.** A harness with one
+`respondToTool`, `dequeue`, `dismissError`, `retry`, `fork`, `retryFrom`, `selectProvider`,
+`selectModel`, `setThinkingLevel`, `saveKey`, `forgetKey`, `setPickerOpen`,
+`openConversation`, `forgetConversation`, `setHistoryOpen`, `setOptions`.
+**Absent means gone, not broken.** A harness with one
 fixed model carries no `providers`, and `settings.tsx` then heads its own model list under
 `providerLabel`; one with no token accounting carries no `usage`, and the composer shows
 no meter; one with no `dismissError` shows an error row with nothing to close it.
@@ -91,6 +92,23 @@ transcript. A session that implements the setter owns both halves, and the surfa
 and forgetting the field would otherwise leave the page shut for good. `historyOpen` and
 `setHistoryOpen` are the same pair for the history page, and `Chat` holds one page slot:
 opening either puts the other away, so the transcript is never behind two pages.
+
+**`fork` and `retryFrom` are one rewind with two endings.** Both are given the id of a user
+message — the one `messages` carries — and both cut the transcript back to just before it.
+`retryFrom` then runs that message again in the conversation on screen, so the answer it
+got is replaced; `fork` leaves the message out and reports a new conversation, and the
+surface types it back. The button rows follow the methods: a harness that answers neither
+shows none.
+
+Only `fork` needs the surface for anything. What the message said is its other half:
+`Chat` puts it back in the composer with a counter beside it, so the same message forked
+twice arrives twice in an uncontrolled field. And only `fork` is a **branch that is kept**:
+the conversation being left is untouched, and one that keeps its own stores it exactly as
+`reset()` does — which is also what a harness storing nothing loses, the same way.
+`retryFrom` keeps nothing, which is the whole of the difference.
+
+`retryFrom` is not `retry`. `retry` is the error row's button and runs a turn that failed,
+in place, with no id; `retryFrom` runs a turn that answered.
 
 **The session moves between conversations; the host does not have to.** `history` is what
 it has stored — an id, a title and when it was last written — `conversationId` is the one

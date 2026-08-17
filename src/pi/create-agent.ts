@@ -1,3 +1,5 @@
+// Docs: @docs/4.agents/2.pi-agent/9.advanced-api.md
+// Docs: @docs/4.agents/2.pi-agent/4.tools-and-approvals.md
 import {
   Agent,
   type AgentMessage,

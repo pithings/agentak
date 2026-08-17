@@ -1,3 +1,4 @@
+// Docs: @docs/3.widget.md
 // Every built-in component, under the `agentak/components` subpath. A host
 // that builds its own surface imports the pieces from here; the root export
 // stays the assembled chat.
