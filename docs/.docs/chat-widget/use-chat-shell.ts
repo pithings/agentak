@@ -20,9 +20,10 @@ export function useChatShell(options: {
   const mounted = ref(false);
 
   /**
-   * What the reader has done with the chat, and nothing before that: no class of
-   * ours may describe the state the page was served in. Hydration therefore
-   * changes no attribute the first paint set.
+   * Which state the chat is in, once there is a reader to change it. `is-closed`
+   * is the state the page was served in, so hydration moves nothing; it is
+   * written all the same, so the page carries the transition before the first
+   * open rather than picking it up in the same frame as the width it animates.
    */
   const state = computed(() =>
     mounted.value ? (open.value ? "is-open" : "is-closed") : undefined,
@@ -46,8 +47,8 @@ export function useChatShell(options: {
   const input = () => panel.value?.querySelector<HTMLTextAreaElement>('textarea[name="message"]');
 
   /**
-   * The composer takes the focus whenever the chat opens — with the page on a
-   * desktop, and on the button everywhere else. It is where a reader starts.
+   * The composer takes the focus whenever the chat opens. It is where a reader
+   * starts.
    *
    * A touch screen is the one exception: the focus would raise the virtual
    * keyboard over the transcript that has just opened.
@@ -108,15 +109,9 @@ export function useChatShell(options: {
 
   onMounted(() => {
     measure();
+    // The chat is closed in both layouts, which is how the page was served: it
+    // opens for the reader who asks for it, and the chat itself is fetched then.
     mounted.value = true;
-    // The rail is already docked, and the page already carries its room: this
-    // only agrees with the stylesheet, and fetches the chat that goes in it. The
-    // composer takes the focus once it is there, so the page opens ready to be
-    // asked something.
-    if (wide.value) {
-      open.value = true;
-      void load().then(focusComposer);
-    }
     desktop?.addEventListener("change", measure);
     globalThis.addEventListener("keydown", onKey);
   });

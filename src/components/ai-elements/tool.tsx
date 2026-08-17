@@ -1,5 +1,7 @@
 import type { ComponentChildren, ComponentProps } from "preact";
 import { isValidElement } from "preact";
+import { useMemo } from "preact/hooks";
+import { detectLanguage } from "rangi/core";
 
 import type { DynamicToolUIPart, ToolUIPart } from "../../types.ts";
 import {
@@ -14,7 +16,7 @@ import { useAnimation } from "../../lib/use-animation.ts";
 import { pulseKeyframes, pulseOptions, u } from "../../styles/base.ts";
 import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
-import { CodeBlock } from "./code-block.tsx";
+import { CodeBlock, type CodeLanguage } from "./code-block.tsx";
 
 /**
  * The input/output box. Exported so other files that render the same surface
@@ -439,7 +441,36 @@ const formatJson = (text: string): string | undefined => {
   }
 };
 
+/**
+ * How much of a result the grammar is read off. A detector needs a sample and
+ * not a whole document, and a result can be one — `read_page` hands over the
+ * text of a page.
+ */
+const DETECT_SAMPLE = 4000;
+
+/**
+ * A string result, ready for the box: json indented and named as json, and
+ * anything else as it came, under whichever grammar rangi scores highest for
+ * it — sql, a diff, a stack trace, the yaml a tool wrote its report in.
+ *
+ * Prose is safe here. rangi scores the whole set and answers `plain` where
+ * nothing clears its threshold, so a sentence holding a stray quote or brace
+ * is a sentence and not badly coloured code.
+ */
+const asCode = (text: string): { code: string; language: CodeLanguage } => {
+  const json = formatJson(text);
+
+  return json === undefined
+    ? { code: text, language: detectLanguage(text.slice(0, DETECT_SAMPLE)) }
+    : { code: json, language: "json" };
+};
+
 export const ToolOutput = ({ className, style, output, errorText, ...props }: ToolOutputProps) => {
+  const text = typeof output === "string" ? output : undefined;
+  // A result is re-rendered on every chunk of the turn around it, and both
+  // halves of this — the parse and the scoring — read the whole string.
+  const code = useMemo(() => (text === undefined ? undefined : asCode(text)), [text]);
+
   if (!(output || errorText)) {
     return null;
   }
@@ -452,11 +483,8 @@ export const ToolOutput = ({ className, style, output, errorText, ...props }: To
 
   if (typeof output === "object" && !isValidElement(output)) {
     Output = <CodeBlock code={JSON.stringify(output, null, 2)} language="json" style={codeSx} />;
-  } else if (typeof output === "string") {
-    // Plain text is left as text: the json grammar would colour a stray quote
-    // or brace in a sentence as if the sentence were code.
-    const json = formatJson(output);
-    Output = <CodeBlock code={json ?? output} language={json ? "json" : "text"} style={codeSx} />;
+  } else if (code) {
+    Output = <CodeBlock code={code.code} language={code.language} style={codeSx} />;
   }
 
   return (

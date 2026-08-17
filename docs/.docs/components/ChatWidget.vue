@@ -31,15 +31,16 @@ import { useChatShell } from "../chat-widget/use-chat-shell.ts";
  * The chat is never a box over the page. It is mounted once and only ever
  * restyled, so the transcript survives a resize:
  *
- * - **`lg` and up — a docked rail** on the right, full height, open with the
- *   page. It is chrome of the site rather than a dialog: the page gives up the
- *   room, so the rail covers nothing.
+ * - **`lg` and up — a docked rail** on the right, full height, slid in from the
+ *   edge by the button. It is chrome of the site rather than a dialog: the page
+ *   gives up the room while it is open, so the rail covers nothing.
  * - **Below `lg` — a sheet** over the whole screen, opened by the button. A
  *   small screen has no room beside the page, so the chat takes all of it and
  *   the page holds still underneath. It grows out of the button: the morph is a
  *   `clip-path` circle centred on it.
  *
- * Either way the button is the way back once the chat is minimised.
+ * Either way the button is the way in, and the way back once the chat is
+ * minimised. Neither layout opens by itself.
  *
  * Both layouts are the stylesheet's own defaults, and the classes here only say
  * what the reader changed. `chat-widget/chat-widget.css` holds the rules and the
@@ -55,8 +56,8 @@ const actions = minimiseAction(ui, shell);
 </script>
 
 <template>
-  <!-- Rendered by the server, empty: the room and the panel in it are on the
-       page before the chat is, so nothing moves when the chat arrives. -->
+  <!-- Rendered by the server, empty and folded away: the panel is on the page
+       before the chat is, so nothing moves when the chat arrives. -->
   <section ref="panel" :class="['chat-panel', state]" :inert="!open" aria-label="Assistant">
     <component
       :is="Panel"

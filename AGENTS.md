@@ -39,7 +39,7 @@ their package scripts for you.
 pnpm dev               # playground on http://localhost:4050
 pnpm build             # dist/ (obuild) + playground/dist
 pnpm build:lib         # dist/ alone
-pnpm build:extension   # extension/dist (load unpacked)
+pnpm build:extension   # extension/dist (load unpacked) + the zip in the docs' public/
 pnpm typecheck         # tsc --noEmit; vue-tsc for the playground, `.vue` included
 pnpm vitest run        # the library's tests; the playground has none
 pnpm lint              # oxlint
@@ -152,6 +152,13 @@ a leading slash included. While the list is open the field carries the combobox 
 rest of the time. Each command is only offered where the surface can answer it: a session
 with no providers and no models carries no `/model`, and `Chat` is what passes the composer
 its `onReset`.
+
+The composer takes the focus when a conversation is started or a stored one is opened, and
+when the settings page closes — each ends with a transcript and nothing to do but say
+something. Mounting is not one of those, because a chat on a page would pull the caret off
+whatever the reader was doing. `autoFocus` on `AgentChat` says otherwise, for a surface
+that is the whole document: the side panel sets it, and the composer takes the focus as it
+mounts. Never on a phone, where the focus is a keyboard over half the surface.
 
 The provider, model, thinking level, and API key are all selected on the settings page,
 `components/chat/settings.tsx`. Two controls open it: a button in the header, and the
@@ -292,13 +299,17 @@ the transcript with the provider, model, thinking level and title it ran under �
 `restore()` puts one back into the running session, and the `snapshot` option opens on one.
 
 A session can also keep the conversations itself: `createPiSession({ history: true })`
-stores them in the same `PiStorage` as the keys, lists them on the chat's history page, and
-opens on the newest one. Picking one replaces the session state in place. The playground
+stores them in the same `PiStorage` as the keys and lists them on the chat's history page.
+It still opens on a new conversation — a chat that was just opened is a chat to start — and
+picking one from the page replaces the session state in place. The playground
 does this with `browserStorage()` and keeps no list of its own; the panel does it with a
 store of its own over `chrome.storage.local`, read once before it mounts, because
-`PiStorage` answers synchronously and `chrome.storage` does not. A host that stores
-conversations elsewhere still uses `save()` and `restore()`. See
-[`.agents/pi.md`](.agents/pi.md).
+`PiStorage` answers synchronously and `chrome.storage` does not. The panel passes a
+`PiHistory` of its own rather than `true`, because its conversations are segmented per
+site: the keys and the choices are one browser's, while a conversation is about the tab it
+was had on. The chat follows the tab in front from one site's shelf to the next. A host that
+stores conversations elsewhere still uses `save()` and `restore()`. See
+[`.agents/pi.md`](.agents/pi.md) and [`.agents/playground.md`](.agents/playground.md).
 
 ### Next tasks
 
@@ -313,7 +324,10 @@ conversations elsewhere still uses `save()` and `restore()`. See
    follows them to the next one, that a `chrome:` screen fails as a tool error rather than
    a broken turn, and that the toolbar icon reads on a light and a dark toolbar. The
    badge is the sixth: a page that publishes WebMCP tools puts their count on the icon,
-   and the mark belongs to that tab alone.
+   and the mark belongs to that tab alone. The seventh is the per-site history: a
+   conversation had on one site is not listed on another, a tab that comes forward on
+   another site moves the chat with it, and browsing away mid-answer still files that
+   answer under the site it was about.
 2. **Add conversation compaction.** Pi exports `compact()`, but it needs a `Models` store
    and the session's own `Entry[]`. Long conversations can still reach the context limit.
    The warning is already implemented: the context meter turns amber when

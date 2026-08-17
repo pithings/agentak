@@ -54,9 +54,9 @@ export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "message
    * keeps them wherever you like.
    *
    * Off by default: nothing is stored unasked, and a host that keeps its own
-   * with `save()` grows no second list. A session that keeps them opens on the
-   * newest one, so a reload comes back where it was left — unless `snapshot`
-   * names another, which wins.
+   * with `save()` grows no second list. A session opens on a new conversation
+   * either way — the stored ones are reached from the history page — unless
+   * `snapshot` names one, which wins.
    */
   history?: boolean | PiHistory;
   /** Name the conversation with the model rather than the first message. */
@@ -195,13 +195,14 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   const kept = keeping ? (keeping === true ? createHistory(storage) : keeping) : undefined;
 
   /**
-   * What to open on: the conversation a host passed, or — where this session
-   * keeps its own — the newest it stored, so a reload comes back where it was
-   * left. A host that passes one keeps it, under an id of this session's own.
+   * What to open on: the conversation a host passed, and nothing else. A
+   * session that keeps its own still opens on a new one — a chat that was just
+   * opened is a chat to start, and what was said before is one click away on
+   * the history page. A host that passes one keeps it, under an id of this
+   * session's own.
    */
-  const latest = stored ? undefined : kept?.list()[0];
-  const opened = stored ?? (latest ? kept?.read(latest.id) : undefined);
-  let conversationId = latest?.id ?? mintConversationId();
+  const opened = stored;
+  let conversationId = mintConversationId();
 
   // Where the surface runs decides the list: a page drops the providers that
   // answer no preflight. Fixed for the life of the session.

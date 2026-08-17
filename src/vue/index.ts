@@ -41,6 +41,7 @@ const REQUIRED = { type: null, required: true } as const;
 
 const PANEL_PROPS: Required<ComponentObjectPropsOptions<ChatPanelProps>> = {
   actions: null,
+  autoFocus: FLAG,
   emptyActions: null,
   generateTitle: FLAG,
   session: REQUIRED,
@@ -51,6 +52,7 @@ const PANEL_PROPS: Required<ComponentObjectPropsOptions<ChatPanelProps>> = {
 const VIEW_PROPS: Required<ComponentObjectPropsOptions<ChatViewProps>> = {
   actions: null,
   agent: null,
+  autoFocus: FLAG,
   conversationId: null,
   emptyActions: null,
   error: null,

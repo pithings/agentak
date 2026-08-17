@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "undocs dev",
-    "build": "undocs build"
+    "build": "pnpm -C .. build:extension && undocs build"
   },
   "devDependencies": {
     "agentak": "link:..",

@@ -132,6 +132,13 @@ export interface ChatComposerProps extends ChatSettingsProps {
   onReset?: () => void;
   /** The context meter, beside send. Omitted, the composer carries none. */
   usage?: ChatUsage;
+  /**
+   * Take the focus as the chat mounts. Off by default, because a chat inside a
+   * page is one thing on it and would pull the caret off whatever the reader was
+   * doing. A surface that is the whole document — a side panel, a chat window —
+   * was opened to be typed in, so it sets this.
+   */
+  autoFocus?: boolean;
 }
 
 /**
@@ -152,6 +159,7 @@ interface FocusProps {
 
 /** The last row of the surface: what to say, which model says it, and send. */
 export function ChatComposer({
+  autoFocus,
   focusKey,
   hidden,
   isStreaming,
@@ -180,10 +188,11 @@ export function ChatComposer({
 
   // The same for a new conversation: the transcript is empty and the only thing
   // left to do is say something. The first render is not a request — the chat
-  // would take the focus off the page the moment it mounted.
+  // would take the focus off the page the moment it mounted — unless the host
+  // says its surface is the whole document, which is the panel's case.
   const mounted = useRef(false);
   useEffect(() => {
-    if (mounted.current && !isTouch()) input()?.focus();
+    if ((mounted.current || autoFocus) && !isTouch()) input()?.focus();
     mounted.current = true;
   }, [focusKey]);
 

@@ -4,15 +4,15 @@
    ## The stylesheet holds both defaults
 
    The panel, the room it takes and the button are placed here alone, with no
-   class from the component: the rail is docked and the page is padded above
-   `lg`, the sheet is folded away below it. That is what the server renders and
-   what the browser paints first, so the page is served at the width it keeps —
-   the rail lands in room that was always there, and nothing shifts when the
-   script arrives.
+   class from the component: the chat is folded away in both layouts — the rail
+   off the right edge above `lg`, the sheet into the button below it — and the
+   button is the way in. That is what the server renders and what the browser
+   paints first, so the page is served at its full width and nothing shifts when
+   the script arrives.
 
-   `html:has(.chat-panel …)` is what pads the page. The rule reaches the root
-   element, but only while the component is on the page, so a layout without the
-   chat keeps its full width.
+   `html:has(.chat-panel.is-open)` is what pads the page for the rail. The rule
+   reaches the root element, but only while the reader has the chat open, so a
+   page they have not asked keeps its full width.
 
    Script only says what the READER changed: `is-open` and `is-closed` arrive on
    mount, and each one moves the panel away from the default its layout carries.
@@ -118,6 +118,18 @@
   flex-shrink: 0;
 }
 
+/* An open chat is its own way back, in either layout: the rail heads itself and
+   the sheet covers the screen, so the button steps aside until it is minimised. */
+.chat-button.is-open {
+  visibility: hidden;
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 150ms ease-in,
+    transform 150ms ease-in,
+    visibility 0s 150ms;
+}
+
 /* The sheet, below `lg`: the whole screen, folded into the button until the
    reader takes it. `clip-path` is the morph — a circle the size of the button,
    at the button, opening into the whole panel. */
@@ -136,32 +148,21 @@
     clip-path: circle(150% at var(--chat-origin));
     transition: clip-path var(--chat-move) ease-out;
   }
-
-  .chat-button.is-open {
-    visibility: hidden;
-    opacity: 0;
-    transform: scale(0.5);
-    transition:
-      opacity 150ms ease-in,
-      transform 150ms ease-in,
-      visibility 0s 150ms;
-  }
 }
 
-/* The rail, `lg` and up: docked to the right edge and open with the page, so
-   the button is away until the reader minimises it. */
+/* The rail, `lg` and up: docked to the right edge, folded out past it until the
+   reader opens the chat. It slides rather than morphs — a rail comes in from the
+   edge it is docked to. */
 @media (min-width: 64rem) {
-  /* The room the rail takes, reserved by the stylesheet: the page is SERVED
-     narrowed, so the rail needs none of it back on hydration. `:has` is what
-     keeps the rule to the pages this component is on. */
-  html:has(.chat-panel:not(.is-closed)) {
+  /* The room the rail takes, given up only while it is open: the page is SERVED
+     at its full width, and narrows for the reader who asks. `:has` is what keeps
+     the rule to the pages this component is on. */
+  html:has(.chat-panel.is-open) {
     padding-right: var(--chat-rail);
   }
 
   /* The page moves only for the READER: the width is animated once one of the
-     state classes is on the panel, and those arrive with the first minimise.
-     A page that reaches this rule late — the dev server injects its styles from
-     script — therefore lands at its width rather than sliding into it. */
+     state classes is on the panel, and those arrive on mount. */
   html:has(.chat-panel.is-open),
   html:has(.chat-panel.is-closed) {
     transition: padding-right var(--chat-move) ease-out;
@@ -171,28 +172,18 @@
     inset: 0 0 0 auto;
     width: var(--chat-rail);
     border-left: 1px solid var(--border);
-    clip-path: none;
-    transition:
-      transform var(--chat-move) ease-out,
-      visibility 0s;
-  }
-
-  .chat-panel.is-closed {
     visibility: hidden;
     transform: translateX(100%);
+    clip-path: none;
     transition:
       transform var(--chat-move) ease-out,
       visibility 0s var(--chat-move);
   }
 
-  .chat-button:not(.is-closed) {
-    visibility: hidden;
-    opacity: 0;
-    transform: scale(0.5);
-    transition:
-      opacity 150ms ease-in,
-      transform 150ms ease-in,
-      visibility 0s 150ms;
+  .chat-panel.is-open {
+    visibility: visible;
+    transform: none;
+    transition: transform var(--chat-move) ease-out;
   }
 }
 
@@ -217,8 +208,7 @@
   .chat-panel.is-open,
   .chat-panel.is-closed,
   .chat-button,
-  .chat-button.is-open,
-  .chat-button:not(.is-closed) {
+  .chat-button.is-open {
     transition: none;
   }
 

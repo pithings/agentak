@@ -39,7 +39,7 @@ export type ChatSnapshot = Pick<
 >;
 
 /** What the host mounts, rather than what a harness reports. */
-type HostOwned = "className" | "style" | "actions" | "emptyActions";
+type HostOwned = "className" | "style" | "actions" | "autoFocus" | "emptyActions";
 
 /** What the surface calls back on. `AgentChat` routes every one to the session. */
 type Callbacks = Extract<keyof ChatProps, `on${string}`>;

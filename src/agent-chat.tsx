@@ -49,6 +49,12 @@ export interface AgentChatProps extends ChatSessionOptions {
    * shows only before the first message.
    */
   emptyActions?: ComponentChildren;
+  /**
+   * Hand the composer the focus as the chat mounts. Off by default: a chat on a
+   * page shares it. A surface that is the whole document — the side panel — was
+   * opened to be typed in, so it asks for this.
+   */
+  autoFocus?: boolean;
 }
 
 /**
@@ -63,6 +69,7 @@ export function AgentChat({
   className,
   style,
   actions,
+  autoFocus,
   emptyActions,
   ...options
 }: AgentChatProps) {
@@ -120,6 +127,7 @@ export function AgentChat({
     <Chat
       {...snapshot}
       actions={actions}
+      autoFocus={autoFocus}
       className={className}
       emptyActions={empty}
       historyOpen={historyOpen}

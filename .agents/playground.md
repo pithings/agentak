@@ -88,7 +88,7 @@ holds no list, no ids and no wiring of its own. See [`pi.md`](pi.md) for what it
 [`session.md`](session.md) for the seam it travels on.
 
 Picking one replaces the session's state in place, so the widget never swaps a session and
-never loses the island. The page opens on the newest stored conversation, the header's
+never loses the island. The widget opens on a new conversation each time, the header's
 **new conversation** button files the one it replaces away, and `dispose()` on the way out
 writes what is in hand — a tab that closes needs no flush, because a conversation is
 written every time the loop settles.
@@ -195,6 +195,18 @@ library and the extension stay on the root's 7.
 MV3 side panel. `pnpm build:extension` writes `extension/dist`; load it unpacked. Nothing
 here has been opened in a browser yet.
 
+The same command then packs that folder, because the folder is for the person who builds
+it and a file is for the person who installs it. `scripts/pack.ts` writes the build as a
+zip to `docs/.docs/public/agentak-extension.zip`, which the docs site serves at
+`/agentak-extension.zip` and which is the shape the web store takes — the manifest at the
+root of the archive. It is written by hand, over `node:zlib`, so the build needs no `zip`
+on the machine, and every entry carries the same fixed timestamp, so an unchanged build
+packs to the same bytes.
+
+The archive is a build output and is git ignored, so the docs build makes it: `docs`
+runs `pnpm -C .. build:extension` before `undocs build`. The docs folder is its own pnpm
+workspace, so that command needs the root workspace installed where the site is built.
+
 | File             | What                                                                 |
 | ---------------- | -------------------------------------------------------------------- |
 | `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported         |
@@ -202,6 +214,7 @@ here has been opened in a browser yet.
 | `panel.tsx`      | `ChatPanel` from `agentak/preact`, over `createPiSession()`          |
 | `tab-tools.ts`   | the tools of the tab in front, as the session's `page`               |
 | `read-page.ts`   | `read_page` — the panel's own tool, and the half injected in a tab   |
+| `history.ts`     | the conversations, one shelf per site, following the tab in front    |
 | `catalogs.ts`    | the bundled model catalogs, through `useCatalogSource()`             |
 | `storage.ts`     | keys, choices and conversations in `chrome.storage.local`            |
 | `background.ts`  | the service worker — opens the panel, and starts the badge           |
@@ -266,6 +279,31 @@ away. `PiStorage` reads synchronously and `chrome.storage` does not, so the area
 in full before anything mounts — a chat that mounted first would show every choice
 forgotten, then change it under the reader — and after that the map is the answer while
 every write goes both places. The panel keeps its conversations there too.
+
+**The history, per site.** One area is right for the keys and the choices — a key typed on
+one tab answers on the next — and wrong for the conversations. The panel reads the tab in
+front, so what was said is about the site it was said on, and one list mixing every site a
+person visited is both hard to read and more than the panel should show whoever is looking
+at the screen now. `history.ts` segments only that: each origin gets a whole
+`createHistory()` over a `PiStorage` that renames every key it is given, so the store stays
+one area and the limit, the eviction and the full-store retry stay the library's own. The
+count is per site, so twenty conversations on one never push out the one on another. A tab
+with no origin — the new tab page, a `chrome:` screen — shares the shelf named
+`the current tab`, which is the name `read_page` already gives it.
+
+The panel outlives the tab it was opened from, so the shelf changes under it. `follow()`
+listens for the tab in front changing, and moves the chat with it: that site's newest
+conversation, or a new one where it has none. Both write the conversation being left first,
+and it goes to the shelf it was had on rather than the one now in front — `owners` binds a
+conversation to its site on the first write and never moves it, so browsing away mid-answer
+files nothing under the wrong site. Only the last of two tab changes decides, because the
+origin is read asynchronously and a person clicking through tabs is faster than that.
+
+**The focus.** The panel passes `autoFocus`, which a page leaves off. A chat on a page is
+one thing on it, and taking the caret the moment it mounts would pull it off whatever the
+reader was doing; the panel is the whole document and was opened to be typed in, so the
+composer takes the focus as it mounts. Chrome tears the panel down when it is closed, so
+each opening is a mount and takes it again.
 
 **The icons.** `assets/agentak.svg` is the logo, and chrome takes a bitmap at four sizes.
 `scripts/icons.ts` draws them — the svg's own shapes through their distance functions,

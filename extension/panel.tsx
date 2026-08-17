@@ -17,8 +17,9 @@ import { createPiSession } from "@/pi/session.ts";
 import { ChatPanel } from "@/preact/index.tsx";
 import { u } from "@/styles/base.ts";
 import { useBundledCatalogs } from "./catalogs.ts";
+import { originHistory } from "./history.ts";
 import { chromeStorage } from "./storage.ts";
-import { activeTabTools } from "./tab-tools.ts";
+import { activeOrigin, activeTabTools } from "./tab-tools.ts";
 import { followColorScheme, useSystemColors } from "./theme.ts";
 
 // Before the session, because a provider picked on the first frame loads its
@@ -38,15 +39,26 @@ useSystemColors();
 // change it under the reader.
 //
 // One session for the life of the panel, which is the life of the document. It
-// keeps its conversations in that same store, so the panel opens on the last one
-// and lists the rest on its own history page.
+// keeps its conversations in that same store, so the panel opens on a new chat
+// and lists what came before on its own history page — this site's own, and not
+// every site's. The origin is read beside the store and for the same reason: a
+// history answers synchronously and `chrome.tabs` does not.
 //
 // `page` is the one thing the panel passes that a page does not: its own
 // document carries no tools, so the source reads the tab in front instead.
-void chromeStorage().then((storage) => {
+void Promise.all([chromeStorage(), activeOrigin()]).then(([storage, origin]) => {
+  const history = originHistory(storage, origin);
+  const session = createPiSession({ history, page: activeTabTools(), storage });
+  // The panel outlives the tab it was opened from, so the chat follows the site
+  // in front: another site is another shelf, and another conversation.
+  history.follow(session);
+
   render(
     <ChatPanel
-      session={createPiSession({ history: true, page: activeTabTools(), storage })}
+      // The panel is the whole document, and it was opened to be typed in:
+      // nothing else here wants the caret, so the composer takes it at once.
+      autoFocus
+      session={session}
       style={u.fill}
     />,
     document.querySelector("#root")!,

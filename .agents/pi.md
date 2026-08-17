@@ -497,8 +497,9 @@ a host passed `browserStorage()`, or a `PiHistory` of the host's own where neith
 Off by default: the library stores nothing unasked, and a host already keeping its own with
 `save()` should grow no second list. Turned on:
 
-- The session opens on the **newest stored conversation**, so a reload comes back where it
-  was left. A `snapshot` option wins over that — a host that hands one over keeps its own.
+- The session opens on a **new conversation**, stored ones and all: a chat that was just
+  opened is a chat to start, and the history page is one click away. A `snapshot` option is
+  the one thing that opens on a conversation — a host that hands one over keeps its own.
 - A conversation is written **every time the loop settles**, and again when the model names
   it, so nothing is debounced and nothing is flushed on `pagehide`. `dispose()` writes the
   last one in hand.

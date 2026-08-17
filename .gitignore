@@ -1,6 +1,7 @@
 node_modules
 coverage
 dist
+docs/.docs/public/agentak-extension.zip
 .output
 .vscode
 .DS_Store

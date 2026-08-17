@@ -84,9 +84,10 @@ const startDemo = h(StartDemo, { onStart: playDemo });
  * with the one that is picked. Nothing is swapped around the chat, so the page
  * keeps no list and no ids of its own.
  *
- * The transcript, the provider, the model and the thinking level all travel
- * together, so a reload comes back on the same model the answers were written
- * by rather than whatever this browser used last.
+ * A reload opens on a new conversation all the same — the stored ones are
+ * reached from the page. The transcript, the provider, the model and the
+ * thinking level travel together, so one that is opened comes back on the model
+ * its answers were written by rather than whatever this browser used last.
  */
 const session = shallowRef<PiSession>();
 

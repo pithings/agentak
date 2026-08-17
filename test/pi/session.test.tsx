@@ -297,17 +297,24 @@ describe("a pi session that keeps its own conversations", () => {
     expect(session.snapshot().conversationId).not.toBe(live);
   });
 
-  it("opens on the newest stored conversation, so a reload comes back where it was", async () => {
+  it("opens on a new conversation, and lists the stored one all the same", async () => {
     const first = await ready();
     first.send("what is this page?");
     await waitFor(() => expect(first.snapshot().history?.length).toBe(1));
     const id = first.snapshot().conversationId;
     first.dispose();
 
-    // The same store, a new session: the conversation is what it opens on.
+    // The same store, a new session: an empty chat, with the one before it on
+    // the history page.
     const next = piSession({ history: true, provider: FREE, streamFn: scripted([answer]) });
+    expect(next.snapshot().messages).toHaveLength(0);
+    expect(next.snapshot().conversationId).not.toBe(id);
+    expect(next.snapshot().history?.[0]?.id).toBe(id);
+
+    // And it is one click away, with the model it ran under.
+    next.openConversation?.(id ?? "");
+    await waitFor(() => expect(next.snapshot().messages).toHaveLength(2));
     expect(next.snapshot().conversationId).toBe(id);
-    expect(next.snapshot().messages).toHaveLength(2);
     await waitFor(() => expect(next.snapshot().modelId).toBe(MODEL));
   });
 

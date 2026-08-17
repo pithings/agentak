@@ -74,6 +74,14 @@ describe("ChatComposer", () => {
     expect((document.activeElement as HTMLElement)?.tagName).toBe("TEXTAREA");
   });
 
+  it("takes the focus on mount where the host asks for it", async () => {
+    // A surface that is the whole document — the side panel — was opened to be
+    // typed in, so there it is a request after all.
+    render(composer({ autoFocus: true }));
+    await Promise.resolve();
+    expect((document.activeElement as HTMLElement)?.tagName).toBe("TEXTAREA");
+  });
+
   it("lists the slash commands the surface can answer", () => {
     render(composer({ onReset: () => {} }));
     const field = screen.getByRole("textbox") as HTMLTextAreaElement;

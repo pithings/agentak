@@ -116,12 +116,24 @@ const activeTab = async (): Promise<chrome.tabs.Tab | undefined> => {
  * there because the manifest asks for the origin; a tab that has none — the new
  * tab page, a settings screen — is named rather than left blank.
  */
+const NO_ORIGIN = "the current tab";
+
 const tabOrigin = (tab: chrome.tabs.Tab): string => {
   try {
     return new URL(tab.url ?? "").origin;
   } catch {
-    return "the current tab";
+    return NO_ORIGIN;
   }
+};
+
+/**
+ * The site in front, by the one name it is known under here. A tab with no
+ * origin of its own — the new tab page, a `chrome:` screen, a local file — is
+ * named rather than left blank, so every such tab answers alike.
+ */
+export const activeOrigin = async (): Promise<string> => {
+  const tab = await activeTab();
+  return tab ? tabOrigin(tab) : NO_ORIGIN;
 };
 
 /** One injected call, with the page's own failure turned back into a throw. */

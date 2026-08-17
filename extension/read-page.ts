@@ -51,7 +51,7 @@ export function readPageInTab(limit: number): { ok: true; value: string } {
 export const readPageTool = (origin: string): PageTool => ({
   description:
     "Read the text of the web page the person is looking at, with its title and url. " +
-    "Call this whenever the question is about the current page, this tab, or what is on screen. " +
+    "prefer any other tools when available!" +
     "Long pages are cut off.",
   name: READ_PAGE,
   origin,

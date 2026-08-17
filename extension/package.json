@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && node ../scripts/pack.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
