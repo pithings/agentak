@@ -32,6 +32,10 @@ Read this before UI work, then the relevant focused file:
   whole transcript on every event. Preserve the memo layers around messages and Markdown.
 - The composer geometry is coupled: field height, 2 px padding, 1 px border, 42 px outer
   height, and 21 px radius. Change these values as one system.
+- The composer measures nothing per keystroke. Its shape is CSS alone: one radius at every
+  height, and a send button that keeps its place in the field's row. A layout read in an
+  input handler — `getComputedStyle`, `scrollHeight`, `offsetHeight` — is a layout of the
+  whole surface between the key and the letter, which a phone keyboard shows as lag.
 
 ## Exports
 

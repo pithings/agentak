@@ -144,21 +144,53 @@
 
 /* The sheet, below `lg`: the whole screen, folded into the button until the
    reader takes it. `clip-path` is the morph — a circle the size of the button,
-   at the button, opening into the whole panel. */
+   at the button, opening into the whole panel.
+
+   An ANIMATION and not a transition, so the clip is on the panel for the 260ms
+   it is moving and gone the moment it has arrived. A clip left on an open panel
+   is a mask over the whole screen, and every repaint under it is a repaint
+   through that mask: on a phone the caret in the composer pays for it, once per
+   letter, on the device least able to. The morph is the same either way — a
+   transition needs both ends declared as state, an animation carries them
+   itself and leaves nothing behind.
+
+   `is-closed` arrives on mount as well as on a close, so the closing morph runs
+   once against a hidden panel. It paints nothing there. */
 @media (max-width: 63.999rem) {
   .chat-panel {
     inset: 0;
     visibility: hidden;
-    clip-path: circle(1.25rem at var(--chat-origin));
-    transition:
-      clip-path var(--chat-move) ease-out,
-      visibility 0s var(--chat-move);
+    transition: visibility 0s var(--chat-move);
   }
 
   .chat-panel.is-open {
     visibility: visible;
-    clip-path: circle(150% at var(--chat-origin));
-    transition: clip-path var(--chat-move) ease-out;
+    transition: visibility 0s;
+    animation: chat-sheet-open var(--chat-move) ease-out;
+  }
+
+  .chat-panel.is-closed {
+    animation: chat-sheet-close var(--chat-move) ease-out;
+  }
+
+  @keyframes chat-sheet-open {
+    from {
+      clip-path: circle(1.25rem at var(--chat-origin));
+    }
+
+    to {
+      clip-path: circle(150% at var(--chat-origin));
+    }
+  }
+
+  @keyframes chat-sheet-close {
+    from {
+      clip-path: circle(150% at var(--chat-origin));
+    }
+
+    to {
+      clip-path: circle(1.25rem at var(--chat-origin));
+    }
   }
 }
 
@@ -214,7 +246,9 @@
   }
 
   .chat-panel,
-  .chat-panel.is-open {
+  .chat-panel.is-open,
+  .chat-panel.is-closed {
+    animation: none;
     clip-path: none;
   }
 }

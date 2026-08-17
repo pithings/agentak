@@ -45,27 +45,23 @@ describe("ChatComposer", () => {
     expect(buttons[0].getAttribute("aria-label")).toBe("Submit");
   });
 
-  it("keeps send on the field's row until the message is more than one line", () => {
+  it("keeps send on the field's row, however many lines the message is", () => {
     render(composer());
     const field = screen.getByRole("textbox") as HTMLTextAreaElement;
     const send = () => screen.getByRole("button", { name: "Submit" });
     const row = () => send().parentElement as HTMLElement;
-
-    // One line: the field and the button are the same row, and the box around
-    // them is a pill.
-    expect(row().contains(field)).toBe(true);
     const box = field.closest('[data-slot="input-group"]') as HTMLElement;
-    expect(box.style.borderRadius).toBe("999px");
 
-    // More than one: the button moves under the field, and the pill is a box.
-    fireEvent.input(field, { target: { value: "one\ntwo" } });
-    expect(row().contains(field)).toBe(false);
-    expect(row().dataset.slot).toBe("input-group-addon");
-    expect(box.style.borderRadius).not.toBe("999px");
-
-    // And back, once the second line goes.
-    fireEvent.input(field, { target: { value: "one" } });
+    // The field and the button share one row, and the box around them is a
+    // pill: 21px is half of the 42px it is tall.
     expect(row().contains(field)).toBe(true);
+    expect(box.style.borderRadius).toBe("1.3125rem");
+
+    // A longer message grows the field under the same corner and moves nothing
+    // — the composer measures nothing per keystroke.
+    fireEvent.input(field, { target: { value: "one\ntwo" } });
+    expect(row().contains(field)).toBe(true);
+    expect(box.style.borderRadius).toBe("1.3125rem");
   });
 
   it("goes away under the settings page and keeps what was typed", () => {

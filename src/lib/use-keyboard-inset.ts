@@ -31,21 +31,29 @@ function measureInset(viewport: VisualViewport): number {
  * there is no keyboard behind it to make room for. A browser without the visual
  * viewport reports nothing, and the caller keeps its 0.
  *
- * **Reported at most once a frame**, because on iOS this fires while the reader
- * is typing: the visual viewport is scrolled to follow the caret, so every few
- * characters move `offsetTop` by a pixel or two. Each reading also reads
- * `innerHeight`, which is a layout read, so an unthrottled listener did one per
- * keystroke. See `chat.tsx` for the other half of that — the surface takes this
- * as a custom property rather than as state, so a moved caret redraws nothing.
+ * **Reported at most once a frame, and only where the number moved**, because on
+ * iOS this fires while the reader is typing: the visual viewport is scrolled to
+ * follow the caret, so every few characters move `offsetTop` by a pixel or two.
+ * Each reading also reads `innerHeight`, which is a layout read, so an
+ * unthrottled listener did one per keystroke. See `chat.tsx` for the other half
+ * of that — the surface takes this as a custom property rather than as state, so
+ * a moved caret redraws nothing.
  */
 export function watchKeyboardInset(report: (inset: number) => void): () => void {
   const viewport = globalThis.visualViewport;
   if (!viewport || !isTouch()) return () => {};
 
   let frame = 0;
+  let last = -1;
   const read = () => {
     frame = 0;
-    report(measureInset(viewport));
+    const inset = measureInset(viewport);
+    // The same number reported again is a style write, and a style write is a
+    // layout: iOS fires this while the reader types, and the reading it gives
+    // back is the same one most of the time.
+    if (inset === last) return;
+    last = inset;
+    report(inset);
   };
   const later = () => {
     frame ||= globalThis.requestAnimationFrame(read);

@@ -6,7 +6,6 @@ import type { ChatAgent } from "./types.ts";
 import {
   PromptInput,
   PromptInputBody,
-  PromptInputFooter,
   PromptInputSubmit,
   PromptInputTextarea,
 } from "../ai-elements/prompt-input.tsx";
@@ -32,27 +31,28 @@ const S = {
   // and out of the accessibility tree, and the foot it sits in then measures
   // shorter — so the page above ends where the composer used to start.
   away: { display: "none" },
-  // One line is a pill: the field and its send button share the row, and the
-  // radius is half the height of it, so the box is a line of text and the
-  // button at the end of it and nothing more. `999px` and not the number,
-  // because the browser clamps it to half the height whatever that height is.
-  box: { borderRadius: "999px" },
-  // More than one line is a box again — a pill around three lines is a lozenge
-  // with a hole at each corner. Rounded to the corner the pill turns and not a
-  // round number near it: the box is 42px tall on one line — a 1px border, 2px
-  // of padding, the 36px field, and the same back — so the pill turns 21px and
-  // so does this. A corner that changed as the field grew would be a second
-  // shape rather than the same box holding more.
-  boxTall: { borderRadius: "1.3125rem" },
+  // One number for both shapes, and no reading to choose between them. The box
+  // is 42px tall on one line — a 1px border, 2px of padding, the 36px field,
+  // and the same back — so 21px is half of it and the empty composer is a pill.
+  // The same 21px around a grown field is the corner that pill turns, so the
+  // box holds more without becoming a second shape. `999px` would have been the
+  // lozenge a pill around three lines is.
+  box: { borderRadius: "1.3125rem" },
   // The row inside it. `PromptInputBody` adds no box of its own, so this is
   // where the field and the button are laid out; the padding is what holds the
   // button off the round edge.
+  //
+  // `flex-end`, so the button sits at the foot of a field that has grown — the
+  // corner of the box, where it sits at the end of the pill. It stays in the
+  // row either way: a button that moved under the field made the field wider as
+  // it went, which is a line unwrapping under the caret, and knowing when to
+  // move it meant measuring the field on every keystroke.
   row: {
     boxSizing: "border-box",
     display: "flex",
     width: "100%",
     minWidth: "0",
-    alignItems: "center",
+    alignItems: "flex-end",
     gap: "0.25rem",
     padding: "0.125rem",
   },
@@ -62,23 +62,6 @@ const S = {
     paddingBlock: "0.5rem",
     paddingLeft: "0.75rem",
     paddingRight: "0.25rem",
-  },
-  // The room the button leaves the row when it goes below: the button, the gap
-  // beside it and the padding it had — 2.25rem, 0.25rem and 0.25rem. A line ends
-  // where the field is wide, so the field must be as wide either way — otherwise
-  // the text that wrapped fits again the moment the button moves, the box
-  // unwraps, the button comes back, and it wraps again.
-  textareaTall: { paddingRight: "2.75rem" },
-  // Send is the only thing in the row it moves to, so it sits at the trailing
-  // edge — what used to share it says what is running, and says it in the bar
-  // below. The padding is the row's own, so the button is inset by the same 3px
-  // it is inset by on one line, and sits in the box's corner the way it sits in
-  // the pill's end.
-  send: {
-    justifyContent: "flex-end",
-    paddingTop: "0",
-    paddingBottom: "0.125rem",
-    paddingInline: "0.125rem",
   },
   // Round, and concentric with the box it sits in: the button is inset 3px — the
   // row's 2px of padding over the box's 1px border — so its radius is the box's
@@ -138,23 +121,6 @@ const S = {
     fontSize: "0.75rem",
   },
 } satisfies Record<string, Sx>;
-
-/**
- * Whether the field is drawing more than one line of text.
- *
- * Read off the box and not off the text, because a line is only as long as the
- * surface is wide: a side panel wraps a sentence a page would keep on one line.
- * `scrollHeight` is the content and not the box, so a field already grown by
- * `field-sizing: content` answers the same as one that has not. Every reading
- * is `NaN` where there is no layout at all — jsdom — and every comparison with
- * one is false, which is the single-line box a test then sees.
- */
-function isWrapped(field: HTMLTextAreaElement) {
-  const style = getComputedStyle(field);
-  const line = parseFloat(style.lineHeight);
-  const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-  return field.scrollHeight > line + padding + 1;
-}
 
 /**
  * One row of the slash list — a word the field can be instead of a message.
@@ -251,26 +217,11 @@ export function ChatComposer({
   // so it is read from the DOM by the name the form submits it under.
   const input = () => ref.current?.querySelector<HTMLTextAreaElement>('textarea[name="message"]');
 
-  // Which of the two boxes is drawn: a pill around one line, or a box with the
-  // send button under the field. A newline is one without measuring anything,
-  // which is also the reading a browser without layout can still answer.
-  const [multiline, setMultiline] = useState(false);
-  const measure = () => {
-    const field = input();
-    setMultiline(field ? field.value.includes("\n") || isWrapped(field) : false);
-  };
-
-  // The field grows and shrinks for more reasons than a keystroke: a surface
-  // that narrows wraps a message nothing was typed into, and a message put back
-  // by a fork arrives whole. The box is what changes in each case, so the box is
-  // what is watched.
-  useEffect(() => {
-    const field = input();
-    if (!field || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(field);
-    return () => observer.disconnect();
-  }, []);
+  // Nothing here reads the field's size. The box is one shape at every height
+  // and the button keeps its place in the row, so `field-sizing: content` grows
+  // the field and the browser lays the rest out — where this once measured the
+  // field on every keystroke, which is a layout of the whole surface between
+  // the key and the letter, and on a phone that is the wait a reader feels.
 
   // Leaving the settings page hands the focus here: the reason to open it was to
   // choose a model, and the reason to choose one is to then say something. Not
@@ -394,13 +345,11 @@ export function ChatComposer({
       }
       setTyped(null);
       setActive(0);
-      measure();
       return;
     }
     if (field) field.value = "";
     if (isTouch()) field?.blur();
     setTyped(null);
-    measure();
     command.run();
   };
 
@@ -417,7 +366,6 @@ export function ChatComposer({
     // The list reads the field, and a message put back is not a command.
     setTyped(null);
     setActive(0);
-    measure();
     if (isTouch()) return;
     field.focus();
     field.setSelectionRange(text.length, text.length);
@@ -452,8 +400,6 @@ export function ChatComposer({
     // hardware keyboard keeps the focus, where the next message costs no click.
     if (isTouch()) input()?.blur();
     setTyped(null);
-    // The form is reset before this runs, so the field is one line again.
-    measure();
     onSend(text);
   };
 
@@ -475,10 +421,7 @@ export function ChatComposer({
         </div>
       )}
 
-      <PromptInput
-        groupStyle={sx(S.box, multiline && S.boxTall)}
-        onSubmit={(message) => handleSubmit(message.text)}
-      >
+      <PromptInput groupStyle={S.box} onSubmit={(message) => handleSubmit(message.text)}>
         <PromptInputBody style={S.row}>
           <PromptInputTextarea
             // The field is a command picker while the list is open, and a
@@ -496,7 +439,6 @@ export function ChatComposer({
               setTyped(/^\/\S*$/.test(value) ? value : null);
               // The list is new, so the cursor starts at its head again.
               setActive(0);
-              measure();
             }}
             onKeyDown={(event) => {
               // The list is a hint over the transcript, so Escape puts it away
@@ -539,23 +481,17 @@ export function ChatComposer({
             }}
             placeholder={isStreaming ? "Queue a message…" : "Ask about this page…"}
             role={matches.length > 0 ? "combobox" : undefined}
-            style={sx(S.textarea, multiline && S.textareaTall, isTouch() && u.noZoom)}
+            style={sx(S.textarea, isTouch() && u.noZoom)}
           />
-          {/* Beside the field while it is one line, and under it once it is not. */}
-          {!multiline && <Send isStreaming={isStreaming} onStop={onStop} />}
+          <Send isStreaming={isStreaming} onStop={onStop} />
         </PromptInputBody>
-        {multiline && (
-          <PromptInputFooter style={S.send}>
-            <Send isStreaming={isStreaming} onStop={onStop} />
-          </PromptInputFooter>
-        )}
       </PromptInput>
     </div>
   );
 }
 
 /**
- * The one button the composer has, written once for the two rows it sits in.
+ * The one button the composer has.
  *
  * `icon` and not the `icon-sm` a prompt input takes by default: 2.25rem is the
  * height of the field beside it, so the button fills the row the padding leaves
