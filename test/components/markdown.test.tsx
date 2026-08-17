@@ -2,6 +2,7 @@ import { cleanup, render, screen } from "@testing-library/preact";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Markdown } from "../../src/components/markdown.tsx";
+import { LinkBase } from "../../src/lib/links.ts";
 import { loadMarkdown } from "../../src/lib/markdown.ts";
 
 // The wasm is instantiated once for the whole file, so every render below
@@ -82,6 +83,41 @@ describe("Markdown", () => {
     expect(links[0].getAttribute("href")).toBe("https://example.com");
     expect(screen.getByText("click")).toBeTruthy(); // text survives, the link does not
     expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("resolves relative urls against the link base", () => {
+    const { container } = render(
+      <LinkBase.Provider value="https://example.com/docs/page">
+        <Markdown>{"[a](/config) [b](./next) [c](https://other.test/) ![d](img.png)"}</Markdown>
+      </LinkBase.Provider>,
+    );
+
+    const links = [...container.querySelectorAll("a")].map((link) => link.getAttribute("href"));
+    expect(links).toEqual([
+      "https://example.com/config",
+      "https://example.com/docs/next",
+      "https://other.test/",
+    ]);
+    expect(container.querySelector("img")?.getAttribute("src")).toBe(
+      "https://example.com/docs/img.png",
+    );
+  });
+
+  it("drops a relative link the base cannot open", () => {
+    const { container } = render(
+      <LinkBase.Provider value="chrome://settings">
+        <Markdown>{"[click](/config)"}</Markdown>
+      </LinkBase.Provider>,
+    );
+
+    expect(container.querySelector("a")).toBeNull();
+    expect(screen.getByText("click")).toBeTruthy();
+  });
+
+  it("leaves relative urls alone without a base", () => {
+    const { container } = render(<Markdown>{"[a](/config)"}</Markdown>);
+
+    expect(container.querySelector("a")?.getAttribute("href")).toBe("/config");
   });
 
   it("heals markup left open by a stream", () => {

@@ -18,6 +18,7 @@ import type { ChatAgent, ChatQueueItem } from "./chat/types.ts";
 import { Button } from "./ui/button.tsx";
 import type { ViewMessage } from "../types.ts";
 import { RotateCcwIcon, XIcon } from "../lib/icons.tsx";
+import { LinkBase } from "../lib/links.ts";
 import { useControllableState } from "../lib/use-controllable-state.ts";
 import { watchKeyboardInset } from "../lib/use-keyboard-inset.ts";
 import { reset, u } from "../styles/base.ts";
@@ -150,6 +151,13 @@ export interface ChatProps extends ChatComposerProps, ChatHistoryProps {
   /** Answer a tool confirmation, by tool call id. */
   onRespond?: ChatRespond;
   /**
+   * What a relative link in an answer is relative to — an url. Only a surface
+   * that is not the document it talks about needs one: a chat on a page leaves
+   * this out, and the browser resolves `/config` against the page itself. See
+   * `lib/links.ts`.
+   */
+  linkBase?: string;
+  /**
    * Host buttons for the end of the header — minimise, switch, whatever chrome
    * the page around the chat owns. One title bar, not two.
    */
@@ -181,6 +189,7 @@ export function Chat({
   queued = [],
   onDequeue,
   onRespond,
+  linkBase,
   actions,
   emptyActions,
   pickerOpen,
@@ -245,134 +254,139 @@ export function Chat({
   useKeyboardLift(surfaceRef);
 
   return (
-    <div className={className} ref={surfaceRef} style={sx(S.chat, style)}>
-      <ChatHeader
-        actions={actions}
-        onBack={
-          settingsOpen || historyOpen
-            ? () => {
-                setSettingsOpen(false);
-                setHistoryOpen(false);
-              }
-            : undefined
-        }
-        // Nothing stored is nothing to list: a harness that keeps no
-        // conversations reports no `history`, and the bar grows no button.
-        onHistory={history && !settingsOpen && !historyOpen ? () => showHistory(true) : undefined}
-        onReset={startNew}
-        // Nothing to choose is nothing to open — the same test the composer puts
-        // its own trigger behind.
-        onSettings={
-          !settingsOpen && (composer.providers?.length || composer.models?.length)
-            ? () => showSettings(true)
-            : undefined
-        }
-        title={historyOpen ? "Conversations" : settingsOpen ? "Settings" : title}
-      />
-
-      {historyOpen ? (
-        <ChatHistory
-          conversationId={conversationId}
-          history={history}
-          onForgetConversation={onForgetConversation}
-          // Opening one is what the page is for, so it is done: the chosen
-          // transcript comes back in the session's own state, under this page.
-          onOpenConversation={(id) => {
-            onOpenConversation?.(id);
-            setHistoryOpen(false);
-            setFocusKey((n) => n + 1);
-          }}
-          style={{ paddingBottom: CLEAR }}
-        />
-      ) : settingsOpen ? (
-        // The page ends above the floating foot, exactly as the transcript
-        // does — and with the composer hidden under it, the foot is only the
-        // error row that opened the page, if there is one, so `CLEAR` is the
-        // room that row needs and no more.
-        <ChatSettings
-          {...composer}
-          // The model is the last of the four choices and the only one nothing
-          // follows, so choosing it is done: the page steps back out of the
-          // transcript's way and the composer takes the focus — see its own
-          // effect on this flag.
-          onModelChange={(id) => {
-            composer.onModelChange?.(id);
-            showSettings(false);
-          }}
-          style={{ paddingBottom: CLEAR }}
-        />
-      ) : (
-        <Conversation pin={last?.id}>
-          <ConversationContent style={{ paddingBottom: CLEAR }}>
-            {messages.length === 0 ? (
-              <ChatEmpty agent={agent}>{emptyActions}</ChatEmpty>
-            ) : (
-              messages.map((message) => (
-                <ChatMessage
-                  isStreaming={isStreaming && message === last}
-                  key={message.id}
-                  message={message}
-                  onRespond={onRespond}
-                />
-              ))
-            )}
-            {waiting ? <Shimmer>{workingLabel}</Shimmer> : null}
-          </ConversationContent>
-          <ConversationScrollButton style={{ bottom: CLEAR }} />
-        </Conversation>
-      )}
-
-      <div ref={footRef} style={S.foot}>
-        {error ? (
-          <div style={S.error}>
-            <p style={sx(reset.text, S.errorText)}>{error}</p>
-            {onRetry ? (
-              <Button onClick={onRetry} size="sm" style={S.errorRetry} variant="outline">
-                <RotateCcwIcon />
-                Retry
-              </Button>
-            ) : null}
-            {onDismissError ? (
-              <Button
-                aria-label="Dismiss error"
-                onClick={onDismissError}
-                size="icon-sm"
-                style={S.errorDismiss}
-                title="Dismiss error"
-                variant="ghost"
-              >
-                <XIcon />
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-
-        <ChatQueue items={queued} onDequeue={onDequeue} />
-
-        <ChatComposer
-          focusKey={focusKey}
-          // The settings page is the whole surface under the header: there is
-          // nothing to say to a provider that is still being chosen, so the
-          // composer goes with the transcript rather than floating over the
-          // page. Hidden, not unmounted — the draft survives the trip. The
-          // history page keeps it, because opening a conversation is one click
-          // and the message already typed is for the one on screen.
-          hidden={settingsOpen}
-          isStreaming={isStreaming}
-          {...composer}
-          // Saying something is done choosing: the answer is in the transcript,
-          // which the page is standing in front of.
-          onPickerOpenChange={showSettings}
+    // The base sits over the whole surface rather than beside each message: it
+    // is the host's one answer, and a change to it redraws the links alone, so
+    // a panel that follows another tab keeps its transcript where it is.
+    <LinkBase.Provider value={linkBase}>
+      <div className={className} ref={surfaceRef} style={sx(S.chat, style)}>
+        <ChatHeader
+          actions={actions}
+          onBack={
+            settingsOpen || historyOpen
+              ? () => {
+                  setSettingsOpen(false);
+                  setHistoryOpen(false);
+                }
+              : undefined
+          }
+          // Nothing stored is nothing to list: a harness that keeps no
+          // conversations reports no `history`, and the bar grows no button.
+          onHistory={history && !settingsOpen && !historyOpen ? () => showHistory(true) : undefined}
           onReset={startNew}
-          onSend={(text) => {
-            setSettingsOpen(false);
-            setHistoryOpen(false);
-            composer.onSend(text);
-          }}
-          pickerOpen={settingsOpen}
+          // Nothing to choose is nothing to open — the same test the composer puts
+          // its own trigger behind.
+          onSettings={
+            !settingsOpen && (composer.providers?.length || composer.models?.length)
+              ? () => showSettings(true)
+              : undefined
+          }
+          title={historyOpen ? "Conversations" : settingsOpen ? "Settings" : title}
         />
+
+        {historyOpen ? (
+          <ChatHistory
+            conversationId={conversationId}
+            history={history}
+            onForgetConversation={onForgetConversation}
+            // Opening one is what the page is for, so it is done: the chosen
+            // transcript comes back in the session's own state, under this page.
+            onOpenConversation={(id) => {
+              onOpenConversation?.(id);
+              setHistoryOpen(false);
+              setFocusKey((n) => n + 1);
+            }}
+            style={{ paddingBottom: CLEAR }}
+          />
+        ) : settingsOpen ? (
+          // The page ends above the floating foot, exactly as the transcript
+          // does — and with the composer hidden under it, the foot is only the
+          // error row that opened the page, if there is one, so `CLEAR` is the
+          // room that row needs and no more.
+          <ChatSettings
+            {...composer}
+            // The model is the last of the four choices and the only one nothing
+            // follows, so choosing it is done: the page steps back out of the
+            // transcript's way and the composer takes the focus — see its own
+            // effect on this flag.
+            onModelChange={(id) => {
+              composer.onModelChange?.(id);
+              showSettings(false);
+            }}
+            style={{ paddingBottom: CLEAR }}
+          />
+        ) : (
+          <Conversation pin={last?.id}>
+            <ConversationContent style={{ paddingBottom: CLEAR }}>
+              {messages.length === 0 ? (
+                <ChatEmpty agent={agent}>{emptyActions}</ChatEmpty>
+              ) : (
+                messages.map((message) => (
+                  <ChatMessage
+                    isStreaming={isStreaming && message === last}
+                    key={message.id}
+                    message={message}
+                    onRespond={onRespond}
+                  />
+                ))
+              )}
+              {waiting ? <Shimmer>{workingLabel}</Shimmer> : null}
+            </ConversationContent>
+            <ConversationScrollButton style={{ bottom: CLEAR }} />
+          </Conversation>
+        )}
+
+        <div ref={footRef} style={S.foot}>
+          {error ? (
+            <div style={S.error}>
+              <p style={sx(reset.text, S.errorText)}>{error}</p>
+              {onRetry ? (
+                <Button onClick={onRetry} size="sm" style={S.errorRetry} variant="outline">
+                  <RotateCcwIcon />
+                  Retry
+                </Button>
+              ) : null}
+              {onDismissError ? (
+                <Button
+                  aria-label="Dismiss error"
+                  onClick={onDismissError}
+                  size="icon-sm"
+                  style={S.errorDismiss}
+                  title="Dismiss error"
+                  variant="ghost"
+                >
+                  <XIcon />
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+
+          <ChatQueue items={queued} onDequeue={onDequeue} />
+
+          <ChatComposer
+            focusKey={focusKey}
+            // The settings page is the whole surface under the header: there is
+            // nothing to say to a provider that is still being chosen, so the
+            // composer goes with the transcript rather than floating over the
+            // page. Hidden, not unmounted — the draft survives the trip. The
+            // history page keeps it, because opening a conversation is one click
+            // and the message already typed is for the one on screen.
+            hidden={settingsOpen}
+            isStreaming={isStreaming}
+            {...composer}
+            // Saying something is done choosing: the answer is in the transcript,
+            // which the page is standing in front of.
+            onPickerOpenChange={showSettings}
+            onReset={startNew}
+            onSend={(text) => {
+              setSettingsOpen(false);
+              setHistoryOpen(false);
+              composer.onSend(text);
+            }}
+            pickerOpen={settingsOpen}
+          />
+        </div>
       </div>
-    </div>
+    </LinkBase.Provider>
   );
 }
 

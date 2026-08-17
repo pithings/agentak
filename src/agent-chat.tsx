@@ -50,6 +50,13 @@ export interface AgentChatProps extends ChatSessionOptions {
    */
   emptyActions?: ComponentChildren;
   /**
+   * What a relative link in an answer is relative to — an url. A chat on a page
+   * leaves it out: the browser already resolves `/config` against that page. A
+   * surface that talks about another document says which one, or the link
+   * points inside its own — the side panel passes the tab in front.
+   */
+  linkBase?: string;
+  /**
    * Hand the composer the focus as the chat mounts. Off by default: a chat on a
    * page shares it. A surface that is the whole document — the side panel — was
    * opened to be typed in, so it asks for this.
@@ -71,6 +78,7 @@ export function AgentChat({
   actions,
   autoFocus,
   emptyActions,
+  linkBase,
   ...options
 }: AgentChatProps) {
   const snapshot = useSession(session);
@@ -131,6 +139,7 @@ export function AgentChat({
       className={className}
       emptyActions={empty}
       historyOpen={historyOpen}
+      linkBase={linkBase}
       onDequeue={session.dequeue && ((id) => session.dequeue?.(id))}
       onDismissError={session.dismissError && (() => session.dismissError?.())}
       onForgetConversation={

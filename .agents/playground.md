@@ -238,6 +238,16 @@ does. Two tools reach the model through it, as one `PageTools`:
   `executeTool()` inside the tab through `chrome.scripting.executeScript` in the `MAIN`
   world, and only names and JSON strings come back. See [`webmcp.md`](webmcp.md).
 
+**The links of the tab.** An answer about the site in front is written in that site's
+terms, so `/config` in it means that site's `/config`. This document is
+`chrome-extension:`, and a link resolved against it would open a file the extension does
+not have. So `panel.tsx` passes the url of the tab in front as `linkBase`, through
+`watchActiveUrl()` in `tab-tools.ts` — the whole url, because `./next` is relative to the
+path as well, and read again on every tab change and every navigation, exactly as the
+tools and the history shelf are. A tab with no url a link could be opened under — a
+`chrome:` screen, a local file — leaves the link as its own text, which the markdown
+renderer decides on its own; see [`components/markdown.md`](components/markdown.md).
+
 **The badge.** `badge.ts` puts the number of tools the page in front publishes on the
 toolbar icon, and `background.ts` starts it at the top level, because the worker is
 restarted for each event and a listener registered later would miss the one that woke it.

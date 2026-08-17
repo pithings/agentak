@@ -81,3 +81,6 @@ export * from "./chat/queue.tsx";
 export * from "./chat/settings.tsx";
 export * from "./elements.tsx";
 export * from "./markdown.tsx";
+// The base `Markdown` resolves a relative link against, for a host that renders
+// it outside `Chat` — which sets the same context from its `linkBase` prop.
+export * from "../lib/links.ts";

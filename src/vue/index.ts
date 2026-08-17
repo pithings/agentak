@@ -44,6 +44,7 @@ const PANEL_PROPS: Required<ComponentObjectPropsOptions<ChatPanelProps>> = {
   autoFocus: FLAG,
   emptyActions: null,
   generateTitle: FLAG,
+  linkBase: null,
   session: REQUIRED,
   tokens: FLAG,
 };
@@ -59,6 +60,7 @@ const VIEW_PROPS: Required<ComponentObjectPropsOptions<ChatViewProps>> = {
   history: null,
   historyOpen: FLAG,
   isStreaming: { type: Boolean, required: true },
+  linkBase: null,
   messages: REQUIRED,
   modelId: null,
   models: null,

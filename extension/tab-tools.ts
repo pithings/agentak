@@ -136,6 +136,42 @@ export const activeOrigin = async (): Promise<string> => {
   return tab ? tabOrigin(tab) : NO_ORIGIN;
 };
 
+/**
+ * The url of the tab in front, and every change to it. It is what a relative
+ * link in an answer is relative to: this document is `chrome-extension:`, so
+ * `/config` would otherwise be a file the extension does not have.
+ *
+ * The whole url, not the origin — a link written as `./next` is relative to the
+ * path as well. Whatever the tab is, too: a `chrome:` screen is a base the
+ * markdown renderer refuses, which is the right answer for a link that could not
+ * be opened anyway. Returns the way to stop, and calls the listener at once.
+ */
+export function watchActiveUrl(listener: (url: string | undefined) => void): () => void {
+  /** Only the last change decides, where two land while one is being read. */
+  let turn = 0;
+  const read = async () => {
+    const mine = ++turn;
+    const tab = await activeTab();
+    if (mine === turn) listener(tab?.url);
+  };
+
+  const changed = () => void read();
+  // A tab that navigates is a new base under the same tab. Any other tab's
+  // navigation reads the same url back, so nothing moves.
+  const updated = (_id: number, change: chrome.tabs.OnUpdatedInfo) => {
+    if (change.url) void read();
+  };
+
+  chrome.tabs.onActivated.addListener(changed);
+  chrome.tabs.onUpdated.addListener(updated);
+  void read();
+
+  return () => {
+    chrome.tabs.onActivated.removeListener(changed);
+    chrome.tabs.onUpdated.removeListener(updated);
+  };
+}
+
 /** One injected call, with the page's own failure turned back into a throw. */
 export async function inTab<T, A extends unknown[]>(
   tabId: number,

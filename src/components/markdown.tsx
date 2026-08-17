@@ -12,6 +12,7 @@ import {
   CodeBlockHeader,
   CodeBlockTitle,
 } from "./ai-elements/code-block.tsx";
+import { resolveUrl, useLinkBase } from "../lib/links.ts";
 import { parseMarkdown, useMarkdown } from "../lib/markdown.ts";
 import { animateOnMount, isLowPowerDevice, prefersReducedMotion } from "../lib/use-animation.ts";
 import { fadeInKeyframes, fadeInOptions, reset } from "../styles/base.ts";
@@ -194,6 +195,30 @@ const isSafeUrl = (url: string, allowImageData = false) => {
   return protocol === "http" || protocol === "https" || protocol === "mailto" || protocol === "tel";
 };
 
+/**
+ * A link the model wrote. The host's base is read here rather than threaded
+ * through the walk, so a panel that follows another tab redraws its links and
+ * nothing else. Resolved first and checked second: a relative link under a
+ * `chrome:` or `file:` base becomes an url no click could open, and drops back
+ * to its own text like any other unsafe one.
+ */
+const MdLink = ({ href, children }: { href: string; children: ComponentChildren }) => {
+  const url = resolveUrl(href, useLinkBase());
+  if (!isSafeUrl(url)) return <>{children}</>;
+  return (
+    <a href={url} rel="noreferrer" style={sx(reset.link, S.mdA)} target="_blank">
+      {children}
+    </a>
+  );
+};
+
+/** An image, on the same terms — a relative `src` needs the same base. */
+const MdImage = ({ alt, src }: { alt: string; src: string }) => {
+  const url = resolveUrl(src, useLinkBase());
+  if (!isSafeUrl(url, true)) return null;
+  return <img alt={alt} loading="lazy" src={url} style={S.mdImg} />;
+};
+
 const text = (nodes: ComarkNode[]): string =>
   nodes
     .map((node) => (typeof node === "string" ? node : text(node.slice(2) as ComarkNode[])))
@@ -290,23 +315,15 @@ function renderNode(node: ComarkNode, key: string, animate: boolean): ComponentC
   if (!tag) return renderNodes(children, key, animate);
 
   switch (tag) {
-    case "a": {
-      const href = attr(props, "href") ?? "";
-      if (!isSafeUrl(href)) return renderNodes(children, key, animate);
+    case "a":
       return (
-        <a href={href} key={key} rel="noreferrer" style={sx(reset.link, S.mdA)} target="_blank">
+        <MdLink href={attr(props, "href") ?? ""} key={key}>
           {renderNodes(children, key, animate)}
-        </a>
+        </MdLink>
       );
-    }
 
-    case "img": {
-      const src = attr(props, "src") ?? "";
-      if (!isSafeUrl(src, true)) return null;
-      return (
-        <img alt={attr(props, "alt") ?? ""} key={key} loading="lazy" src={src} style={S.mdImg} />
-      );
-    }
+    case "img":
+      return <MdImage alt={attr(props, "alt") ?? ""} key={key} src={attr(props, "src") ?? ""} />;
 
     case "pre":
       return <Fence key={key} nodes={children} props={props} />;

@@ -12,6 +12,9 @@
  * and the keys are kept where an extension keeps things.
  */
 import { render } from "preact";
+import { useEffect, useState } from "preact/hooks";
+
+import type { ChatSession } from "@/session.ts";
 
 import { createPiSession } from "@/pi/session.ts";
 import { ChatPanel } from "@/preact/index.tsx";
@@ -19,7 +22,7 @@ import { u } from "@/styles/base.ts";
 import { useBundledCatalogs } from "./catalogs.ts";
 import { originHistory } from "./history.ts";
 import { chromeStorage } from "./storage.ts";
-import { activeOrigin, activeTabTools } from "./tab-tools.ts";
+import { activeOrigin, activeTabTools, watchActiveUrl } from "./tab-tools.ts";
 import { followColorScheme, useSystemColors } from "./theme.ts";
 
 // Before the session, because a provider picked on the first frame loads its
@@ -53,14 +56,28 @@ void Promise.all([chromeStorage(), activeOrigin()]).then(([storage, origin]) => 
   // in front: another site is another shelf, and another conversation.
   history.follow(session);
 
-  render(
+  render(<Panel session={session} />, document.querySelector("#root")!);
+});
+
+/**
+ * The surface, plus the one thing about it that changes with the tab: what a
+ * relative link in an answer is relative to. The panel's own document is
+ * `chrome-extension:`, so a `/config` the model wrote about the site in front
+ * has to be told which site that is — and it is told again when the reader
+ * moves, exactly as the tools and the history shelf are.
+ */
+function Panel({ session }: { session: ChatSession }) {
+  const [linkBase, setLinkBase] = useState<string | undefined>(undefined);
+  useEffect(() => watchActiveUrl(setLinkBase), []);
+
+  return (
     <ChatPanel
       // The panel is the whole document, and it was opened to be typed in:
       // nothing else here wants the caret, so the composer takes it at once.
       autoFocus
+      linkBase={linkBase}
       session={session}
       style={u.fill}
-    />,
-    document.querySelector("#root")!,
+    />
   );
-});
+}

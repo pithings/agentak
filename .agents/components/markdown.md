@@ -20,6 +20,23 @@ rather than calling `renderToHtml`:
 flicker. `CLASSES` in that file is the tag allowlist — a tag missing from it renders
 its children, so a new md4x tag degrades to text instead of reaching the DOM unstyled.
 
+## Relative links
+
+`/config` in an answer is relative to something, and a page answers that itself: the
+browser resolves an `href` against the document holding it. A surface that is not the
+document it talks about has no such answer — the side panel is `chrome-extension:`, so
+that link would open a file the extension does not have.
+
+So the host says what the base is. `linkBase` on `Chat` and `AgentChat` is an url, it
+reaches `lib/links.ts` as the `LinkBase` context, and `MdLink`/`MdImage` read it there
+rather than having it threaded through the walk — a panel that follows another tab
+redraws its links and nothing else. Without a base the href goes to the dom as the model
+wrote it, which is the page's own case and needs no host.
+
+Resolution happens first and the safety check second, so a relative link under a
+`chrome:` or `file:` base becomes an url no click could open and drops back to its own
+text, like any other unsafe one. An url that names its own scheme is never touched.
+
 ## Streaming
 
 `<Markdown animate>` fades each word in as it arrives. Streaming text otherwise grows

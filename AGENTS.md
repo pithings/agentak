@@ -139,6 +139,15 @@ Chrome has not loaded its list yet the engine keeps its own.
 One voice at a time — starting a reading cancels any other, and each reading carries a
 number so the events of a cancelled one do not clear the flag of its replacement.
 
+A relative link in an answer — `/config`, `./next` — is relative to the document the chat
+is in, which is right for a chat on a page and wrong for a surface that talks about
+another one: the side panel is `chrome-extension:`, so that link would open a file the
+extension does not have. `linkBase` says what the base is instead, an url on `AgentChat`
+and `Chat`, and the panel passes the tab in front and passes it again when the reader
+moves. A link that names its own scheme is untouched, and one that resolves to a url no
+click could open — a `chrome:` base — drops back to its own text like any other unsafe
+one. See `lib/links.ts` and [`.agents/components/markdown.md`](.agents/components/markdown.md).
+
 The composer takes two slash commands: `/model` opens the settings page, and `/new` starts
 a conversation — the header's two buttons, reached from the keyboard. A field holding one
 slash word lists what it can be above the composer, a row per command. The list is walked
