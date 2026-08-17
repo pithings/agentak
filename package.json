@@ -44,7 +44,8 @@
     "size": "node scripts/bundle.ts",
     "lint": "oxlint",
     "fmt": "oxfmt .",
-    "test": "vitest"
+    "test": "vitest",
+    "icons": "node scripts/icons.ts"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "^0.84.1",

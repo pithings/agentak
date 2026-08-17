@@ -195,18 +195,18 @@ library and the extension stay on the root's 7.
 MV3 side panel. `pnpm build:extension` writes `extension/dist`; load it unpacked. Nothing
 here has been opened in a browser yet.
 
-| File             | What                                                               |
-| ---------------- | ------------------------------------------------------------------ |
-| `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported       |
-| `sidepanel.html` | the panel document — one full-height `#root` to render into        |
-| `panel.tsx`      | `ChatPanel` from `agentak/preact`, over `createPiSession()`        |
-| `tab-tools.ts`   | the tools of the tab in front, as the session's `page`             |
-| `read-page.ts`   | `read_page` — the panel's own tool, and the half injected in a tab |
-| `catalogs.ts`    | the bundled model catalogs, through `useCatalogSource()`           |
-| `storage.ts`     | keys, choices and conversations in `chrome.storage.local`          |
-| `background.ts`  | the service worker — opens the panel on the action click           |
-| `icons/`         | the toolbar icons, copied beside the bundle                        |
-| `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`              |
+| File             | What                                                                 |
+| ---------------- | -------------------------------------------------------------------- |
+| `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported         |
+| `sidepanel.html` | the panel document — one full-height `#root` to render into          |
+| `panel.tsx`      | `ChatPanel` from `agentak/preact`, over `createPiSession()`          |
+| `tab-tools.ts`   | the tools of the tab in front, as the session's `page`               |
+| `read-page.ts`   | `read_page` — the panel's own tool, and the half injected in a tab   |
+| `catalogs.ts`    | the bundled model catalogs, through `useCatalogSource()`             |
+| `storage.ts`     | keys, choices and conversations in `chrome.storage.local`            |
+| `background.ts`  | the service worker — opens the panel on the action click             |
+| `icons/`         | the toolbar icons — `pnpm icons` draws them, `vite.config.ts` copies |
+| `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`                |
 
 The panel is the surface a page hosts, plus three things a page does not need.
 
@@ -245,6 +245,14 @@ away. `PiStorage` reads synchronously and `chrome.storage` does not, so the area
 in full before anything mounts — a chat that mounted first would show every choice
 forgotten, then change it under the reader — and after that the map is the answer while
 every write goes both places. The panel keeps its conversations there too.
+
+**The icons.** `assets/agentak.svg` is the logo, and chrome takes a bitmap at four sizes.
+`scripts/icons.ts` draws them — the svg's own shapes through their distance functions,
+rather than a downscale of a render, so the 16-pixel one is the same drawing and not a
+photograph of it. Rerun `pnpm icons` when the logo changes. The one thing it adds is a
+plate: the svg picks its ink from the reader's colour scheme, a png cannot, and a toolbar
+is light for one person and dark for the next — so the logo is drawn in the svg's own
+dark-scheme ink on a rounded plate of its light-scheme ink.
 
 The CSP blocks third-party requests, which is one reason no component fetches a remote
 asset. wllama is not offered here for the same reason: `wllamaSupported()` answers no on
