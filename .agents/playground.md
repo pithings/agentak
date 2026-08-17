@@ -204,7 +204,8 @@ here has been opened in a browser yet.
 | `read-page.ts`   | `read_page` — the panel's own tool, and the half injected in a tab   |
 | `catalogs.ts`    | the bundled model catalogs, through `useCatalogSource()`             |
 | `storage.ts`     | keys, choices and conversations in `chrome.storage.local`            |
-| `background.ts`  | the service worker — opens the panel on the action click             |
+| `background.ts`  | the service worker — opens the panel, and starts the badge           |
+| `badge.ts`       | the count of the page's own tools, on the toolbar icon               |
 | `icons/`         | the toolbar icons — `pnpm icons` draws them, `vite.config.ts` copies |
 | `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`                |
 
@@ -223,6 +224,26 @@ does. Two tools reach the model through it, as one `PageTools`:
   and a WebMCP tool cannot be serialised, so `tab-tools.ts` runs `getTools()` and
   `executeTool()` inside the tab through `chrome.scripting.executeScript` in the `MAIN`
   world, and only names and JSON strings come back. See [`webmcp.md`](webmcp.md).
+
+**The badge.** `badge.ts` puts the number of tools the page in front publishes on the
+toolbar icon, and `background.ts` starts it at the top level, because the worker is
+restarted for each event and a listener registered later would miss the one that woke it.
+It is the worker's job and not the panel's: the question the badge answers — does this site
+offer the agent anything? — is asked about the tab the panel has _not_ been opened on.
+WebMCP ships behind an origin trial and nearly no site publishes a tool, so a person who
+had to open the panel on each tab to find that out would stop looking.
+
+`read_page` is left out of the count. The panel offers it everywhere, and a badge reading
+`1` on every page states nothing. The text is set per tab, so the mark belongs to the page
+it was counted on, and only the tab in front is ever counted — a badge is read where it is
+looked at, and counting a background tab would mean an injected call in every page that
+loads anywhere. A tab that finished loading behind the one in front is counted when it
+comes forward. `relayToolChange()` in `tab-tools.ts` is what the panel and the badge share:
+the page marks its own window, so whichever asks second attaches nothing, and a tool
+registered long after load moves the count either way.
+
+The badge takes the icon's own two colours — the plate as its ground and the ink as its
+text — so it reads on a light and a dark toolbar for the same reason the icon does.
 
 The manifest asks for every http origin rather than `activeTab`. `activeTab` is granted
 for the tab the toolbar button was clicked on, and the side panel outlives that tab: a

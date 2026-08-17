@@ -279,7 +279,12 @@ hands the model the rendered text of the tab in front, with its title and url. I
 listed on every tab, marked read-only so it runs unasked, and marked untrusted, so the
 model is told in front of every result that a page is data and not instructions. The
 manifest asks for every http origin, because a side panel outlives the tab it was opened
-from and `activeTab` would leave the agent blind to every other one. See
+from and `activeTab` would leave the agent blind to every other one.
+
+The panel's service worker also counts what the page in front publishes and puts the
+number on the toolbar icon, per tab. `read_page` is left out of it, because the panel
+offers that everywhere. The count is the worker's job and not the panel's: it is the
+answer for a tab the panel has not been opened on. See
 [`.agents/playground.md`](.agents/playground.md).
 
 A conversation can be stored and opened again. `PiSession.save()` returns a `PiSnapshot` —
@@ -306,7 +311,9 @@ conversations elsewhere still uses `save()` and `restore()`. See
    only a browser can answer — that the bundled catalogs list models, that a key survives
    the panel being closed, that `read_page` returns the tab the person is looking at and
    follows them to the next one, that a `chrome:` screen fails as a tool error rather than
-   a broken turn, and that the toolbar icon reads on a light and a dark toolbar.
+   a broken turn, and that the toolbar icon reads on a light and a dark toolbar. The
+   badge is the sixth: a page that publishes WebMCP tools puts their count on the icon,
+   and the mark belongs to that tab alone.
 2. **Add conversation compaction.** Pi exports `compact()`, but it needs a `Models` store
    and the session's own `Entry[]`. Long conversations can still reach the context limit.
    The warning is already implemented: the context meter turns amber when

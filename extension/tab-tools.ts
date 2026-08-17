@@ -33,13 +33,13 @@ import type { PageTool, PageTools } from "@/pi/page-tools.ts";
 import { PAGE_LIMIT, readPageInTab, readPageTool } from "./read-page.ts";
 
 /** What the page posts to itself, and what the panel hears. */
-const RELAY = "agentak:webmcp-toolchange";
+export const RELAY = "agentak:webmcp-toolchange";
 
 /** Either half of an injected call: a page throws where the panel cannot catch. */
 type Answered<T> = { ok: true; value: T } | { ok: false; message: string };
 
 /** Runs in the page. Returns the data half of every tool it offers. */
-function readTools(): Promise<Answered<PageTool[]>> {
+export function readTools(): Promise<Answered<PageTool[]>> {
   const context = (document as { modelContext?: any }).modelContext;
   if (!context) return Promise.resolve({ ok: false, message: "This page has no WebMCP tools." });
   // A browser shipping the api today answers with JSON text for `inputSchema`:
@@ -125,7 +125,7 @@ const tabOrigin = (tab: chrome.tabs.Tab): string => {
 };
 
 /** One injected call, with the page's own failure turned back into a throw. */
-async function inTab<T, A extends unknown[]>(
+export async function inTab<T, A extends unknown[]>(
   tabId: number,
   func: (...args: A) => Answered<T> | Promise<Answered<T>>,
   args: A,
@@ -145,6 +145,22 @@ async function inTab<T, A extends unknown[]>(
 }
 
 /**
+ * Attach the relay once per page, on the way past. Both readers of a page call
+ * it — the session listing tools and the badge counting them — and the page
+ * marks its own window, so the second call does nothing.
+ */
+export async function relayToolChange(tabId: number): Promise<void> {
+  const target = { tabId };
+  await chrome.scripting.executeScript({
+    args: [RELAY],
+    func: relayInPage,
+    target,
+    world: "MAIN",
+  });
+  await chrome.scripting.executeScript({ args: [RELAY], func: relayOutOfPage, target });
+}
+
+/**
  * The tools of whichever tab is in front, as a `PageTools` source. Pass it as
  * the `page` option of `createPiSession()`.
  */
@@ -156,18 +172,6 @@ export function activeTabTools(): PageTools {
    * are told apart by which object it is, and never by what it is called.
    */
   const readers = new WeakSet<PageTool>();
-
-  /** Attach the relay once per page, on the way past. */
-  const listen = async (tabId: number) => {
-    const target = { tabId };
-    await chrome.scripting.executeScript({
-      args: [RELAY],
-      func: relayInPage,
-      target,
-      world: "MAIN",
-    });
-    await chrome.scripting.executeScript({ args: [RELAY], func: relayOutOfPage, target });
-  };
 
   return {
     async list() {
@@ -183,7 +187,7 @@ export function activeTabTools(): PageTools {
 
       const published = await inTab(tab.id, readTools, []).catch(() => []);
       // Only worth relaying from a page that has any.
-      if (published.length > 0) await listen(tab.id).catch(() => {});
+      if (published.length > 0) await relayToolChange(tab.id).catch(() => {});
       return [reader, ...published];
     },
 
