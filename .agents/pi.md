@@ -25,6 +25,7 @@ session: AgentSnapshot + providers + models + title -> ChatSnapshot -> Chat
 | `catalog.ts`       | one provider's models, fetched once per page              |
 | `use-catalog.ts`   | the same, as a hook, for a host driving `Chat` itself     |
 | `storage.ts`       | the store the keys, provider, model and level live in     |
+| `secret.ts`        | the keys in that store, sealed with a key nothing exports |
 | `history.ts`       | the conversations a session keeps, over that same store   |
 | `transcript.ts`    | `AgentMessage[]` -> renderable parts, and the usage panel |
 | `store.ts`         | a subscribable view of `Agent` events                     |
@@ -503,6 +504,44 @@ A key also comes back out: `forgetKey(provider)` on the session drops it from th
 from the session's own map — including one a host passed through `apiKey`, which that host
 still holds and hands to the next session. The provider then has no key, so it is one to
 set up again, and a session running on it steps off rather than failing the next turn.
+
+## The keys in it are sealed
+
+`secret.ts`, and one wrapper: `encryptedStorage(store)` seals the values whose names hold a
+secret and passes the rest through. `browserStorage()` wears it, so `localStorage` holds the
+keys as ciphertext and holds the provider, the model, the level and the conversations as
+they are. `isSecret` is the test — `api-key:*`, the picker's own — and a host with something
+else worth sealing in the same store passes a wider one.
+
+The point is the key that opens it, not the cipher. AES-GCM is generated
+`extractable: false` and kept in IndexedDB under `agentak`/`crypto`/`secret-key`, so it is
+usable and not readable: `exportKey` throws on it, a `structuredClone` of it carries no
+bytes, and what a script can lift off the origin — a dump of `localStorage`, a copied
+profile directory, a devtools paste — is ciphertext with nothing to open it. What it does
+not defend is a script that runs here, which can ask this layer to decrypt exactly as the
+chat does. That is the honest line: the secret stops outliving the visit, and it does not
+stop an origin that is already compromised.
+
+Two documents of the same origin each generate a key and only one may win, so the read and
+the write are one `readwrite` transaction — IndexedDB runs those in turn, so the second
+sees what the first wrote and drops its own. The key is generated before that transaction
+opens, because a transaction commits as soon as it has no request left to make and
+`generateKey` is a wait it would not survive.
+
+Three answers where sealing cannot happen. A value written in the clear — by a build before
+this one — is handed back as it is and sealed behind the reader, so the plain copy leaves
+the browser on the first read rather than on the next write. A value whose key is gone,
+which is site data cleared without `localStorage`, reads back as nothing and is replaced by
+the next write. And a browser with no `crypto.subtle` — an insecure origin — or no
+IndexedDB **rejects the write**: a secret is one this browser does not keep, which
+`createChoices` swallows into the same thing a denied store gets, a key that lives for the
+session and goes with the page. The rejection is not held either: the next write asks the
+browser again.
+
+The panel does not wear this. `chrome.storage.local` is not a store a page script can read
+at all, and an extension's own scripts are the ones that would decrypt — so the seal would
+buy the panel nothing and cost it a key to lose. Sealing is for `localStorage`, which hands
+a string to whatever runs on the origin.
 
 ## Storing a conversation
 

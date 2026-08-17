@@ -380,6 +380,18 @@ was had on. The chat follows the tab in front from one site's shelf to the next.
 stores conversations elsewhere still uses `save()` and `restore()`. See
 [`.agents/pi.md`](.agents/pi.md) and [`.agents/playground.md`](.agents/playground.md).
 
+The keys in that store are the one thing sealed. `browserStorage()` wraps itself in
+`encryptedStorage()`, which seals every `api-key:*` value with AES-GCM and passes the
+provider, the model, the level and the conversations through as they are. The key that
+opens them is generated `extractable: false` and kept in IndexedDB, so the browser uses it
+and no script copies it out: what a `localStorage` dump or a copied profile carries is
+ciphertext with nothing to read it by. A script running on the origin can still ask this
+layer to decrypt, which is the part encryption does not answer. A browser with no
+`crypto.subtle` or no IndexedDB keeps no key at all — the write is refused and the key
+lives for the session. The panel does not wrap its own store, because
+`chrome.storage.local` is not a store a page script can read. See `src/pi/secret.ts` and
+[`.agents/pi.md`](.agents/pi.md).
+
 ### Next tasks
 
 1. **Test the UI in a real browser.** Test the chat inside a host page and test the agent

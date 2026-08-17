@@ -42,6 +42,7 @@ export {
   type PiChoices,
   type PiStorage,
 } from "./storage.ts";
+export { encryptedStorage, isSecret } from "./secret.ts";
 export {
   createHistory,
   mintConversationId,

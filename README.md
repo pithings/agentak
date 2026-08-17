@@ -40,7 +40,8 @@ npx nypm i agentak
 
 When the user sends their first message, Agentak asks them to choose a provider if no
 usable provider and model are already saved. Free providers need no API key. Keys entered
-in the picker stay in the browser and are sent directly to the selected provider.
+in the picker stay in the browser and are sent directly to the selected provider. Where a
+host stores them in `localStorage`, they are encrypted with a non-extractable WebCrypto key.
 
 ## Side panel
 

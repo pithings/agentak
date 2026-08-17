@@ -1,4 +1,6 @@
 // Docs: @docs/4.agents/2.pi-agent/6.storage-and-api-keys.md
+import { encryptedStorage } from "./secret.ts";
+
 /**
  * Where the picker keeps the keys, the provider, the model and the level.
  *
@@ -55,8 +57,18 @@ export function memoryStorage(): PiStorage {
  * `localStorage`, for a host that asks for it. It throws rather than returns
  * null in a sandboxed frame, and a host page may deny it outright, so every
  * access is guarded and a failure means "nothing stored".
+ *
+ * The keys in it are sealed and the rest of it is not — see `secret.ts`. A key
+ * is the one thing here worth lifting off a device, and `localStorage` hands a
+ * string to whatever script asks; the provider, the model, the level and the
+ * conversations are the person's own reading and stay as they are.
  */
 export function browserStorage(): PiStorage {
+  return encryptedStorage(plainBrowserStorage());
+}
+
+/** The store under it: `localStorage`, guarded, with nothing sealed. */
+function plainBrowserStorage(): PiStorage {
   return {
     // Each answers with a promise the api itself does not need, because that is
     // what a `PiStorage` is: a store that reads at once still reads later here.
