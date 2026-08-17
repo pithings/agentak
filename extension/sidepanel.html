@@ -10,6 +10,12 @@
         height: 100%;
         margin: 0;
       }
+      /* The tokens arrive with the chat, so this resolves once it mounts. It is
+         what the browser paints behind the surface — a white strip either side
+         of a dark panel is this rule missing, not the chat. */
+      body {
+        background: var(--background);
+      }
     </style>
   </head>
   <body>

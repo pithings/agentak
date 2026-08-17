@@ -254,6 +254,22 @@ plate: the svg picks its ink from the reader's colour scheme, a png cannot, and 
 is light for one person and dark for the next — so the logo is drawn in the svg's own
 dark-scheme ink on a rounded plate of its light-scheme ink.
 
+**The theme.** The library ships both palettes and picks between them on `.dark` on an
+ancestor, and which one is on is the host's call — the playground runs a switch of its
+own. The panel has none and needs none, so `theme.ts` follows `prefers-color-scheme` and
+goes on following it, because the scheme changes under a panel that is already open. It
+runs before the first render, so the panel never opens light and then turns dark. The
+`background` on `body` in `sidepanel.html` is the same concern from the other side: the
+browser paints that, not the chat, and a white strip either side of a dark panel is that
+rule missing.
+
+**The manifest declares `wasm-unsafe-eval`.** md4x is a wasm parser, and the default MV3
+policy blocks `WebAssembly.instantiate` outright — `loadMarkdown()` catches it and every
+answer renders as its raw markdown, which is what a panel without this line shows. The
+directive allows wasm and nothing else; MV3 permits no `unsafe-eval` at all, so typebox's
+own probe for it still fails, still logs one CSP warning to the panel console, and still
+falls back to its dynamic checks. That warning is expected and is not this bug.
+
 The CSP blocks third-party requests, which is one reason no component fetches a remote
 asset. wllama is not offered here for the same reason: `wllamaSupported()` answers no on
 a `chrome-extension:` document.

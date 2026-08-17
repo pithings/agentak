@@ -19,10 +19,15 @@ import { u } from "@/styles/base.ts";
 import { useBundledCatalogs } from "./catalogs.ts";
 import { chromeStorage } from "./storage.ts";
 import { activeTabTools } from "./tab-tools.ts";
+import { followColorScheme } from "./theme.ts";
 
 // Before the session, because a provider picked on the first frame loads its
 // catalog at once. The default source is a url this document may not import.
 useBundledCatalogs();
+
+// Before the first paint, so the panel never opens light and then turns dark.
+// The library ships both palettes and the host says which is on.
+followColorScheme();
 
 // The store is read before anything mounts: `PiStorage` answers synchronously,
 // and the session reads the provider, the model and the key while it is being
