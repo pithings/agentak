@@ -305,6 +305,14 @@ reader was doing; the panel is the whole document and was opened to be typed in,
 composer takes the focus as it mounts. Chrome tears the panel down when it is closed, so
 each opening is a mount and takes it again.
 
+Once is not enough, though, which is the whole of why the composer asks in a loop rather
+than in a line. The panel is its own document and the browser gives it the focus when it
+is ready to, which is after the panel has mounted: a field focused before that holds the
+document's own focus and no keys, and chrome then hands the document to its body and takes
+even that away. So the request stands frame by frame until the document holds the focus and
+the field holds it too, and it is dropped after a second — a person who has clicked back
+into the page has answered it.
+
 **The icons.** `assets/agentak.svg` is the logo, and chrome takes a bitmap at four sizes.
 `scripts/icons.ts` draws them — the svg's own shapes through their distance functions,
 rather than a downscale of a render, so the 16-pixel one is the same drawing and not a

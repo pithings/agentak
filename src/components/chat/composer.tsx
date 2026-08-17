@@ -188,13 +188,42 @@ export function ChatComposer({
 
   // The same for a new conversation: the transcript is empty and the only thing
   // left to do is say something. The first render is not a request — the chat
-  // would take the focus off the page the moment it mounted — unless the host
-  // says its surface is the whole document, which is the panel's case.
+  // would take the focus off the page the moment it mounted.
   const mounted = useRef(false);
   useEffect(() => {
-    if ((mounted.current || autoFocus) && !isTouch()) input()?.focus();
+    if (mounted.current && !isTouch()) input()?.focus();
     mounted.current = true;
   }, [focusKey]);
+
+  // Where the host says its surface is the whole document, the mount is a
+  // request after all — the side panel was opened to be typed in.
+  //
+  // It is the one focus here that has to be asked for more than once. The panel
+  // is its own document and the browser gives it the focus when it is ready to,
+  // which is after this mounts: a field focused before that holds the document's
+  // own focus and no keys, and chrome then hands the document to its body and
+  // takes even that away. So the request stands, frame by frame, until the
+  // document holds the focus and the field holds it too — or until the second is
+  // up, because a person who has clicked back into the page is answering it.
+  useEffect(() => {
+    if (!autoFocus || isTouch()) return;
+    const doc = ref.current?.ownerDocument;
+    if (!doc) return;
+
+    let frame = 0;
+    let left = 60;
+    const take = () => {
+      const field = input();
+      if (field) {
+        if (doc.hasFocus() && doc.activeElement === field) return;
+        field.focus();
+      }
+      if (--left > 0) frame = requestAnimationFrame(take);
+    };
+
+    take();
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   // The chat's own two verbs. Each is offered only where the surface can answer
   // it: a session with a fixed model chooses nothing, and a host that keeps the

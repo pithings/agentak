@@ -11,13 +11,16 @@
  * The zip is written here rather than by `zip`, which is a tool the build cannot
  * count on: a store entry is a header, a deflated body and a line in the central
  * directory, and node deflates. Every entry carries the same fixed timestamp, so
- * an unchanged build packs to the same bytes — the archive is a build output and
- * is not committed, and a rebuild of it is not a new download.
+ * the same build packs to the same bytes on the day it is packed — the archive is
+ * a build output and is not committed, and a rebuild of it is not a new download.
  *
- * Run: `node scripts/pack.ts`, which `pnpm build:extension` does for you. The
- * docs build runs that same command first, because the zip it serves is git
- * ignored and is made where the site is built.
+ * The manifest is stamped first, in `extension/dist` itself, so an unpacked load
+ * and the download report the same build. Run: `node scripts/pack.ts`, which
+ * `pnpm build:extension` does for you. The docs build runs that same command
+ * first, because the zip it serves is git ignored and is made where the site is
+ * built.
  */
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,6 +44,41 @@ const crc32 = (buffer: Buffer): number => {
   for (const byte of buffer) c = CRC_TABLE[(c ^ byte) & 0xff]! ^ (c >>> 8);
   return (c ^ 0xffffffff) >>> 0;
 };
+
+/** The head commit, short. Empty where git cannot answer, as in a tarball. */
+function head(): string {
+  try {
+    return execFileSync("git", ["rev-parse", "--short", "HEAD"], {
+      cwd: dirname(src),
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * The manifest takes the day it was packed and the commit it was built from.
+ * Chrome reads `version` as up to four numbers below 65536, so `260610` cannot
+ * be one of them and the date goes in as `26.6.10`. `version_name` is free text
+ * and is what the extensions page shows, so it carries the compact day and the
+ * commit beside it.
+ */
+function stamp(dir: string): string {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const [year, month, day] = [now.getFullYear() % 100, now.getMonth() + 1, now.getDate()];
+  const date = `${pad(year)}${pad(month)}${pad(day)}`;
+  const commit = head();
+
+  const path = `${dir}/manifest.json`;
+  const manifest = JSON.parse(readFileSync(path, "utf8"));
+  manifest.version = `${year}.${month}.${day}`;
+  manifest.version_name = commit ? `${date} (${commit})` : date;
+  writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+  return manifest.version_name;
+}
 
 /** Every file under `dir`, as archive paths, in a stable order. */
 function walk(dir: string, prefix = ""): string[] {
@@ -126,7 +164,8 @@ function zip(dir: string): Buffer {
   return Buffer.concat([...parts, ...directory, end]);
 }
 
+const version = stamp(src);
 const archive = zip(src);
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, archive);
-console.log(`agentak-extension.zip  ${(archive.length / 1024).toFixed(0)} kB`);
+console.log(`agentak-extension.zip  ${version}  ${(archive.length / 1024).toFixed(0)} kB`);
