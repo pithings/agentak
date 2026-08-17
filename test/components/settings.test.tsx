@@ -307,14 +307,16 @@ describe("Chat", () => {
     // The greeting stands in for the transcript: both are the conversation.
     expect(screen.getByText("agentak")).toBeTruthy();
 
-    // Two ways in — the header's button, and the composer's trigger which also
-    // names what is running.
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    // One way in: the bar's trigger, which names what is running and shuts
+    // again the page it opened. Found by its tooltip, because the name it
+    // carries is the model — which the list under the page carries too.
+    const trigger = () => screen.getByTitle("Provider, model and thinking level");
+    fireEvent.click(trigger());
     expect(screen.getByText("Provider")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    fireEvent.click(trigger());
     expect(screen.getByText("agentak")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /GPT-5/ }));
+    fireEvent.click(trigger());
     expect(screen.queryByText("agentak")).toBeNull();
     expect(screen.getByText("Settings")).toBeTruthy();
     expect(screen.getByText("Provider")).toBeTruthy();
@@ -343,7 +345,7 @@ describe("Chat", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByTitle("Provider, model and thinking level"));
     fireEvent.click(screen.getByRole("button", { name: /GPT-5 mini/ }));
 
     expect(chosen).toEqual(["gpt-5-mini"]);

@@ -284,8 +284,10 @@ that is the whole document: the side panel sets it, and the composer takes the f
 mounts. Never on a phone, where the focus is a keyboard over half the surface.
 
 The provider, model, thinking level, and API key are all selected on the settings page,
-`components/chat/settings.tsx`. One control opens it: the status bar's model trigger,
-which also names the model that is running and shuts the page again on a second click. The
+`components/chat/settings.tsx` — the state its sections share, and the order they are read
+in; each section is its own file in `components/chat/settings/`. One control opens it: the
+status bar's model trigger, which also names the model that is running and shuts the page
+again on a second click. The
 page then takes the whole surface under the title bar: it replaces the transcript, and the
 composer is hidden under it, because there is nothing to say to a provider that is still
 being chosen. The composer is hidden and not unmounted, so a half-typed message is still
@@ -415,6 +417,7 @@ src/
   components/_parked/           Ports nothing renders yet; exported all the same
   components/chat.tsx           Chat UI with transcript input and callbacks
   components/chat/              Header, empty state, messages, queue, prompts, composer, settings, history
+  components/chat/settings/     One file per section of that page, and what a model id says
   components/elements.tsx       Renderer map for `{ kind: "element" }` parts
   components/markdown.tsx       md4x AST rendered with Preact
   styles/base.ts                `tokens`, reset presets, `u`, and animation settings

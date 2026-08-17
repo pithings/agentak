@@ -125,6 +125,16 @@ composer draws no line over itself — the round box it holds is its own frame �
 that scrolls has to end against one, so the bar takes a seam while the composer is away,
 through the `style` `chat.tsx` merges over it. The history page keeps the composer.
 
+The settings page is a column of five sections, and each one is a file of its own under
+`chat/settings/`: the provider menu, the key, the device lock, the thinking level, and the
+model list. `chat/settings.tsx` is what they share — which provider the page is about,
+whose key field is open — and the order they are read in, plus the trigger that opens the
+page from the bar. `settings/section.tsx` holds the heading and the styles more than one
+section draws with, so a section is its own markup and nothing else's; `settings/catalog.ts`
+holds what a model id says about itself — its family and its version — which is what the
+model list is grouped, collapsed and recommended by, and the one part of the page that is
+worth reading on its own.
+
 Each flag is controllable, so a session can own it instead — see [`session.md`](session.md).
 
 ## Exports
