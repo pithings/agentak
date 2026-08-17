@@ -2,7 +2,7 @@
 import { useEffect, useState } from "preact/hooks";
 
 import { cachedCatalog, loadCatalog } from "./catalog.ts";
-import type { AnyModel } from "./providers.ts";
+import type { AnyModel } from "../providers.ts";
 
 export interface CatalogState {
   models: AnyModel[];

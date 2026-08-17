@@ -4,11 +4,11 @@
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { clampThinkingLevel, getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 
-import { cachedCatalog, loadCatalog } from "./catalog.ts";
-import { type AgentOptions, createAgent, SYSTEM_PROMPT } from "./create-agent.ts";
-import { createHistory, mintConversationId, type PiHistory } from "./history.ts";
-import { findModel } from "./models.ts";
-import { createPageToolset, type PageTools } from "./page-tools.ts";
+import { cachedCatalog, loadCatalog } from "./providers/catalog.ts";
+import { type AgentOptions, createAgent, SYSTEM_PROMPT } from "./agent.ts";
+import { createHistory, mintConversationId, type PiHistory } from "./storage/history.ts";
+import { findModel } from "./providers/models.ts";
+import { createPageToolset, type PageTools } from "./tools.ts";
 import { type AnyModel, availableProviders, findProvider, type Provider } from "./providers.ts";
 import {
   PI_SNAPSHOT_VERSION,
@@ -16,13 +16,13 @@ import {
   usablePiMessages,
   type WholePiSnapshot,
 } from "./snapshot.ts";
-import { passkeyFailure } from "./passkey.ts";
-import { isSecretStorage, type SecretStorage } from "./secret.ts";
+import { passkeyFailure } from "./storage/passkey.ts";
+import { isSecretStorage, type SealedState, type SecretStorage } from "./storage/secret.ts";
 import { createChoices, type PiChoices, type PiStorage } from "./storage.ts";
-import { createAgentStore } from "./store.ts";
-import { generateTitle, titleRequest, toTitle } from "./title.ts";
-import { piMessageIndex, piUserText, toViewMessages } from "./transcript.ts";
-import { documentTools } from "./webmcp.ts";
+import { createAgentStore } from "./chat.ts";
+import { generateTitle, titleRequest, toTitle } from "./chat/title.ts";
+import { piMessageIndex, piUserText, toViewMessages } from "./chat/transcript.ts";
+import { documentTools } from "./tools/webmcp.ts";
 import type { ChatAgent, ChatKeyLock, ChatProvider } from "../components/chat/types.ts";
 import type { ChatSession, ChatSessionOptions, ChatSnapshot } from "../session.ts";
 
@@ -133,17 +133,20 @@ export interface PiSession extends ChatSession {
 const DEFAULT_THINKING: ThinkingLevel = "medium";
 
 /**
- * What the store holds per provider: the keys it handed over, and the ones it
- * has but will not hand over yet.
+ * What the store holds per provider: the keys it handed over, the ones it has
+ * and will not hand over yet, and the ones it has and never will.
  *
- * A locked store answers every key with nothing, which on its own reads as a
- * browser that has none — so the provider it was set up on would look unset and
- * the chat would ask for a key it already has. `sealed` is the difference: the
- * name holds a value, and a click is what stands between here and it.
+ * A store that answers a key with nothing reads, on its own, as a browser that
+ * has none — so the provider it was set up on would look unset and the chat
+ * would ask for a key it is already holding. `sealed()` is the difference, and
+ * it makes three answers rather than two, because a value nothing can open must
+ * not be offered an unlock that would do nothing: `sealed` is a ceremony away,
+ * and `lost` is a key to type again.
  */
 interface StoredKeys {
   keys: Record<string, string>;
   sealed: Set<string>;
+  lost: Set<string>;
 }
 
 /** Keys already in hand: what a host passed, over what the store holds. */
@@ -152,27 +155,35 @@ async function seedKeys(
   providers: Provider[],
   apiKey: PiSessionOptions["apiKey"],
   providerId?: string,
-  locked?: SecretStorage,
+  secrets?: SecretStorage,
 ): Promise<StoredKeys> {
   const keys: Record<string, string> = {};
   const sealed = new Set<string>();
+  const lost = new Set<string>();
   // Asked for at once rather than one after another: a store that answers later
   // would otherwise cost a round trip per provider.
   const stored = await Promise.all(providers.map((provider) => choices.storedApiKey(provider.id)));
-  const shut = locked
+  const shut = secrets
     ? await Promise.all(
-        providers.map((provider) => locked.sealed(`api-key:${provider.id}`).catch(() => false)),
+        providers.map((provider) =>
+          secrets.sealed(`api-key:${provider.id}`).catch((): SealedState => "open"),
+        ),
       )
     : undefined;
   providers.forEach((provider, index) => {
     const key = stored[index];
     if (key) keys[provider.id] = key;
-    else if (shut?.[index]) sealed.add(provider.id);
+    else if (shut?.[index] === "locked") sealed.add(provider.id);
+    else if (shut?.[index] === "stale") lost.add(provider.id);
   });
   if (typeof apiKey === "string" && providerId) keys[providerId] = apiKey;
   else if (apiKey) Object.assign(keys, apiKey);
-  return { keys, sealed };
+  return { keys, lost, sealed };
 }
+
+/** The same set without one id. A key that is in hand is neither of these. */
+const without = (set: Set<string>, id: string): Set<string> =>
+  new Set([...set].filter((entry) => entry !== id));
 
 /**
  * The provider to open on, if any. One that cannot answer counts as none — a
@@ -185,7 +196,8 @@ async function seedKeys(
  */
 const openingProvider = (
   providers: Provider[],
-  { keys, sealed }: StoredKeys,
+  // A key that is lost is no key, so this is the two that count.
+  { keys, sealed }: Pick<StoredKeys, "keys" | "sealed">,
   wanted?: string,
 ): string | undefined => {
   const entry = providers.find((provider) => provider.id === wanted);
@@ -264,6 +276,8 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   let keys: Record<string, string> = {};
   /** Providers whose stored key is there and shut. Empty with no lock, or none. */
   let sealed = new Set<string>();
+  /** Providers whose stored key is there and unreadable for good. */
+  let lost = new Set<string>();
   /** Whether this browser could hold a key of its own, if anyone asked it to. */
   let lockable = false;
   /** A dialog is up. One at a time, and the buttons say so while it is. */
@@ -403,6 +417,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     // at construction: a key typed while the store answered stands over it.
     keys = { ...stored.keys, ...keys };
     sealed = stored.sealed;
+    lost = stored.lost;
   };
 
   /**
@@ -597,6 +612,10 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       // A key it has and cannot read yet. The page then offers to unlock it
       // rather than to change or remove a key nothing here is holding.
       locked: sealed.has(entry.id) && !keys[entry.id],
+      // And one it has that no key here opens: a passkey that was deleted, or a
+      // store carried over from a browser this is not. The page asks for
+      // another one and says why rather than showing an empty field.
+      keyLost: lost.has(entry.id) && !keys[entry.id],
       id: entry.id,
       keyed: !entry.free,
       keyPlaceholder: entry.keyPlaceholder,
@@ -763,6 +782,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
     // answered must not be replaced by the one it used to hold.
     keys = { ...stored.keys, ...keys };
     sealed = stored.sealed;
+    lost = stored.lost;
     // Asked once, and asked whatever the lock is doing now: a person who turns
     // it off is left looking at the control that turns it back on.
     if (secrets) lockable = await secrets.lock.supported().catch(() => false);
@@ -919,7 +939,8 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       keys = { ...keys, [id]: key };
       // A key typed by hand is one this session can read, whatever the store was
       // holding under that name before it.
-      sealed = new Set([...sealed].filter((provider) => provider !== id));
+      sealed = without(sealed, id);
+      lost = without(lost, id);
       void choices.storeApiKey(id, key);
       notify();
     },
@@ -949,6 +970,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
             Object.entries(keys).map(([provider, key]) => choices.storeApiKey(provider, key)),
           );
           sealed = new Set();
+          lost = new Set();
         } catch (failure: unknown) {
           lockError = passkeyFailure(failure);
         } finally {
@@ -973,7 +995,8 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       keys = Object.fromEntries(Object.entries(keys).filter(([provider]) => provider !== id));
       // A locked key that is dropped is dropped: the store no longer holds it,
       // so there is nothing left to unlock for.
-      sealed = new Set([...sealed].filter((provider) => provider !== id));
+      sealed = without(sealed, id);
+      lost = without(lost, id);
       void choices.forgetApiKey(id);
       if (id === providerId) {
         providerId = undefined;

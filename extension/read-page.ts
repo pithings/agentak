@@ -22,7 +22,7 @@
  * the model guessing which one it asked for. This one is named for the tab,
  * because reaching a tab is what only the panel can do.
  */
-import type { PageTool } from "@/pi/page-tools.ts";
+import type { PageTool } from "@/pi/tools.ts";
 
 /** The name the model calls it by, and the name the bridge matches on. */
 export const READ_ACTIVE_TAB = "read_active_tab";

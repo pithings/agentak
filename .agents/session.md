@@ -182,7 +182,7 @@ render(<AgentChat session={session} />, target);
 ```
 
 `ViewPart` was inlined from AI SDK v7 UI types, so an `ai` `useChat` session is mostly a
-rename. `pi/store.ts` is the worked example: a mutating event source, one cached
+rename. `pi/chat.ts` is the worked example: a mutating event source, one cached
 snapshot, one `notify()`.
 
 ## What holds the seam shut

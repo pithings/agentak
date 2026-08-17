@@ -5,9 +5,9 @@ import {
   DEFAULT_MODEL,
   DEFAULT_PROVIDER_ID,
   findModel,
-} from "../../src/pi/models.ts";
-import { WLLAMA_PROVIDER_ID } from "../../src/pi/local.ts";
-import { ON_DEVICE_PROVIDER_ID } from "../../src/pi/on-device.ts";
+} from "../../src/pi/providers/models.ts";
+import { WLLAMA_PROVIDER_ID } from "../../src/pi/providers/local.ts";
+import { ON_DEVICE_PROVIDER_ID } from "../../src/pi/providers/on-device.ts";
 import {
   type AnyModel,
   availableProviders,

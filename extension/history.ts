@@ -25,7 +25,7 @@
  * shelf it was had on — `owners` is what remembers that — so browsing away
  * mid-answer files nothing under the wrong site.
  */
-import { createHistory, type PiHistory } from "@/pi/history.ts";
+import { createHistory, type PiHistory } from "@/pi/storage/history.ts";
 import type { PiSession } from "@/pi/session.ts";
 import type { PiStorage } from "@/pi/storage.ts";
 

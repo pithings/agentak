@@ -246,7 +246,7 @@ true, the model creates a title after the first answer. This uses one extra requ
 disabled by default. If the request fails, the first-message title stays in place.
 `AgentChat` sends changes to the session through `setOptions()`, so the prop can change
 without resetting the transcript. `Chat` receives the final string through its `title`
-prop. See `src/pi/title.ts`.
+prop. See `src/pi/chat/title.ts`.
 
 ### Styles and builds
 
@@ -395,15 +395,15 @@ ciphertext with nothing to read it by. A script running on the origin can still 
 layer to decrypt, which is the part encryption does not answer. A browser with no
 `crypto.subtle` or no IndexedDB keeps no key at all — the write is refused and the key
 lives for the session. The panel does not wrap its own store, because
-`chrome.storage.local` is not a store a page script can read. See `src/pi/secret.ts` and
+`chrome.storage.local` is not a store a page script can read. See `src/pi/storage/secret.ts` and
 [`.agents/pi.md`](.agents/pi.md).
 
 A person can ask for more than that key, and the settings page is where: **Device lock**
-puts the sealing key in the device's own authenticator instead. `src/pi/passkey.ts` is
+puts the sealing key in the device's own authenticator instead. `src/pi/storage/passkey.ts` is
 WebAuthn's `prf` extension — a salt in, 32 bytes out of the TPM or the Secure Enclave, the
 same bytes every time, and only with a fingerprint, a face or a PIN in front of them —
 through HKDF into a key that was never in the browser's storage at all. What is stored is a
-credential id and a salt, neither of them secret. `src/pi/vault.ts` holds both answers and
+credential id and a salt, neither of them secret. `src/pi/storage/vault.ts` holds both answers and
 the lock between them; `SecretLock` is the seam, and `ChatSession` shows it as `keyLock`
 with `setKeyLock` and `unlockKeys`.
 
@@ -414,6 +414,14 @@ The settings page has the same button, marks a locked provider "Locked", and off
 another key beside it — a deleted passkey takes the keys sealed under it with it. Turning
 the lock on or off re-seals what the session holds in memory, because nothing else can read
 it to re-seal. `chrome-extension:` origins have no WebAuthn, so the panel has no lock.
+
+A stored value says which key sealed it: `agentak-enc1:` for the browser's own,
+`agentak-enc2:` for the device's. The ciphertext is the same either way, so that mark is
+the only thing separating a key one touch opens from a key nothing will ever open again —
+and the two must not be confused, because an unlock offered for the second opens a dialog
+for a credential that is gone. `sealed(name)` reads the mark against the lock and answers
+"open", "locked" or "stale"; the session sorts those into a key it has, a key to unlock for,
+and a key to type again, which the settings page says in as many words.
 
 ### Next tasks
 
@@ -457,7 +465,7 @@ it to re-seal. `chrome-extension:` origins have no WebAuthn, so the panel has no
    and the session's own `Entry[]`. Long conversations can still reach the context limit.
    The warning is already implemented: the context meter turns amber when
    `shouldCompact()` returns true. This helper needs neither dependency. See
-   `pi/transcript.ts`.
+   `pi/chat/transcript.ts`.
 3. **Give the panel more of the browser.** `read_active_tab` is one tool and the model can
    only read with it. Opening a url, following a link, or reading a second tab are each another
    tool on the same bridge, and each one is a thing the model does to a person's browser

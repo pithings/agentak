@@ -2,14 +2,24 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { Api, AssistantMessageEventStream, FetchFunction, Model } from "@earendil-works/pi-ai";
 
-import { KILO_MODELS, LLM7_MODELS, OPENCODE_ZEN_MODELS, OVHCLOUD_MODELS } from "./free-models.ts";
-import { WLLAMA_MODEL_ID, WLLAMA_MODELS, WLLAMA_PROVIDER_ID, wllamaSupported } from "./local.ts";
+import {
+  KILO_MODELS,
+  LLM7_MODELS,
+  OPENCODE_ZEN_MODELS,
+  OVHCLOUD_MODELS,
+} from "./providers/free-models.ts";
+import {
+  WLLAMA_MODEL_ID,
+  WLLAMA_MODELS,
+  WLLAMA_PROVIDER_ID,
+  wllamaSupported,
+} from "./providers/local.ts";
 import {
   ON_DEVICE_MODEL_ID,
   ON_DEVICE_MODELS,
   ON_DEVICE_PROVIDER_ID,
   promptApiSupported,
-} from "./on-device.ts";
+} from "./providers/on-device.ts";
 
 /** A model from any provider. The api it speaks is on the model itself. */
 export type AnyModel = Model<Api>;
@@ -302,11 +312,11 @@ type ApiModule = { streamSimple: (...args: any[]) => AssistantMessageEventStream
 const APIS: Record<string, () => Promise<ApiModule>> = {
   "anthropic-messages": () => import("@earendil-works/pi-ai/api/anthropic-messages"),
   // Not one of pi's: Chrome's own, written here. See `chrome-prompt.ts`.
-  "chrome-prompt": () => import("./chrome-prompt.ts"),
+  "chrome-prompt": () => import("./providers/chrome-prompt.ts"),
   "openai-completions": () => import("@earendil-works/pi-ai/api/openai-completions"),
   "openai-responses": () => import("@earendil-works/pi-ai/api/openai-responses"),
   // Not one of pi's either: llama.cpp in this tab. See `wllama.ts`.
-  wllama: () => import("./wllama.ts"),
+  wllama: () => import("./providers/wllama.ts"),
 };
 
 /** The apis this bundle can speak. A catalog entry outside them is not offered. */

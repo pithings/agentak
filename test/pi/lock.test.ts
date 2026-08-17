@@ -8,7 +8,7 @@ import { waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { fakeAuthenticator, type FakeAuthenticator } from "./authenticator.ts";
-import { encryptedStorage, type SecretStorage } from "../../src/pi/secret.ts";
+import { encryptedStorage, type SecretStorage } from "../../src/pi/storage/secret.ts";
 import { createPiSession, type PiSession } from "../../src/pi/session.ts";
 import { memoryStorage, type PiStorage } from "../../src/pi/storage.ts";
 
@@ -92,9 +92,11 @@ describe("a pi session over a store that can lock", () => {
     session.setKeyLock?.(true);
     await waitFor(() => expect(session.snapshot().keyLock?.state).toBe("open"));
 
-    // Sealed under the passkey's key now, and the session still holds the key
-    // itself — nothing was lost by moving it.
-    await waitFor(async () => expect(await store.sealed(`api-key:${KEYED}`)).toBe(true));
+    // Sealed under the passkey's key now — the mark says which — and the
+    // session still holds the key itself, so nothing was lost by moving it.
+    await waitFor(async () =>
+      expect((await inner.get(`api-key:${KEYED}`))?.startsWith("agentak-enc2:")).toBe(true),
+    );
     expect(session.snapshot().providers?.find((entry) => entry.id === KEYED)?.hasKey).toBe(true);
   });
 
@@ -171,6 +173,38 @@ describe("a pi session over a store that can lock", () => {
     next.send("what is this page?");
     await waitFor(() => expect(next.snapshot().messages).toHaveLength(2));
     expect(device.ceremonies()).toBe(asked);
+  });
+
+  it("asks for a key rather than an unlock nothing would answer", async () => {
+    await setUp();
+
+    // The site's data, cleared: the sealed key is still in `localStorage` and
+    // the credential it was sealed for is gone.
+    globalThis.indexedDB = new IDBFactory();
+    const session = visit(encryptedStorage(inner));
+    await session.ready;
+    const keyed = () => session.snapshot().providers?.find((entry) => entry.id === KEYED);
+
+    expect(session.snapshot().keyLock?.state).toBe("off");
+    // Not a key to unlock for: a key to type again, and the page says why.
+    expect(keyed()?.locked).toBeFalsy();
+    expect(keyed()?.keyLost).toBe(true);
+    expect(keyed()?.hasKey).toBe(false);
+    // And the provider is one to set up again, so nothing opens on it.
+    expect(session.snapshot().providerId).toBeUndefined();
+
+    // The message is held for the settings page rather than for a dialog that
+    // would never open, which is the dead end this marking is here to stop.
+    session.send("what is this page?");
+    expect(session.snapshot().pickerOpen).toBe(true);
+    expect(session.snapshot().keyLock?.error).toBeUndefined();
+
+    // Typing another key ends it: the provider runs, and nothing says lost.
+    session.saveKey?.(KEYED, "sk-or-v1-another");
+    session.selectProvider?.(KEYED);
+    await pickModel(session);
+    expect(keyed()?.keyLost).toBeFalsy();
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(2));
   });
 
   it("shows no lock at all where the browser could not hold a key", async () => {

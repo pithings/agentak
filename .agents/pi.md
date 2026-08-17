@@ -13,32 +13,39 @@ store:   every event -> toViewMessages(agent.state) -> AgentSnapshot
 session: AgentSnapshot + providers + models + title -> ChatSnapshot -> Chat
 ```
 
-| File               | What                                                      |
-| ------------------ | --------------------------------------------------------- |
-| `create-agent.ts`  | the `Agent`, the stream function, the system prompt       |
-| `free-models.ts`   | the hand-written catalogs of the four keyless providers   |
-| `approvals.ts`     | the confirmation gate behind `beforeToolCall`             |
-| `webmcp.ts`        | `document.modelContext`, and the tools a page offers      |
-| `page-tools.ts`    | those tools as pi's, named, gated and kept level          |
-| `models.ts`        | catalog filtering, the defaults                           |
-| `providers.ts`     | the provider list, the api modules, `streamFor()`         |
-| `catalog.ts`       | one provider's models, fetched once per page              |
-| `use-catalog.ts`   | the same, as a hook, for a host driving `Chat` itself     |
-| `storage.ts`       | the store the keys, provider, model and level live in     |
-| `secret.ts`        | the keys in that store, sealed and unsealed               |
-| `vault.ts`         | the key that seals them, and the lock over it             |
-| `passkey.ts`       | WebAuthn's PRF, as a key the device holds                 |
-| `history.ts`       | the conversations a session keeps, over that same store   |
-| `transcript.ts`    | `AgentMessage[]` -> renderable parts, and the usage panel |
-| `store.ts`         | a subscribable view of `Agent` events                     |
-| `errors.ts`        | a failed turn, worded for the person reading it           |
-| `use-agent.ts`     | the store as a hook — `ChatState`, unchanged              |
-| `session.ts`       | the store, the page and the title as one `ChatSession`    |
-| `title.ts`         | the conversation's name — derived, or asked of the model  |
-| `on-device.ts`     | Chrome's own model, and whether this browser carries it   |
-| `chrome-prompt.ts` | the Prompt API as an api pi can speak                     |
-| `local.ts`         | the wllama models, where the module comes from, the gate  |
-| `wllama.ts`        | llama.cpp in this tab as an api pi can speak              |
+Four things this directory talks to, and a folder for each: a model server, the
+browser's storage, the page, and the chat UI. Every folder has a hub file beside it
+rather than inside it — `providers.ts` next to `providers/`, as `components/chat.tsx`
+sits next to `components/chat/` — and that hub is the only file the other groups
+import. `index.ts` is the one public entry; no folder carries a barrel of its own.
+
+| File                         | What                                                      |
+| ---------------------------- | --------------------------------------------------------- |
+| `session.ts`                 | the store, the page and the title as one `ChatSession`    |
+| `snapshot.ts`                | a conversation, in the shape a host stores it             |
+| `agent.ts`                   | the `Agent`, the stream function, the system prompt       |
+| `providers.ts`               | the provider list, the api modules, `streamFor()`         |
+| `providers/models.ts`        | catalog filtering, the defaults                           |
+| `providers/catalog.ts`       | one provider's models, fetched once per page              |
+| `providers/use-catalog.ts`   | the same, as a hook, for a host driving `Chat` itself     |
+| `providers/free-models.ts`   | the hand-written catalogs of the four keyless providers   |
+| `providers/on-device.ts`     | Chrome's own model, and whether this browser carries it   |
+| `providers/chrome-prompt.ts` | the Prompt API as an api pi can speak                     |
+| `providers/local.ts`         | the wllama models, where the module comes from, the gate  |
+| `providers/wllama.ts`        | llama.cpp in this tab as an api pi can speak              |
+| `storage.ts`                 | the store the keys, provider, model and level live in     |
+| `storage/secret.ts`          | the keys in that store, sealed and unsealed               |
+| `storage/vault.ts`           | the key that seals them, and the lock over it             |
+| `storage/passkey.ts`         | WebAuthn's PRF, as a key the device holds                 |
+| `storage/history.ts`         | the conversations a session keeps, over that same store   |
+| `tools.ts`                   | the page's tools as pi's, named, gated and kept level     |
+| `tools/webmcp.ts`            | `document.modelContext`, and the tools a page offers      |
+| `tools/approvals.ts`         | the confirmation gate behind `beforeToolCall`             |
+| `chat.ts`                    | a subscribable view of `Agent` events                     |
+| `chat/use-agent.ts`          | the store as a hook — `ChatState`, unchanged              |
+| `chat/transcript.ts`         | `AgentMessage[]` -> renderable parts, and the usage panel |
+| `chat/title.ts`              | the conversation's name — derived, or asked of the model  |
+| `chat/errors.ts`             | a failed turn, worded for the person reading it           |
 
 ## Imports stay dynamic
 
@@ -403,10 +410,10 @@ publishes on `document.modelContext` — WebMCP. Off by default, like the histor
 carries no tools of its own, and a surface offers the model nothing nobody asked for.
 [`../.agents/webmcp.md`](webmcp.md) is the spec side; this is the pi side.
 
-| File            | What                                                          |
-| --------------- | ------------------------------------------------------------- |
-| `webmcp.ts`     | the api as typescript sees it, and `documentTools()`          |
-| `page-tools.ts` | `PageTools`, the naming, the `AgentTool` wrapper, the toolset |
+| File        | What                                                          |
+| ----------- | ------------------------------------------------------------- |
+| `webmcp.ts` | the api as typescript sees it, and `documentTools()`          |
+| `tools.ts`  | `PageTools`, the naming, the `AgentTool` wrapper, the toolset |
 
 **Only data crosses.** A WebMCP `RegisteredTool` carries a live `Window`, so it cannot be
 serialised: a `PageTool` is the name, the schema, the origin and the two hints, and the
@@ -521,6 +528,30 @@ Where that key comes from is `vault.ts`, and there are two answers to it. The **
 key is the default and the one below. The **passkey** is the one a person turns on — see
 the next section.
 
+**A sealed value says which of the two sealed it**, in the mark it carries:
+`agentak-enc1:` for the device key, `agentak-enc2:` for the passkey's, and no mark at all
+for a value written in the clear. The bytes after it are the same AES-GCM either way, so the
+mark is the only thing that can tell them apart — and something has to, because a value one
+touch would open and a value nothing will ever open are otherwise the same string. A chat
+reading the second as the first offers an unlock that opens a dialog for a credential that
+is not there. `sealed(name)` is that reading, answered against the lock as it stands:
+
+| The value's mark | The lock now | `sealed()` |
+| ---------------- | ------------ | ---------- |
+| none             | either       | `open`     |
+| device           | `off`        | `open`     |
+| device           | on           | `stale`    |
+| passkey          | `locked`     | `locked`   |
+| passkey          | `open`       | `open`     |
+| passkey          | `off`        | `stale`    |
+
+`stale` is a key nothing here will read again — the passkey was deleted or its record
+cleared, or the device key was dropped when the lock went on. Nothing is deleted on that
+verdict, because a browser that cannot reach IndexedDB reports it too and would be reading
+a temporary failure as a permanent one. The caller is told, and the caller asks for a key.
+It is answered after `lock.ready`, since before that the browser has not said which key it
+holds.
+
 The point is the key that opens it, not the cipher. AES-GCM is generated
 `extractable: false` and kept in IndexedDB under `agentak`/`crypto`/`secret-key`, so it is
 usable and not readable: `exportKey` throws on it, a `structuredClone` of it carries no
@@ -583,13 +614,23 @@ it holds straight after — which is why `setKeyLock` waits on `hydrated` first.
 also means is honest: turning the lock on carries across the keys this session read, and
 nothing else.
 
-Three states, and `sealed()` is what makes them work. A locked store answers every key with
-nothing, which alone reads as a browser holding none — so the session would ask for a key it
-already has. `SecretStorage.sealed(name)` says the name holds a sealed value, `seedKeys()`
-collects those into `StoredKeys.sealed`, and from there: the provider opens rather than
-being dropped, `ChatProvider.locked` marks it, the picker row reads "Locked", and the key
-section offers **Unlock** with **Use another key** beside it — the way back for a passkey
-that was deleted, since the keys under it are unreadable for good.
+**Three answers per provider, and `sealed()` is what makes them three.** A locked store
+answers every key with nothing, which alone reads as a browser holding none — so the session
+would ask for a key it already has. `seedKeys()` asks `sealed()` for every provider it could
+not read a key for and sorts the answer into `StoredKeys`:
+
+- `keys` — read, and the turn can go.
+- `sealed` — a ceremony away. The provider opens rather than being dropped,
+  `ChatProvider.locked` marks it, the picker row reads "Locked", and the key section offers
+  **Unlock** with **Use another key** beside it.
+- `lost` — `stale`, so no key at all. `hasKey` is false and the provider is one to set up
+  again; `ChatProvider.keyLost` is only there so the key section can say why the field is
+  empty rather than leaving it looking like a key nobody ever saved.
+
+That third one is the whole point of the mark. Without it a lost key sat in `sealed`, so
+`shut()` was true, so the send spent its click on `vault.unlock()` — which returns at once
+when the mode is `device`, leaving `flush()` refusing, the message in the composer, and
+nothing said about any of it. Now it is a key to type, which is the truth.
 
 `chrome-extension:` origins cannot do WebAuthn at all, so the panel has none of this, which
 is the same line the sealing itself stops at.
@@ -612,7 +653,7 @@ already mounted — the loop's messages, the provider, the model and the level, 
 in place. That is what a host needs to move between conversations without swapping a
 session, and it is what the history page below runs on.
 
-**A swap waits for the turn it interrupts.** `store.ts` grew `load()` for this: pi refuses
+**A swap waits for the turn it interrupts.** `chat.ts` grew `load()` for this: pi refuses
 to reset while a run is active and `abort()` only asks, so a swap over a streaming answer
 lands on `waitForIdle()` and an idle one — every swap a person makes — lands at once. That
 wait is why `load()` takes `after`: a caller that sends into the new transcript, which is
@@ -705,7 +746,7 @@ provider down — and does the same for a request that never got an answer at al
 that carries a message passes through word for word, because the provider says more than
 any rule here can.
 
-Both places that show a failure run through it: `store.ts` for the error row above the
+Both places that show a failure run through it: `chat.ts` for the error row above the
 composer, and `transcript.ts` for the failed turn left in the transcript. `clearError()`
 still compares the raw message, so dismissing works on what pi holds rather than on what is
 displayed.
@@ -720,7 +761,7 @@ about it gains "Wait a moment, or select another model." — said once, so a pro
 gives its own wait keeps it.
 
 **Four statuses open the settings page.** `failureStatus()` reads the status back out of
-the same message, and `store.ts` carries it beside the worded one as `errorStatus`. A 401,
+the same message, and `chat.ts` carries it beside the worded one as `errorStatus`. A 401,
 402, 403 or 404 is the provider answering about the key, the account behind it or the
 model — none of which the transcript can fix — so `session.ts` opens the page where all
 three are chosen, with the error row still above the composer. Once per failure: the page
@@ -770,7 +811,7 @@ the port. Register the renderer with the tool that emits it.
   is the way back — `u12` is `messages[12]` — which is how a fork reaches the message the
   reader clicked.
 - **A run is still streaming inside its own `agent_end` listener.** It settles after
-  every listener returns, so `store.ts` waits on `waitForIdle()` for the last
+  every listener returns, so `chat.ts` waits on `waitForIdle()` for the last
   redraw. Without it the composer keeps its stop button forever.
 - **The gate is a promise, not a flag.** `beforeToolCall` parks the call until the UI
   answers; a denial returns `{ block: true }` and pi writes an error tool result, which
@@ -785,6 +826,6 @@ the port. Register the renderer with the tool that emits it.
 - **Build the runtime once.** `createAgent()` inside a render makes a new, empty
   agent every time. `createPiSession()` is called once, outside the tree, and holds it.
 - **The snapshot is cached until the next event.** The agent mutates its own arrays, so
-  identity is the only change signal a renderer has: `store.ts` and `session.ts` both
+  identity is the only change signal a renderer has: `chat.ts` and `session.ts` both
   drop their cached snapshot in `notify()` and rebuild on the next read. A fresh object
   per read would redraw the whole transcript on every render.

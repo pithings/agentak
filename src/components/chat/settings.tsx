@@ -516,7 +516,12 @@ export function ChatSettings({
             <p style={S.note}>
               {target.hasKey
                 ? "The new key replaces the one saved."
-                : "Kept in this browser, and sent only to the provider you pick."}
+                : target.keyLost
+                  ? // A key is stored under this provider and nothing opens it —
+                    // the device lock it was sealed under is gone. An empty field
+                    // with no word for it reads as a key that was never saved.
+                    "The saved key was locked to a device this browser no longer has. Save another one."
+                  : "Kept in this browser, and sent only to the provider you pick."}
             </p>
           ) : shut ? null : onForgetKey ? (
             // What removing it costs: a keyed provider answers nothing without

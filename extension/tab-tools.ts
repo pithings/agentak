@@ -32,7 +32,7 @@
  * was opened from, so a person who opens it and then browses would find the
  * agent blind to everything but the one tab it started on.
  */
-import type { PageTool, PageTools } from "@/pi/page-tools.ts";
+import type { PageTool, PageTools } from "@/pi/tools.ts";
 
 import { PAGE_LIMIT, readActiveTabTool, readPageInTab } from "./read-page.ts";
 

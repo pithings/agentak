@@ -1,7 +1,7 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { describe, expect, it } from "vitest";
 
-import { createHistory } from "../../src/pi/history.ts";
+import { createHistory } from "../../src/pi/storage/history.ts";
 import { PI_SNAPSHOT_VERSION, type PiSnapshot } from "../../src/pi/snapshot.ts";
 import { memoryStorage, type PiStorage } from "../../src/pi/storage.ts";
 

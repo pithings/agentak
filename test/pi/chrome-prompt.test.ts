@@ -1,13 +1,13 @@
 import type { AssistantMessageEvent, Context, Model } from "@earendil-works/pi-ai";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { streamSimple, toTurns } from "../../src/pi/chrome-prompt.ts";
+import { streamSimple, toTurns } from "../../src/pi/providers/chrome-prompt.ts";
 import type {
   DownloadProgressEvent,
   PromptAvailability,
   PromptCreateOptions,
-} from "../../src/pi/on-device.ts";
-import { ON_DEVICE_MODEL_ID, ON_DEVICE_MODELS } from "../../src/pi/on-device.ts";
+} from "../../src/pi/providers/on-device.ts";
+import { ON_DEVICE_MODEL_ID, ON_DEVICE_MODELS } from "../../src/pi/providers/on-device.ts";
 import type { AnyModel } from "../../src/pi/providers.ts";
 
 const MODEL = ON_DEVICE_MODELS[ON_DEVICE_MODEL_ID] as unknown as AnyModel;

@@ -4,8 +4,8 @@ import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { renderHook, waitFor } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_MODEL } from "../../src/pi/models.ts";
-import { generateTitle, toTitle, useTitle } from "../../src/pi/title.ts";
+import { DEFAULT_MODEL } from "../../src/pi/providers/models.ts";
+import { generateTitle, toTitle, useTitle } from "../../src/pi/chat/title.ts";
 import type { ViewMessage } from "../../src/types.ts";
 
 const user = (text: string): ViewMessage => ({

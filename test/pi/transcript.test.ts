@@ -2,8 +2,8 @@ import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, Usage } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
 
-import { toContextUsage, toViewMessages } from "../../src/pi/transcript.ts";
-import { DEFAULT_MODEL } from "../../src/pi/models.ts";
+import { toContextUsage, toViewMessages } from "../../src/pi/chat/transcript.ts";
+import { DEFAULT_MODEL } from "../../src/pi/providers/models.ts";
 import type { ViewToolPart } from "../../src/types.ts";
 
 const usage = (over: Partial<Usage> = {}): Usage => ({

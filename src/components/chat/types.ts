@@ -23,6 +23,12 @@ export interface ChatProvider {
    * the page offers to do about it: unlock, rather than change or remove.
    */
   locked?: boolean;
+  /**
+   * There is a stored key and nothing will ever open it — the device lock it
+   * was sealed under is gone. It is not a key, so `hasKey` is false with it and
+   * the page asks for one; this only says why the old one is not being offered.
+   */
+  keyLost?: boolean;
   /** Where a key comes from, and the shape of one. */
   keyUrl?: string;
   keyPlaceholder?: string;
@@ -36,7 +42,7 @@ export interface ChatProvider {
  */
 export type ChatThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 
-/** What the context meter shows. Produced by `pi/transcript.ts`. */
+/** What the context meter shows. Produced by `pi/chat/transcript.ts`. */
 export interface ChatUsage {
   usedTokens: number;
   maxTokens: number;

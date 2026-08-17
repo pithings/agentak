@@ -5,9 +5,9 @@ import { act, renderHook, waitFor } from "@testing-library/preact";
 import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
 
-import { createAgent } from "../../src/pi/create-agent.ts";
+import { createAgent } from "../../src/pi/agent.ts";
 import type { AnyModel } from "../../src/pi/providers.ts";
-import { useAgent } from "../../src/pi/use-agent.ts";
+import { useAgent } from "../../src/pi/chat/use-agent.ts";
 import type { ViewToolPart } from "../../src/types.ts";
 
 const turn = (content: AssistantMessage["content"], stopReason: StopReason): AssistantMessage => ({

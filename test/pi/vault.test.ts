@@ -4,10 +4,10 @@ import { IDBFactory } from "fake-indexeddb";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { fakeAuthenticator, type FakeAuthenticator } from "./authenticator.ts";
-import { passkeyFailure, passkeySupported } from "../../src/pi/passkey.ts";
-import { encryptedStorage } from "../../src/pi/secret.ts";
+import { passkeyFailure, passkeySupported } from "../../src/pi/storage/passkey.ts";
+import { encryptedStorage } from "../../src/pi/storage/secret.ts";
 import { memoryStorage, type PiStorage } from "../../src/pi/storage.ts";
-import { createVault } from "../../src/pi/vault.ts";
+import { createVault } from "../../src/pi/storage/vault.ts";
 
 const KEY = "api-key:openrouter";
 const SECRET = "sk-or-v1-0123456789";
@@ -82,7 +82,7 @@ describe("the vault", () => {
     expect(await next.get(KEY)).toBeUndefined();
     // And the store still says it holds one, which is what a chat asks before
     // it decides whether to ask for a key or for a finger.
-    expect(await next.sealed(KEY)).toBe(true);
+    expect(await next.sealed(KEY)).toBe("locked");
 
     await next.lock.unlock();
     expect(next.lock.state()).toBe("open");
@@ -123,6 +123,69 @@ describe("the vault", () => {
     await next.lock.ready;
     await expect(next.lock.unlock()).rejects.toThrow();
     expect(await next.get(KEY)).toBeUndefined();
+  });
+
+  it("marks which key sealed a value, so one nothing opens says so", async () => {
+    wipeDatabases();
+    device = fakeAuthenticator();
+    const inner = memoryStorage();
+
+    const first = visit(inner);
+    await first.lock.ready;
+    await first.set(KEY, SECRET);
+    expect((await inner.get(KEY))?.startsWith("agentak-enc1:")).toBe(true);
+
+    await first.lock.enable();
+    await first.set(KEY, SECRET);
+    expect((await inner.get(KEY))?.startsWith("agentak-enc2:")).toBe(true);
+  });
+
+  it("calls a value stale where the key that sealed it is gone for good", async () => {
+    wipeDatabases();
+    device = fakeAuthenticator();
+    const inner = memoryStorage();
+
+    const first = visit(inner);
+    await first.lock.enable();
+    await first.set(KEY, SECRET);
+
+    // The site's data, cleared: `localStorage` kept, IndexedDB not, so the
+    // credential this was sealed for is gone with it.
+    wipeDatabases();
+    const next = visit(inner);
+    await next.lock.ready;
+    expect(next.lock.state()).toBe("off");
+    // Not "locked": an unlock here would open a dialog for a credential that no
+    // longer exists, and the person would click it forever.
+    expect(await next.sealed(KEY)).toBe("stale");
+    expect(await next.get(KEY)).toBeUndefined();
+  });
+
+  it("calls the device's own values stale once the lock is on", async () => {
+    wipeDatabases();
+    device = fakeAuthenticator();
+    const inner = memoryStorage();
+
+    const store = visit(inner);
+    await store.lock.ready;
+    await store.set(KEY, SECRET);
+    // Turning the lock on drops the device key, so what it sealed is unreadable
+    // until the caller writes it again — which is why it does, straight after.
+    await store.lock.enable();
+    expect(await store.sealed(KEY)).toBe("stale");
+
+    await store.set(KEY, SECRET);
+    expect(await store.sealed(KEY)).toBe("open");
+    expect(await store.get(KEY)).toBe(SECRET);
+  });
+
+  it("says nothing is in the way of a name it holds nothing under", async () => {
+    wipeDatabases();
+    device = fakeAuthenticator();
+    const store = visit(memoryStorage());
+    await store.lock.ready;
+    expect(await store.sealed(KEY)).toBe("open");
+    expect(await store.sealed("provider")).toBe("open");
   });
 
   it("takes the lock off again, and then needs nobody", async () => {

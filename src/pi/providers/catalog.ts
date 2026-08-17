@@ -1,6 +1,6 @@
 // Docs: @docs/4.agents/2.pi-agent/2.providers-and-models.md
 import { catalogModels } from "./models.ts";
-import { type AnyModel, findProvider } from "./providers.ts";
+import { type AnyModel, findProvider } from "../providers.ts";
 
 /** One chunk per provider, fetched once for the life of the page. */
 const cache = new Map<string, AnyModel[]>();

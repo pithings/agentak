@@ -8,9 +8,14 @@ import {
   WLLAMA_WASM_URL,
   wllamaSupported,
   wllamaWasmUrl,
-} from "../../src/pi/local.ts";
+} from "../../src/pi/providers/local.ts";
 import type { AnyModel } from "../../src/pi/providers.ts";
-import { streamSimple, toMessages, unloadWllama, type WllamaModule } from "../../src/pi/wllama.ts";
+import {
+  streamSimple,
+  toMessages,
+  unloadWllama,
+  type WllamaModule,
+} from "../../src/pi/providers/wllama.ts";
 
 const MODEL = WLLAMA_MODELS[WLLAMA_MODEL_ID] as unknown as AnyModel;
 

@@ -12,7 +12,7 @@
  * alone, and every entry says what it weighs before the click.
  */
 
-import { isPhone } from "../lib/utils.ts";
+import { isPhone } from "../../lib/utils.ts";
 
 /** Pinned: the module, the wasm and the model loader must be one build. */
 const WLLAMA_VERSION = "3.5.1";

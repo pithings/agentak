@@ -12,7 +12,7 @@
  * Saying so is what turns the row back on. A source of this build's own is the
  * gate: the library reads it as the host answering for its own document.
  */
-import { useWllamaSource } from "@/pi/local.ts";
+import { useWllamaSource } from "@/pi/providers/local.ts";
 import { ASSETS } from "./worker.ts";
 
 /** Point the picker at the wllama this build carries. Call before the session. */

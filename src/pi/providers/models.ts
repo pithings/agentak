@@ -1,6 +1,6 @@
 // Docs: @docs/4.agents/2.pi-agent/2.providers-and-models.md
 import { LLM7_MODELS } from "./free-models.ts";
-import { type AnyModel, SUPPORTED_APIS } from "./providers.ts";
+import { type AnyModel, SUPPORTED_APIS } from "../providers.ts";
 
 /** A keyless provider, so a fresh page can answer before anyone is asked for a key. */
 export const DEFAULT_PROVIDER_ID = "llm7";

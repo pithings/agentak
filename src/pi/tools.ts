@@ -17,7 +17,7 @@ import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
 import type { TSchema } from "typebox";
 
-import type { ApprovalPolicy } from "./approvals.ts";
+import type { ApprovalPolicy } from "./tools/approvals.ts";
 
 /** One tool a page offers — the half that is data. */
 export interface PageTool {
@@ -72,7 +72,7 @@ export interface PageToolset {
   /**
    * How this tool is confirmed, on what the site said about it — `never` where
    * the page marked it read-only, `always` where it did not, and `undefined`
-   * for a name that is not the page's. See `approvalFor` in `create-agent.ts`.
+   * for a name that is not the page's. See `approvalFor` in `agent.ts`.
    */
   approvalFor(name: string): ApprovalPolicy | undefined;
   subscribe(listener: () => void): () => void;

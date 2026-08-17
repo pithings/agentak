@@ -2,11 +2,11 @@
 // Docs: @docs/4.agents/2.pi-agent/8.runtime-behavior.md
 import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
 
-import type { AgentRuntime } from "./create-agent.ts";
-import { describeFailure, failureStatus } from "./errors.ts";
+import type { AgentRuntime } from "./agent.ts";
+import { describeFailure, failureStatus } from "./chat/errors.ts";
 import type { AnyModel } from "./providers.ts";
 import { isFailedTurn } from "./snapshot.ts";
-import { type ContextUsageView, toContextUsage, toViewMessages } from "./transcript.ts";
+import { type ContextUsageView, toContextUsage, toViewMessages } from "./chat/transcript.ts";
 import type { ViewMessage } from "../types.ts";
 
 /** A message typed while the agent was busy. pi holds it; this holds its text. */

@@ -1,7 +1,7 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { describe, expect, it, vi } from "vitest";
 
-import { createApprovalGate } from "../../src/pi/approvals.ts";
+import { createApprovalGate } from "../../src/pi/tools/approvals.ts";
 import {
   createPageToolset,
   type PageTool,
@@ -9,10 +9,10 @@ import {
   pageToolName,
   toSchemaObject,
   toToolContent,
-} from "../../src/pi/page-tools.ts";
+} from "../../src/pi/tools.ts";
 import { createPiSession } from "../../src/pi/session.ts";
 import { memoryStorage } from "../../src/pi/storage.ts";
-import { documentTools, type RegisteredTool, webmcpSupported } from "../../src/pi/webmcp.ts";
+import { documentTools, type RegisteredTool, webmcpSupported } from "../../src/pi/tools/webmcp.ts";
 
 /** One tool as `getTools()` hands it over. The window is never read here. */
 const registered = (over: Partial<RegisteredTool> = {}): RegisteredTool => ({

@@ -1,5 +1,9 @@
 // Docs: @docs/4.agents/2.pi-agent/6.storage-and-api-keys.md
-import { encryptedStorage, type SecretStorage, type SecretStorageOptions } from "./secret.ts";
+import {
+  encryptedStorage,
+  type SecretStorage,
+  type SecretStorageOptions,
+} from "./storage/secret.ts";
 
 /**
  * Where the picker keeps the keys, the provider, the model and the level.

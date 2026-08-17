@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
 import { describe, expect, it, vi } from "vitest";
 
-import { encryptedStorage, isSecret } from "../../src/pi/secret.ts";
+import { encryptedStorage, isSecret } from "../../src/pi/storage/secret.ts";
 import { browserStorage, memoryStorage, type PiStorage } from "../../src/pi/storage.ts";
 
 const KEY = "api-key:openrouter";

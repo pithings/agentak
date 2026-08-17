@@ -85,8 +85,8 @@ definitions, which are otherwise ours to write.
 ## What the agent does with them
 
 `page: true` on `createPiSession()` reads this document; a `PageTools` of your own reads
-somewhere else, which is what the panel passes. Off by default. `src/pi/webmcp.ts` is the
-api and `documentTools()`, `src/pi/page-tools.ts` is the pi side, and
+somewhere else, which is what the panel passes. Off by default. `src/pi/tools/webmcp.ts` is the
+api and `documentTools()`, `src/pi/tools.ts` is the pi side, and
 [`pi.md`](pi.md#the-pages-tools) is the note that goes with them.
 
 The mapping is close to one for one. pi's `AgentTool` wants `name`, `description`,

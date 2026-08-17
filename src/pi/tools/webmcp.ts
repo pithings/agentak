@@ -5,7 +5,7 @@
  * A site registers its own client-side actions on `document.modelContext`, and
  * an agent in the same document reads them and calls them. This file is the api
  * as TypeScript sees it, plus `documentTools()`, which is that api behind the
- * `PageTools` interface in `page-tools.ts`. Nothing here knows about pi.
+ * `PageTools` interface in `tools.ts`. Nothing here knows about pi.
  *
  * The spec is copied into `.agents/webmcp/`, and `.agents/webmcp.md` is the
  * reading of it. Two of its rules shape this file:
@@ -20,7 +20,7 @@
  * no tools rather than an error.
  */
 
-import { type PageTool, type PageTools, toSchemaObject } from "./page-tools.ts";
+import { type PageTool, type PageTools, toSchemaObject } from "../tools.ts";
 
 /** Hints a site attaches to a tool. Both are false unless it says otherwise. */
 export interface WebmcpAnnotations {

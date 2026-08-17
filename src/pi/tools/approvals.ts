@@ -1,7 +1,7 @@
 // Docs: @docs/4.agents/2.pi-agent/4.tools-and-approvals.md
 import type { BeforeToolCallContext, BeforeToolCallResult } from "@earendil-works/pi-agent-core";
 
-import type { ToolApproval } from "../types.ts";
+import type { ToolApproval } from "../../types.ts";
 
 /**
  * How often the user is asked before a tool runs.
@@ -44,7 +44,7 @@ export interface ApprovalGate {
  *
  * `approvalFor` answers with a policy of its own for a tool that needs one, and
  * `undefined` for the rest — which is how the page's tools are gated on what
- * the site says about them. See `page-tools.ts`.
+ * the site says about them. See `tools.ts`.
  *
  * A session-wide `never` still wins over any of it: a host that turned the gate
  * off meant it.

@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 
-import { toTitle } from "@/pi/title.ts";
+import { toTitle } from "@/pi/chat/title.ts";
 import { Chat } from "@/components/chat.tsx";
 import type { Sx } from "@/styles/sx.ts";
 

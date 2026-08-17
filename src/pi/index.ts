@@ -10,7 +10,7 @@ export {
   SYSTEM_PROMPT,
   type AgentOptions,
   type AgentRuntime,
-} from "./create-agent.ts";
+} from "./agent.ts";
 export {
   PI_SNAPSHOT_FIELDS,
   PI_SNAPSHOT_VERSION,
@@ -24,7 +24,7 @@ export {
   type ApprovalPolicy,
   type ApprovalRequest,
   createApprovalGate,
-} from "./approvals.ts";
+} from "./tools/approvals.ts";
 export {
   catalogModels,
   DEFAULT_MODEL,
@@ -32,8 +32,8 @@ export {
   DEFAULT_MODELS,
   DEFAULT_PROVIDER_ID,
   findModel,
-} from "./models.ts";
-export { cachedCatalog, loadCatalog } from "./catalog.ts";
+} from "./providers/models.ts";
+export { cachedCatalog, loadCatalog } from "./providers/catalog.ts";
 export {
   browserStorage,
   createChoices,
@@ -46,16 +46,17 @@ export {
   encryptedStorage,
   isSecret,
   isSecretStorage,
+  type SealedState,
   type SecretStorage,
   type SecretStorageOptions,
-} from "./secret.ts";
+} from "./storage/secret.ts";
 export {
   createVault,
   type SecretLock,
   type SecretLockState,
   type SecretVault,
   type VaultOptions,
-} from "./vault.ts";
+} from "./storage/vault.ts";
 export {
   createPasskey,
   derivePasskey,
@@ -63,14 +64,14 @@ export {
   passkeyFailure,
   type PasskeyRecord,
   passkeySupported,
-} from "./passkey.ts";
+} from "./storage/passkey.ts";
 export {
   createHistory,
   mintConversationId,
   type PiHistory,
   type PiHistoryEntry,
-} from "./history.ts";
-export { describeFailure, failureStatus } from "./errors.ts";
+} from "./storage/history.ts";
+export { describeFailure, failureStatus } from "./chat/errors.ts";
 export {
   createPageToolset,
   type PageTool,
@@ -80,7 +81,7 @@ export {
   type PageToolsetOptions,
   pageToolName,
   toToolContent,
-} from "./page-tools.ts";
+} from "./tools.ts";
 export {
   documentTools,
   type DocumentToolsOptions,
@@ -92,7 +93,7 @@ export {
   toPageTool,
   type WebmcpAnnotations,
   webmcpSupported,
-} from "./webmcp.ts";
+} from "./tools/webmcp.ts";
 export {
   type AnyModel,
   availableProviders,
@@ -119,7 +120,7 @@ export {
   type WllamaSource,
   wllamaSupported,
   wllamaWasmUrl,
-} from "./local.ts";
+} from "./providers/local.ts";
 export {
   ON_DEVICE_MODEL_ID,
   ON_DEVICE_MODELS,
@@ -128,8 +129,8 @@ export {
   type PromptAvailability,
   promptApi,
   promptApiSupported,
-} from "./on-device.ts";
-export { type CatalogState, useCatalog } from "./use-catalog.ts";
+} from "./providers/on-device.ts";
+export { type CatalogState, useCatalog } from "./providers/use-catalog.ts";
 export {
   generateTitle,
   type GenerateTitleOptions,
@@ -138,12 +139,12 @@ export {
   type TitleRequest,
   toTitle,
   useTitle,
-} from "./title.ts";
-export { type ContextUsageView, toContextUsage, toViewMessages } from "./transcript.ts";
+} from "./chat/title.ts";
+export { type ContextUsageView, toContextUsage, toViewMessages } from "./chat/transcript.ts";
 export {
   type AgentSnapshot,
   type AgentStore,
   createAgentStore,
   type QueuedMessage,
-} from "./store.ts";
-export { type ChatState, useAgent } from "./use-agent.ts";
+} from "./chat.ts";
+export { type ChatState, useAgent } from "./chat/use-agent.ts";

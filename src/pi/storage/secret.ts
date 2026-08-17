@@ -15,11 +15,31 @@
  * Where that key lives, and whether a person's finger is needed to have it, is
  * `vault.ts`. This file only seals and unseals with whatever it hands over.
  */
-import type { PiStorage } from "./storage.ts";
+import type { PiStorage } from "../storage.ts";
 import { createVault, type SecretLock, type SecretVault, type VaultOptions } from "./vault.ts";
 
-/** What a sealed value starts with. Anything else was written in the clear. */
-const MARK = "agentak-enc1:";
+/**
+ * What a sealed value starts with, and which key sealed it. Anything else was
+ * written in the clear.
+ *
+ * The mark is the one thing a stored value says about itself, and it has to say
+ * this much: the ciphertext of the two keys is the same ciphertext, so without
+ * it a value nothing can ever open looks exactly like a value one touch would.
+ * A chat reading the first as the second offers an unlock that does nothing.
+ */
+const MARKS = {
+  /** The key this browser keeps for itself. */
+  device: "agentak-enc1:",
+  /** The key the device's own authenticator derives. */
+  passkey: "agentak-enc2:",
+} as const;
+
+type SealKind = keyof typeof MARKS;
+
+const KINDS = Object.keys(MARKS) as SealKind[];
+
+const kindOf = (value: string): SealKind | undefined =>
+  KINDS.find((kind) => value.startsWith(MARKS[kind]));
 
 const ALGORITHM = "AES-GCM";
 const IV_BYTES = 12;
@@ -40,24 +60,24 @@ const bytesToBase64 = (bytes: Uint8Array): string => {
 const base64ToBytes = (text: string): Uint8Array<ArrayBuffer> =>
   Uint8Array.from(atob(text), (character) => character.charCodeAt(0));
 
-async function seal(key: CryptoKey, value: string): Promise<string> {
+async function seal(key: CryptoKey, kind: SealKind, value: string): Promise<string> {
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(IV_BYTES));
   const body = await globalThis.crypto.subtle.encrypt(
     { name: ALGORITHM, iv },
     key,
     new TextEncoder().encode(value),
   );
-  // One string: the nonce in front of what it opens, base64 for a store that
-  // takes text alone.
+  // One string: the mark, then the nonce in front of what it opens, base64 for
+  // a store that takes text alone.
   const both = new Uint8Array(IV_BYTES + body.byteLength);
   both.set(iv);
   both.set(new Uint8Array(body), IV_BYTES);
-  return MARK + bytesToBase64(both);
+  return MARKS[kind] + bytesToBase64(both);
 }
 
-async function unseal(key: CryptoKey, value: string): Promise<string | undefined> {
+async function unseal(key: CryptoKey, kind: SealKind, value: string): Promise<string | undefined> {
   try {
-    const both = base64ToBytes(value.slice(MARK.length));
+    const both = base64ToBytes(value.slice(MARKS[kind].length));
     const body = await globalThis.crypto.subtle.decrypt(
       { name: ALGORITHM, iv: both.subarray(0, IV_BYTES) },
       key,
@@ -72,15 +92,32 @@ async function unseal(key: CryptoKey, value: string): Promise<string | undefined
   }
 }
 
+/**
+ * What stands between a caller and the value under a name.
+ *
+ * `open` — nothing does. The name may hold a value or nothing at all; `get()`
+ * is what says which, and this only says that no key is in the way.
+ * `locked` — sealed by the device's authenticator, which has not been asked
+ * this visit. One ceremony reads it.
+ * `stale` — sealed by a key this browser no longer has: the passkey was deleted
+ * or its record cleared, or the device key was replaced when the lock went on.
+ * Nothing will open it, so the answer is to store the secret again.
+ */
+export type SealedState = "open" | "locked" | "stale";
+
 /** A store whose secrets are sealed, and the lock over the key that seals them. */
 export interface SecretStorage extends PiStorage {
   lock: SecretLock;
   /**
-   * Whether this name holds a sealed value. True even while the lock is shut and
-   * the value cannot be read — which is how a caller tells a key it has to
-   * unlock for from a key that was never stored.
+   * What is in the way of this name — the difference between a key to unlock
+   * for, a key to give up on, and no key at all.
+   *
+   * Read the mark rather than try the key, so this costs no ceremony and no
+   * dialog. It is answered against the lock as it stands, so a caller asks it
+   * after `lock.ready`: before that the browser has not said which key it holds
+   * and every sealed value would read as one for the other.
    */
-  sealed(name: string): Promise<boolean>;
+  sealed(name: string): Promise<SealedState>;
 }
 
 export interface SecretStorageOptions extends VaultOptions {
@@ -109,23 +146,36 @@ export function encryptedStorage(
   const secret = options.secret ?? isSecret;
   const vault = options.vault ?? createVault(options);
 
-  const sealInto = async (name: string, value: string) =>
-    inner.set(name, await seal(await vault.key(), value));
+  /** Which key is sealing now. The key is awaited first, because asking for it
+   * is what waits on the browser saying which one this origin holds. */
+  const sealInto = async (name: string, value: string) => {
+    const key = await vault.key();
+    const kind: SealKind = vault.lock.state() === "off" ? "device" : "passkey";
+    return inner.set(name, await seal(key, kind, value));
+  };
 
   return {
     lock: vault.lock,
 
     async sealed(name) {
-      if (!secret(name)) return false;
+      if (!secret(name)) return "open";
       const stored = await inner.get(name).catch(() => undefined);
-      return stored?.startsWith(MARK) === true;
+      const kind = stored ? kindOf(stored) : undefined;
+      if (!kind) return "open"; // nothing here, or nothing sealed
+      const state = vault.lock.state();
+      // A value and a lock that do not name the same key: the one that sealed
+      // it is gone, whichever way round they are. The passkey's key goes when
+      // its record does, and the device's goes when the lock is turned on.
+      if (kind === "device") return state === "off" ? "open" : "stale";
+      return state === "off" ? "stale" : state;
     },
 
     async get(name) {
       const stored = await inner.get(name);
       if (!stored || !secret(name)) return stored;
 
-      if (!stored.startsWith(MARK)) {
+      const kind = kindOf(stored);
+      if (!kind) {
         // A key written before this build, or by a host that stored one itself.
         // It is handed back as it is and sealed behind the reader, so the plain
         // copy leaves the browser on the first read rather than on the next
@@ -139,7 +189,7 @@ export function encryptedStorage(
       // apart. The chat asks the person to unlock; it does not ask the
       // authenticator behind their back.
       const key = await vault.key().catch(() => undefined);
-      return key && unseal(key, stored);
+      return key && unseal(key, kind, stored);
     },
 
     async set(name, value) {

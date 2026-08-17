@@ -1,6 +1,6 @@
 // Docs: @docs/4.agents/2.pi-agent/7.conversations.md
-import { type PiSnapshot, readPiSnapshot } from "./snapshot.ts";
-import { pageStorage, type PiStorage } from "./storage.ts";
+import { type PiSnapshot, readPiSnapshot } from "../snapshot.ts";
+import { pageStorage, type PiStorage } from "../storage.ts";
 
 /**
  * The conversations a session has had, in whatever store it keeps its choices.

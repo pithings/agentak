@@ -291,7 +291,7 @@ written out rather than built from the name, because a bundler follows a literal
 nothing else. Each is its own chunk, so a catalog is still only read when its provider is
 picked — OpenRouter's alone is 136 KB. They are as old as the build, which is the price of
 a panel that lists anything at all. The free providers are unaffected; their models are in
-`pi/free-models.ts`, which the panel already bundles.
+`pi/providers/free-models.ts`, which the panel already bundles.
 
 **The store.** `chrome.storage.local` rather than `localStorage`: it is one area per
 extension rather than one per document, and it survives what clearing browsing data takes

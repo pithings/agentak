@@ -14,7 +14,7 @@
  * is 136 KB.
  *
  * Only the two keyed gateways are here. The free ones carry their models in
- * `pi/free-models.ts`, which the panel already bundles.
+ * `pi/providers/free-models.ts`, which the panel already bundles.
  */
 import { useCatalogSource } from "@/pi/providers.ts";
 

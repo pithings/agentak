@@ -8,8 +8,8 @@ import {
   type ThinkingLevel,
 } from "@earendil-works/pi-agent-core";
 
-import { type ApprovalGate, type ApprovalPolicy, createApprovalGate } from "./approvals.ts";
-import { DEFAULT_MODEL } from "./models.ts";
+import { type ApprovalGate, type ApprovalPolicy, createApprovalGate } from "./tools/approvals.ts";
+import { DEFAULT_MODEL } from "./providers/models.ts";
 import { type AnyModel, findProvider, streamFor } from "./providers.ts";
 
 export const AGENT_NAME = "Assistant";
@@ -46,7 +46,7 @@ export interface AgentOptions {
   /**
    * A policy for one tool, where it needs its own — `undefined` leaves it to
    * `approvals`. The page's own tools are gated through here on what the site
-   * says about them; see `page-tools.ts`. `approvals: "never"` outranks it.
+   * says about them; see `tools.ts`. `approvals: "never"` outranks it.
    */
   approvalFor?: (toolName: string) => ApprovalPolicy | undefined;
   /** A scripted provider under test. Default: the api the model names. */

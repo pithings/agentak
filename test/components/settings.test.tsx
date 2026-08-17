@@ -321,6 +321,22 @@ describe("Chat", () => {
     expect(saved).toEqual([["openai", "sk-new"]]);
   });
 
+  it("says why a key it cannot open is not being offered", () => {
+    const providers = [
+      { hasKey: false, id: "openai", keyed: true, keyLost: true, label: "OpenAI" },
+    ];
+    render(<ChatSettings keyLock={{ state: "off" }} providerId="openai" providers={providers} />);
+
+    // The field is the one a provider with no key shows — the note is the whole
+    // difference, because an empty box alone reads as a key never saved.
+    expect(screen.queryByRole("button", { name: "Unlock" })).toBeNull();
+    expect(
+      screen.getByText(
+        "The saved key was locked to a device this browser no longer has. Save another one.",
+      ),
+    ).toBeTruthy();
+  });
+
   it("shows no device lock where the harness reports none", () => {
     render(<ChatSettings providerId="llm7" providers={PROVIDERS} />);
     expect(screen.queryByText("Device lock")).toBeNull();
