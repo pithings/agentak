@@ -15,11 +15,17 @@
  * The result is marked untrusted, and that is not a formality: a page is written
  * by someone else, and text that reaches a model is text that can try to
  * instruct it. `createPageToolset()` puts the warning in front of every result.
+ *
+ * The name says whose tool it is. `read_page` is the obvious name and that is
+ * the trouble with it: a site that publishes a reader of its own calls it that
+ * — this project's own documentation does — and two tools under one name leave
+ * the model guessing which one it asked for. This one is named for the tab,
+ * because reaching a tab is what only the panel can do.
  */
 import type { PageTool } from "@/pi/page-tools.ts";
 
 /** The name the model calls it by, and the name the bridge matches on. */
-export const READ_PAGE = "read_page";
+export const READ_ACTIVE_TAB = "read_active_tab";
 
 /**
  * How much text comes back, in characters. Roughly 8K tokens — enough for an
@@ -49,12 +55,11 @@ export function readPageInTab(limit: number): { ok: true; value: string } {
 }
 
 /** The tool as the picker lists it. `origin` is the tab it will read. */
-export const readPageTool = (origin: string): PageTool => ({
+export const readActiveTabTool = (origin: string): PageTool => ({
   description:
     "Read the text of the web page the person is looking at, with its title and url. " +
-    "prefer any other tools when available!" +
-    "Long pages are cut off.",
-  name: READ_PAGE,
+    "Prefer any other tool the page itself offers. Long pages are cut off.",
+  name: READ_ACTIVE_TAB,
   origin,
   // It reads and changes nothing, so there is nothing to confirm.
   readOnly: true,

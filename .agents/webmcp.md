@@ -121,8 +121,9 @@ Four things the wiring had to answer, and how each one is answered:
    context the page registered on. Names and JSON cross; the tool objects never do. That
    world has no `chrome.runtime`, so `toolchange` is relayed out in two steps — the page
    posts a message to itself and a listener in the isolated world forwards it. The same
-   file lists `read_page` in front of whatever the page published, which is why a tab that
-   publishes nothing still leaves the model something to call — see
+   file lists `read_active_tab` in front of whatever the page published, which is why a
+   tab that publishes nothing still leaves the model something to call — unless the page
+   publishes a reader of its own, and then it keeps the job. See
    [`playground.md`](playground.md).
 
 A page is the easy half: the chat is in the document the tools are in, so `getTools()`

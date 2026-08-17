@@ -5,8 +5,10 @@
  *
  * Two things are offered, and the panel hands both over as one `PageTools`:
  *
- * 1. `read_page`, the panel's own — see `read-page.ts`. It is listed on every
- *    tab, because it is what makes the agent worth opening on an ordinary site.
+ * 1. `read_active_tab`, the panel's own — see `read-page.ts`. It is listed on
+ *    nearly every tab, because it is what makes the agent worth opening on an
+ *    ordinary site. The exception is a page that reads itself; see
+ *    `publishesReader()`.
  * 2. Whatever the page publishes on `document.modelContext` — WebMCP. Almost no
  *    page publishes any, so this half is usually empty and must never be what
  *    decides whether the model gets tools at all.
@@ -32,7 +34,7 @@
  */
 import type { PageTool, PageTools } from "@/pi/page-tools.ts";
 
-import { PAGE_LIMIT, readPageInTab, readPageTool } from "./read-page.ts";
+import { PAGE_LIMIT, readActiveTabTool, readPageInTab } from "./read-page.ts";
 
 /** What the page posts to itself, and what the panel hears. */
 export const RELAY = "agentak:webmcp-toolchange";
@@ -211,13 +213,38 @@ export async function relayToolChange(tabId: number): Promise<void> {
 }
 
 /**
+ * The names a site gives its own reader.
+ *
+ * The panel's reader is the answer for a page that offers nothing, and a page
+ * that reads itself is not that page: it knows its own structure, its own
+ * pagination and what is worth leaving out, and the rendered text is what it
+ * falls back to anyway. Two readers side by side only leave the model choosing
+ * between them, so the panel stands down and lets the site keep the job.
+ *
+ * Matched by name, because a name and a description are all the panel is given.
+ * A dash or a space is read as an underscore, so `read-page` counts as well.
+ */
+const PAGE_READERS = new Set([
+  "get_page_content",
+  "get_page_text",
+  "read_current_page",
+  "read_page",
+  "read_page_content",
+  "read_this_page",
+]);
+
+/** Does this tab publish a reader of its own? Then ours is not listed. */
+export const publishesReader = (tools: PageTool[]): boolean =>
+  tools.some((tool) => PAGE_READERS.has(tool.name.toLowerCase().replace(/[-\s]+/g, "_")));
+
+/**
  * The tools of whichever tab is in front, as a `PageTools` source. Pass it as
  * the `page` option of `createPiSession()`.
  */
 export function activeTabTools(): PageTools {
   /**
-   * The readers this source handed out. A site may publish a tool named
-   * `read_page` too — `pageToolName()` would rename that one, since ours is
+   * The readers this source handed out. A site may still publish a tool named
+   * as ours is — `pageToolName()` would rename that one, since ours is
    * listed first, but `call` is given the tool as the page named it. So the two
    * are told apart by which object it is, and never by what it is called.
    */
@@ -228,16 +255,18 @@ export function activeTabTools(): PageTools {
       const tab = await activeTab();
       if (tab?.id === undefined) return [];
 
-      // The reader is listed first and listed always. A page that publishes no
-      // WebMCP — which is nearly every page — must still leave the model able
-      // to see it, and a tab that refuses injection altogether, such as the web
-      // store or a `chrome:` screen, says so when the tool is called.
-      const reader = readPageTool(tabOrigin(tab));
-      readers.add(reader);
-
       const published = await inTab(tab.id, readTools, []).catch(() => []);
       // Only worth relaying from a page that has any.
       if (published.length > 0) await relayToolChange(tab.id).catch(() => {});
+      // A page that reads itself keeps the job, and the panel adds nothing.
+      if (publishesReader(published)) return published;
+
+      // Otherwise the reader is listed, and listed first. A page that publishes
+      // no WebMCP — which is nearly every page — must still leave the model
+      // able to see it, and a tab that refuses injection altogether, such as
+      // the web store or a `chrome:` screen, says so when the tool is called.
+      const reader = readActiveTabTool(tabOrigin(tab));
+      readers.add(reader);
       return [reader, ...published];
     },
 

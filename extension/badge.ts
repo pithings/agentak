@@ -9,8 +9,8 @@
  * looking. So the count is drawn from the service worker rather than the panel,
  * and it shows whether the panel is open or not.
  *
- * **`read_page` is not counted.** The panel offers it on every page, and a badge
- * that reads `1` everywhere states nothing.
+ * **`read_active_tab` is not counted.** The panel offers it on nearly every
+ * page, and a badge that reads `1` everywhere states nothing.
  *
  * The badge is set per tab, so the mark belongs to the page it was counted on
  * and the tab beside it keeps its own. Only the tab in front is ever counted: a

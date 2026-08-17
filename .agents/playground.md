@@ -207,32 +207,37 @@ The archive is a build output and is git ignored, so the docs build makes it: `d
 runs `pnpm -C .. build:extension` before `undocs build`. The docs folder is its own pnpm
 workspace, so that command needs the root workspace installed where the site is built.
 
-| File             | What                                                                 |
-| ---------------- | -------------------------------------------------------------------- |
-| `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported         |
-| `sidepanel.html` | the panel document — one full-height `#root` to render into          |
-| `panel.tsx`      | `ChatPanel` from `agentak/preact`, over `createPiSession()`          |
-| `tab-tools.ts`   | the tools of the tab in front, as the session's `page`               |
-| `read-page.ts`   | `read_page` — the panel's own tool, and the half injected in a tab   |
-| `history.ts`     | the conversations, one shelf per site, following the tab in front    |
-| `catalogs.ts`    | the bundled model catalogs, through `useCatalogSource()`             |
-| `storage.ts`     | keys, choices and conversations in `chrome.storage.local`            |
-| `background.ts`  | the service worker — opens the panel, and starts the badge           |
-| `badge.ts`       | the count of the page's own tools, on the toolbar icon               |
-| `icons/`         | the toolbar icons — `pnpm icons` draws them, `vite.config.ts` copies |
-| `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`                |
+| File             | What                                                                     |
+| ---------------- | ------------------------------------------------------------------------ |
+| `manifest.json`  | copied beside the bundle by `vite.config.ts`, never imported             |
+| `sidepanel.html` | the panel document — one full-height `#root` to render into              |
+| `panel.tsx`      | `ChatPanel` from `agentak/preact`, over `createPiSession()`              |
+| `tab-tools.ts`   | the tools of the tab in front, as the session's `page`                   |
+| `read-page.ts`   | `read_active_tab` — the panel's own tool, and the half injected in a tab |
+| `history.ts`     | the conversations, one shelf per site, following the tab in front        |
+| `catalogs.ts`    | the bundled model catalogs, through `useCatalogSource()`                 |
+| `storage.ts`     | keys, choices and conversations in `chrome.storage.local`                |
+| `background.ts`  | the service worker — opens the panel, and starts the badge               |
+| `badge.ts`       | the count of the page's own tools, on the toolbar icon                   |
+| `icons/`         | the toolbar icons — `pnpm icons` draws them, `vite.config.ts` copies     |
+| `vite.config.ts` | two inputs, flat `[name].js`, out to `extension/dist`                    |
 
 The panel is the surface a page hosts, plus three things a page does not need.
 
 **The tools of the tab.** `page` is the option a page rarely passes and the panel always
 does. Two tools reach the model through it, as one `PageTools`:
 
-- `read_page`, the panel's own — the rendered text of the tab in front, with its title and
-  url. It is what makes the agent worth opening on an ordinary site, because WebMCP ships
-  behind an origin trial and nearly no page publishes any tool at all. Read-only, so it
-  runs unasked; untrusted, so the model is told in front of every result that the page is
-  data and not instructions. It is injected in the isolated world, which sees the same dom
-  and touches none of the page's own globals.
+- `read_active_tab`, the panel's own — the rendered text of the tab in front, with its
+  title and url. It is what makes the agent worth opening on an ordinary site, because
+  WebMCP ships behind an origin trial and nearly no page publishes any tool at all.
+  Read-only, so it runs unasked; untrusted, so the model is told in front of every result
+  that the page is data and not instructions. It is injected in the isolated world, which
+  sees the same dom and touches none of the page's own globals. It is named for the tab
+  and not for the page, because `read_page` is what a site calls its own reader — this
+  project's documentation does — and two tools under one name leave the model guessing.
+  Where a page publishes such a reader the panel drops its own from the list altogether:
+  the site knows its own structure, and `publishesReader()` in `tab-tools.ts` holds the
+  names it is recognised by.
 - whatever the page publishes on `document.modelContext`. Its own document carries none,
   and a WebMCP tool cannot be serialised, so `tab-tools.ts` runs `getTools()` and
   `executeTool()` inside the tab through `chrome.scripting.executeScript` in the `MAIN`
@@ -256,8 +261,8 @@ offer the agent anything? — is asked about the tab the panel has _not_ been op
 WebMCP ships behind an origin trial and nearly no site publishes a tool, so a person who
 had to open the panel on each tab to find that out would stop looking.
 
-`read_page` is left out of the count. The panel offers it everywhere, and a badge reading
-`1` on every page states nothing. The text is set per tab, so the mark belongs to the page
+`read_active_tab` is left out of the count. The panel offers it nearly everywhere, and a
+badge reading `1` on every page states nothing. The text is set per tab, so the mark belongs to the page
 it was counted on, and only the tab in front is ever counted — a badge is read where it is
 looked at, and counting a background tab would mean an injected call in every page that
 loads anywhere. A tab that finished loading behind the one in front is counted when it
@@ -299,7 +304,7 @@ at the screen now. `history.ts` segments only that: each origin gets a whole
 one area and the limit, the eviction and the full-store retry stay the library's own. The
 count is per site, so twenty conversations on one never push out the one on another. A tab
 with no origin — the new tab page, a `chrome:` screen — shares the shelf named
-`the current tab`, which is the name `read_page` already gives it.
+`the current tab`, which is the name `read_active_tab` already gives it.
 
 The panel outlives the tab it was opened from, so the shelf changes under it. `follow()`
 listens for the tab in front changing, and moves the chat with it: that site's newest

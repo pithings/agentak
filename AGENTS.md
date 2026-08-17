@@ -310,16 +310,20 @@ runs unasked, and anything else is confirmed on every call. Discovery has been t
 browser and a call has not, and WebMCP itself only ships in Chrome 149 and Edge 150 behind
 an origin trial. See [`.agents/webmcp.md`](.agents/webmcp.md).
 
-Because nearly no page publishes any, the panel adds one tool of its own: `read_page`
-hands the model the rendered text of the tab in front, with its title and url. It is
-listed on every tab, marked read-only so it runs unasked, and marked untrusted, so the
-model is told in front of every result that a page is data and not instructions. The
+Because nearly no page publishes any, the panel adds one tool of its own:
+`read_active_tab` hands the model the rendered text of the tab in front, with its title
+and url. It is listed on nearly every tab, marked read-only so it runs unasked, and marked
+untrusted, so the model is told in front of every result that a page is data and not
+instructions. It is named for the tab because `read_page` is the name a site gives its own
+reader — these docs do — and one name over two tools leaves the model guessing. A tab that
+publishes such a reader is the exception: the panel lists the site's and drops its own,
+since a page knows its own structure better than its rendered text does. The
 manifest asks for every http origin, because a side panel outlives the tab it was opened
 from and `activeTab` would leave the agent blind to every other one.
 
 The panel's service worker also counts what the page in front publishes and puts the
-number on the toolbar icon, per tab. `read_page` is left out of it, because the panel
-offers that everywhere. The count is the worker's job and not the panel's: it is the
+number on the toolbar icon, per tab. `read_active_tab` is left out of it, because the
+panel offers that nearly everywhere. The count is the worker's job and not the panel's: it is the
 answer for a tab the panel has not been opened on. See
 [`.agents/playground.md`](.agents/playground.md).
 
@@ -349,9 +353,11 @@ stores conversations elsewhere still uses `save()` and `restore()`. See
    `document.modelContext` either — see the end of [`.agents/webmcp.md`](.agents/webmcp.md).
    The panel is the other half: load `extension/dist` unpacked and check the five things
    only a browser can answer — that the bundled catalogs list models, that a key survives
-   the panel being closed, that `read_page` returns the tab the person is looking at and
-   follows them to the next one, that a `chrome:` screen fails as a tool error rather than
-   a broken turn, and that the toolbar icon reads on a light and a dark toolbar. The
+   the panel being closed, that `read_active_tab` returns the tab the person is looking at
+   and follows them to the next one — and steps aside on this project's own documentation,
+   which publishes a `read_page` of its own — that a `chrome:` screen fails as a tool error
+   rather than a broken turn, and that the toolbar icon reads on a light and a dark
+   toolbar. The
    badge is the sixth: a page that publishes WebMCP tools puts their count on the icon,
    and the mark belongs to that tab alone. The seventh is the per-site history: a
    conversation had on one site is not listed on another, a tab that comes forward on
@@ -369,7 +375,7 @@ stores conversations elsewhere still uses `save()` and `restore()`. See
    The warning is already implemented: the context meter turns amber when
    `shouldCompact()` returns true. This helper needs neither dependency. See
    `pi/transcript.ts`.
-3. **Give the panel more of the browser.** `read_page` is one tool and the model can only
-   read with it. Opening a url, following a link, or reading a second tab are each another
+3. **Give the panel more of the browser.** `read_active_tab` is one tool and the model can
+   only read with it. Opening a url, following a link, or reading a second tab are each another
    tool on the same bridge, and each one is a thing the model does to a person's browser
    rather than in it — so the gate matters more than the plumbing does.

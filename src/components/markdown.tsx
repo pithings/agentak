@@ -230,14 +230,26 @@ const attr = (props: ComarkElementAttributes, name: string): string | undefined 
   return typeof value === "string" ? value : undefined;
 };
 
-/** A ```lang [file.ts] fence, through the shared CodeBlock so rangi colours it. */
-const Fence = ({ props, nodes }: { props: ComarkElementAttributes; nodes: ComarkNode[] }) => {
+/**
+ * A ```lang [file.ts] fence, through the shared CodeBlock so rangi colours it.
+ * `style` is the sibling gap `withGap()` clones on: a component has to pass one
+ * down itself, where a tag would have taken it.
+ */
+const Fence = ({
+  props,
+  nodes,
+  style,
+}: {
+  props: ComarkElementAttributes;
+  nodes: ComarkNode[];
+  style?: Sx;
+}) => {
   const language = attr(props, "language") ?? "text";
   const filename = attr(props, "filename");
   const code = text(nodes).replace(/\n$/, "");
 
   return (
-    <CodeBlock code={code} language={language}>
+    <CodeBlock code={code} language={language} style={style}>
       <CodeBlockHeader>
         <CodeBlockTitle>
           <CodeBlockFilename>{filename ?? language}</CodeBlockFilename>
