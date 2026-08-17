@@ -253,6 +253,79 @@ describe("Chat", () => {
     expect(document.activeElement).toBe(container.querySelector("textarea"));
   });
 
+  it("offers the device lock, and says what it is doing", () => {
+    const locked: boolean[] = [];
+    const { rerender } = render(
+      <ChatSettings
+        keyLock={{ state: "off" }}
+        onKeyLockChange={(on) => locked.push(on)}
+        providerId="llm7"
+        providers={PROVIDERS}
+      />,
+    );
+
+    expect(screen.getByText("Device lock")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Lock keys to this device" }));
+    expect(locked).toEqual([true]);
+
+    // Unlocked, the one thing left to do with it is turn it off again.
+    rerender(
+      <ChatSettings
+        keyLock={{ state: "open" }}
+        onKeyLockChange={(on) => locked.push(on)}
+        providerId="llm7"
+        providers={PROVIDERS}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Turn the lock off" }));
+    expect(locked).toEqual([true, false]);
+
+    // A refusal is shown where the button that caused it is.
+    rerender(
+      <ChatSettings
+        keyLock={{ error: "This device did not confirm it.", state: "locked" }}
+        providerId="llm7"
+        providers={PROVIDERS}
+      />,
+    );
+    expect(screen.getByText("This device did not confirm it.")).toBeTruthy();
+  });
+
+  it("offers to unlock a locked key, and to type another one instead", () => {
+    let unlocked = 0;
+    const saved: [string, string][] = [];
+    const providers = [{ hasKey: true, id: "openai", keyed: true, label: "OpenAI", locked: true }];
+    render(
+      <ChatSettings
+        keyLock={{ state: "locked" }}
+        onSaveKey={(id, key) => saved.push([id, key])}
+        onUnlockKeys={() => (unlocked += 1)}
+        providerId="openai"
+        providers={providers}
+      />,
+    );
+
+    // A key it has and cannot read: neither changing nor removing it is what
+    // the page offers first.
+    expect(screen.queryByRole("button", { name: "Change key" })).toBeNull();
+    expect(screen.getByRole("button", { name: /OpenAI/ }).textContent).toBe("OpenAILocked");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Unlock" })[0] as HTMLElement);
+    expect(unlocked).toBe(1);
+
+    // And the way back for a passkey that is gone: type another key.
+    fireEvent.click(screen.getByRole("button", { name: "Use another key" }));
+    const field = document.querySelector("input[type=password]") as HTMLInputElement;
+    fireEvent.input(field, { target: { value: "sk-new" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(saved).toEqual([["openai", "sk-new"]]);
+  });
+
+  it("shows no device lock where the harness reports none", () => {
+    render(<ChatSettings providerId="llm7" providers={PROVIDERS} />);
+    expect(screen.queryByText("Device lock")).toBeNull();
+  });
+
   it("closes the page when a message is sent", () => {
     const sent: string[] = [];
     const open: boolean[] = [];

@@ -149,6 +149,7 @@ export function AgentChat({
       onForgetKey={session.forgetKey && ((id) => session.forgetKey?.(id))}
       onFork={session.fork && ((id) => session.fork?.(id))}
       onHistoryOpenChange={onHistoryOpenChange}
+      onKeyLockChange={session.setKeyLock && ((on) => session.setKeyLock?.(on))}
       onModelChange={session.selectModel && ((id) => session.selectModel?.(id))}
       onOpenConversation={session.openConversation && ((id) => session.openConversation?.(id))}
       onPickerOpenChange={onPickerOpenChange}
@@ -166,6 +167,7 @@ export function AgentChat({
       onThinkingLevelChange={
         session.setThinkingLevel && ((level) => session.setThinkingLevel?.(level))
       }
+      onUnlockKeys={session.unlockKeys && (() => session.unlockKeys?.())}
       pickerOpen={pickerOpen}
       style={style}
     />

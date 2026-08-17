@@ -16,12 +16,14 @@ import {
   usablePiMessages,
   type WholePiSnapshot,
 } from "./snapshot.ts";
+import { passkeyFailure } from "./passkey.ts";
+import { isSecretStorage, type SecretStorage } from "./secret.ts";
 import { createChoices, type PiChoices, type PiStorage } from "./storage.ts";
 import { createAgentStore } from "./store.ts";
 import { generateTitle, titleRequest, toTitle } from "./title.ts";
 import { piMessageIndex, piUserText, toViewMessages } from "./transcript.ts";
 import { documentTools } from "./webmcp.ts";
-import type { ChatAgent, ChatProvider } from "../components/chat/types.ts";
+import type { ChatAgent, ChatKeyLock, ChatProvider } from "../components/chat/types.ts";
 import type { ChatSession, ChatSessionOptions, ChatSnapshot } from "../session.ts";
 
 /** `AgentOptions`, minus what the picker and the snapshot decide for themselves. */
@@ -130,38 +132,64 @@ export interface PiSession extends ChatSession {
  */
 const DEFAULT_THINKING: ThinkingLevel = "medium";
 
+/**
+ * What the store holds per provider: the keys it handed over, and the ones it
+ * has but will not hand over yet.
+ *
+ * A locked store answers every key with nothing, which on its own reads as a
+ * browser that has none — so the provider it was set up on would look unset and
+ * the chat would ask for a key it already has. `sealed` is the difference: the
+ * name holds a value, and a click is what stands between here and it.
+ */
+interface StoredKeys {
+  keys: Record<string, string>;
+  sealed: Set<string>;
+}
+
 /** Keys already in hand: what a host passed, over what the store holds. */
 async function seedKeys(
   choices: PiChoices,
   providers: Provider[],
   apiKey: PiSessionOptions["apiKey"],
   providerId?: string,
-): Promise<Record<string, string>> {
+  locked?: SecretStorage,
+): Promise<StoredKeys> {
   const keys: Record<string, string> = {};
+  const sealed = new Set<string>();
   // Asked for at once rather than one after another: a store that answers later
   // would otherwise cost a round trip per provider.
   const stored = await Promise.all(providers.map((provider) => choices.storedApiKey(provider.id)));
+  const shut = locked
+    ? await Promise.all(
+        providers.map((provider) => locked.sealed(`api-key:${provider.id}`).catch(() => false)),
+      )
+    : undefined;
   providers.forEach((provider, index) => {
     const key = stored[index];
     if (key) keys[provider.id] = key;
+    else if (shut?.[index]) sealed.add(provider.id);
   });
   if (typeof apiKey === "string" && providerId) keys[providerId] = apiKey;
   else if (apiKey) Object.assign(keys, apiKey);
-  return keys;
+  return { keys, sealed };
 }
 
 /**
  * The provider to open on, if any. One that cannot answer counts as none — a
  * stored key may have been dropped, a host may name a provider it passed no key
  * for, and one stored in the panel is out of reach on a page.
+ *
+ * A provider whose key is locked does open: it has a key, and the click that
+ * sends the first message is what unlocks it. The alternative is a chat that
+ * opens on nothing every visit and asks for a key it is already holding.
  */
 const openingProvider = (
   providers: Provider[],
-  keys: Record<string, string>,
+  { keys, sealed }: StoredKeys,
   wanted?: string,
 ): string | undefined => {
   const entry = providers.find((provider) => provider.id === wanted);
-  return entry && (entry.free || keys[entry.id]) ? entry.id : undefined;
+  return entry && (entry.free || keys[entry.id] || sealed.has(entry.id)) ? entry.id : undefined;
 };
 
 /**
@@ -225,8 +253,23 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   // answer no preflight. Fixed for the life of the session.
   const available = availableProviders();
 
+  /**
+   * The store's own lock, where it has one — `browserStorage()` does. It is what
+   * turns the settings page's device-lock section on, and what the first message
+   * asks before it is sent with a key that is still shut.
+   */
+  const secrets = storage && isSecretStorage(storage) ? storage : undefined;
+
   // Both come out of the store, so both open empty and fill in below.
   let keys: Record<string, string> = {};
+  /** Providers whose stored key is there and shut. Empty with no lock, or none. */
+  let sealed = new Set<string>();
+  /** Whether this browser could hold a key of its own, if anyone asked it to. */
+  let lockable = false;
+  /** A dialog is up. One at a time, and the buttons say so while it is. */
+  let lockBusy = false;
+  /** What the last ask came back with, where it was not a key. */
+  let lockError: string | undefined;
   let providerId: string | undefined;
   let preferences: ChatSessionOptions = { generateTitle: named };
   /**
@@ -344,10 +387,64 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   };
 
   const flush = () => {
-    if (!pending || !ready()) return;
+    if (!pending || !ready() || shut()) return;
     const text = pending;
     pending = "";
     store.send(text);
+  };
+
+  /** The provider on screen holds a key, and the lock is between here and it. */
+  const shut = () => Boolean(providerId && sealed.has(providerId) && !keys[providerId]);
+
+  /** What the store holds now: the keys it hands over, and the ones it will not. */
+  const readKeys = async () => {
+    const stored = await seedKeys(choices, available, apiKey, providerId, secrets);
+    // What this session was given in the meantime is the newer, exactly as it is
+    // at construction: a key typed while the store answered stands over it.
+    keys = { ...stored.keys, ...keys };
+    sealed = stored.sealed;
+  };
+
+  /**
+   * Ask the device for the key.
+   *
+   * Called from a click and from nowhere else — the composer's send, or the
+   * settings page's own button — because the browser wants a gesture in front of
+   * the dialog. A refusal is not a failure of the chat: the message stays where
+   * it was typed and the settings page opens on the reason, which is the same
+   * answer a provider refusing a key gets.
+   */
+  const unlock = () => {
+    if (!secrets || lockBusy) return;
+    lockBusy = true;
+    lockError = undefined;
+    notify();
+    void (async () => {
+      try {
+        await secrets.lock.unlock();
+        await readKeys();
+      } catch (failure: unknown) {
+        lockError = passkeyFailure(failure);
+        if (pending) pickerOpen = true;
+      } finally {
+        lockBusy = false;
+        flush();
+        notify();
+      }
+    })();
+  };
+
+  /**
+   * The lock, as the settings page reads it. Absent where there is nothing to
+   * show: a store that seals nothing, and a browser that could not hold a key of
+   * its own even if the person asked — the section would then be a control that
+   * only ever fails.
+   */
+  const keyLockView = (): ChatKeyLock | undefined => {
+    if (!secrets) return undefined;
+    const state = secrets.lock.state();
+    if (state === "off" && !lockable) return undefined;
+    return { busy: lockBusy || undefined, error: lockError, state };
   };
 
   /**
@@ -360,6 +457,15 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    * holds either one the same way.
    */
   const submit = (text: string) => {
+    // A key that is only locked is a key: the click that sent this message is
+    // the gesture the device wants, so it is spent here rather than sending the
+    // person to a page to click again.
+    if (shut()) {
+      pending = text;
+      notify();
+      unlock();
+      return;
+    }
     if (ready()) {
       store.send(text);
       return;
@@ -487,7 +593,10 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   // keyed provider back, so `providerId` can always answer.
   const providerViews = (): ChatProvider[] =>
     available.map((entry) => ({
-      hasKey: Boolean(keys[entry.id]),
+      hasKey: Boolean(keys[entry.id]) || sealed.has(entry.id),
+      // A key it has and cannot read yet. The page then offers to unlock it
+      // rather than to change or remove a key nothing here is holding.
+      locked: sealed.has(entry.id) && !keys[entry.id],
       id: entry.id,
       keyed: !entry.free,
       keyPlaceholder: entry.keyPlaceholder,
@@ -566,7 +675,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
 
     const open = openingProvider(
       available,
-      keys,
+      { keys, sealed },
       next?.provider ?? (await choices.storedProviderId()),
     );
     if (open && open !== providerId) {
@@ -588,6 +697,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       agent: agentView(),
       error: loop.error ?? catalogError,
       isStreaming: loop.isStreaming,
+      keyLock: keyLockView(),
       messages: loop.messages,
       modelId: live ? model().id : undefined,
       models,
@@ -619,6 +729,11 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   });
   void toolset?.refresh();
 
+  // The store owns the lock, so it is what says the state changed — including
+  // the read at construction that finds a lock this session never turned on,
+  // and a second session on the same store unlocking it.
+  const offLock = secrets?.lock.subscribe(notify);
+
   const offStore = store.subscribe(() => {
     maybeTitle();
     askOnFailure();
@@ -638,16 +753,23 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    */
   const hydrated = (async () => {
     const mine = picked;
+    // Which key the store seals with is read before anything is asked of it, so
+    // a locked key is never taken for a key this browser does not have.
+    await secrets?.lock.ready;
     const wanted = openOn ?? opened?.provider ?? (await choices.storedProviderId());
-    const stored = await seedKeys(choices, available, apiKey, wanted);
+    const stored = await seedKeys(choices, available, apiKey, wanted, secrets);
     // What this session was given in the meantime is the newer, so it sits over
     // what the store held: a key typed into the settings page before the store
     // answered must not be replaced by the one it used to hold.
-    keys = { ...stored, ...keys };
+    keys = { ...stored.keys, ...keys };
+    sealed = stored.sealed;
+    // Asked once, and asked whatever the lock is doing now: a person who turns
+    // it off is left looking at the control that turns it back on.
+    if (secrets) lockable = await secrets.lock.supported().catch(() => false);
     // And a provider picked in that same window is the one to open on, so the
     // stored one is dropped rather than loaded over it.
     if (mine === picked) {
-      providerId = openingProvider(available, keys, wanted);
+      providerId = openingProvider(available, { keys, sealed }, wanted);
       if (providerId) load(providerId);
     }
     // A history of the host's own that cannot read its list is a chat with no
@@ -795,9 +917,48 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
 
     saveKey(id, key) {
       keys = { ...keys, [id]: key };
+      // A key typed by hand is one this session can read, whatever the store was
+      // holding under that name before it.
+      sealed = new Set([...sealed].filter((provider) => provider !== id));
       void choices.storeApiKey(id, key);
       notify();
     },
+
+    /**
+     * Put the keys behind this device's own authenticator, or take them back
+     * out. Both open a dialog, so both are called from a click.
+     *
+     * The store seals with another key afterwards, and nothing there can re-seal
+     * what it already holds — only this session has the keys in the clear. So
+     * every key it holds is written again under the new one, which is what makes
+     * turning the lock on a thing that keeps working rather than a thing that
+     * loses a key.
+     */
+    setKeyLock(on) {
+      if (!secrets || lockBusy) return;
+      lockBusy = true;
+      lockError = undefined;
+      notify();
+      void (async () => {
+        try {
+          // The keys are what gets written again, so they have to be in hand.
+          await hydrated;
+          if (on) await secrets.lock.enable();
+          else await secrets.lock.disable();
+          await Promise.all(
+            Object.entries(keys).map(([provider, key]) => choices.storeApiKey(provider, key)),
+          );
+          sealed = new Set();
+        } catch (failure: unknown) {
+          lockError = passkeyFailure(failure);
+        } finally {
+          lockBusy = false;
+          notify();
+        }
+      })();
+    },
+
+    unlockKeys: unlock,
 
     /**
      * Take a key back out, of the store and of this session. The provider it
@@ -810,6 +971,9 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
      */
     forgetKey(id) {
       keys = Object.fromEntries(Object.entries(keys).filter(([provider]) => provider !== id));
+      // A locked key that is dropped is dropped: the store no longer holds it,
+      // so there is nothing left to unlock for.
+      sealed = new Set([...sealed].filter((provider) => provider !== id));
       void choices.forgetApiKey(id);
       if (id === providerId) {
         providerId = undefined;
@@ -885,6 +1049,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       // The last word: a tab that closes mid-conversation still stored it.
       keep();
       offStore();
+      offLock?.();
       offTools?.();
       toolset?.dispose();
       store.dispose();

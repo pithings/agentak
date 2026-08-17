@@ -25,7 +25,9 @@ session: AgentSnapshot + providers + models + title -> ChatSnapshot -> Chat
 | `catalog.ts`       | one provider's models, fetched once per page              |
 | `use-catalog.ts`   | the same, as a hook, for a host driving `Chat` itself     |
 | `storage.ts`       | the store the keys, provider, model and level live in     |
-| `secret.ts`        | the keys in that store, sealed with a key nothing exports |
+| `secret.ts`        | the keys in that store, sealed and unsealed               |
+| `vault.ts`         | the key that seals them, and the lock over it             |
+| `passkey.ts`       | WebAuthn's PRF, as a key the device holds                 |
 | `history.ts`       | the conversations a session keeps, over that same store   |
 | `transcript.ts`    | `AgentMessage[]` -> renderable parts, and the usage panel |
 | `store.ts`         | a subscribable view of `Agent` events                     |
@@ -200,11 +202,13 @@ curl -sD- -o/dev/null -X POST https://ai-gateway.vercel.sh/v1/messages \
 A key is stored per provider, so switching back to one already set up asks nothing.
 `getApiKey(provider)` is how pi asks for the right one.
 
-**One settings page, four sections.** Provider, key, thinking level and model are all
-`chat/settings.tsx`, shown where the transcript is — see `components/chat.tsx`. Nothing
-else chooses any of them; the header's settings button and the composer's trigger only
-open the page.
-The four sections are on the screen together, shortest first, so the model list is last
+**One settings page, four sections — five where the keys can be locked.** Provider, key,
+device lock, thinking level and model are all `chat/settings.tsx`, shown where the
+transcript is — see `components/chat.tsx`. Nothing else chooses any of them; the header's
+settings button and the composer's trigger only open the page. The lock reads under the key
+because it is about that key; it is left out where the store seals nothing or the browser
+cannot hold a key of its own.
+The sections are on the screen together, shortest first, so the model list is last
 and the page scrolls as one column. A catalog lands in that list, under a spinner. The
 providers are a `DropdownMenu` rather than a list of their own: which one is set is one
 line, and eight rows above the models would be most of the page.
@@ -513,6 +517,10 @@ keys as ciphertext and holds the provider, the model, the level and the conversa
 they are. `isSecret` is the test — `api-key:*`, the picker's own — and a host with something
 else worth sealing in the same store passes a wider one.
 
+Where that key comes from is `vault.ts`, and there are two answers to it. The **device**
+key is the default and the one below. The **passkey** is the one a person turns on — see
+the next section.
+
 The point is the key that opens it, not the cipher. AES-GCM is generated
 `extractable: false` and kept in IndexedDB under `agentak`/`crypto`/`secret-key`, so it is
 usable and not readable: `exportKey` throws on it, a `structuredClone` of it carries no
@@ -542,6 +550,49 @@ The panel does not wear this. `chrome.storage.local` is not a store a page scrip
 at all, and an extension's own scripts are the ones that would decrypt — so the seal would
 buy the panel nothing and cost it a key to lose. Sealing is for `localStorage`, which hands
 a string to whatever runs on the origin.
+
+## And the person can lock them to the device
+
+The device key answers any script on the origin, silently, forever. `passkey.ts` is the
+other answer: **WebAuthn's `prf` extension**, which is `hmac-secret` on the authenticator —
+a TPM, a Secure Enclave, Windows Hello. Give it a salt and it gives back 32 bytes only that
+chip can produce, the same 32 bytes every time, and only with the person's finger, face or
+PIN in front of it. Through HKDF with an `info` of this one use, that is an AES-GCM key
+that was never in the browser's storage at all.
+
+So nothing is wrapped and nothing is stored but a credential id and a salt, neither of them
+secret. The key is derived, held in memory, and gone with the tab. What a copied profile
+carries is ciphertext and two public values.
+
+**It is off by default and a person turns it on**, on the settings page. The section is
+shown where `getClientCapabilities()` names `extension:prf` — the extension is the part
+that lagged the authenticator by years, so the capability and not the authenticator is what
+is asked. A browser too old to answer that is asked for a user-verifying platform
+authenticator instead, and `enable()` checks `prf.enabled` before anything is sealed.
+
+**Unlocking is a click and never a load.** Chrome wants a transient activation for `get()`,
+which is the whole shape of the feature: the chat opens locked, and the send that needs a
+key is what opens the dialog — `submit()` sees a key that is sealed and spends the click on
+it, then sends. The settings page's own **Unlock** is the same call from the other button.
+A dismissed dialog is a `NotAllowedError`, which is an answer and not a fault: the message
+stays in the composer, the settings page opens on the reason, and the person clicks again.
+
+**Nothing here can re-seal what it already holds**, because only the session has the keys
+in the clear. So `enable()` and `disable()` change the key and `PiSession` writes every key
+it holds straight after — which is why `setKeyLock` waits on `hydrated` first. What that
+also means is honest: turning the lock on carries across the keys this session read, and
+nothing else.
+
+Three states, and `sealed()` is what makes them work. A locked store answers every key with
+nothing, which alone reads as a browser holding none — so the session would ask for a key it
+already has. `SecretStorage.sealed(name)` says the name holds a sealed value, `seedKeys()`
+collects those into `StoredKeys.sealed`, and from there: the provider opens rather than
+being dropped, `ChatProvider.locked` marks it, the picker row reads "Locked", and the key
+section offers **Unlock** with **Use another key** beside it — the way back for a passkey
+that was deleted, since the keys under it are unreadable for good.
+
+`chrome-extension:` origins cannot do WebAuthn at all, so the panel has none of this, which
+is the same line the sealing itself stops at.
 
 ## Storing a conversation
 

@@ -87,6 +87,11 @@ lists them on the chat's own history page — the clock in the bar — so the pa
 holds no list, no ids and no wiring of its own. See [`pi.md`](pi.md) for what it stores and
 [`session.md`](session.md) for the seam it travels on.
 
+That same `browserStorage()` is what puts the device lock on the settings page: the store
+seals the keys, so it carries a lock, and the playground is the one surface here that can
+be used to try it — `localhost` is a secure context, and a panel on `chrome-extension:`
+has no WebAuthn at all.
+
 Picking one replaces the session's state in place, so the widget never swaps a session and
 never loses the island. The widget opens on a new conversation each time, the header's
 **new conversation** button files the one it replaces away, and `dispose()` on the way out

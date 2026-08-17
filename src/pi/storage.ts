@@ -1,5 +1,5 @@
 // Docs: @docs/4.agents/2.pi-agent/6.storage-and-api-keys.md
-import { encryptedStorage } from "./secret.ts";
+import { encryptedStorage, type SecretStorage, type SecretStorageOptions } from "./secret.ts";
 
 /**
  * Where the picker keeps the keys, the provider, the model and the level.
@@ -62,9 +62,13 @@ export function memoryStorage(): PiStorage {
  * is the one thing here worth lifting off a device, and `localStorage` hands a
  * string to whatever script asks; the provider, the model, the level and the
  * conversations are the person's own reading and stay as they are.
+ *
+ * The store it returns carries `lock`, the seam the chat's settings page shows:
+ * a person who asks puts the keys behind this device's own authenticator, and
+ * the chat then unlocks them once per visit. See `vault.ts`.
  */
-export function browserStorage(): PiStorage {
-  return encryptedStorage(plainBrowserStorage());
+export function browserStorage(options: SecretStorageOptions = {}): SecretStorage {
+  return encryptedStorage(plainBrowserStorage(), options);
 }
 
 /** The store under it: `localStorage`, guarded, with nothing sealed. */

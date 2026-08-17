@@ -38,8 +38,8 @@ forwards options by.
 `ChatSession` is five required members — `subscribe`, `snapshot`, `send`, `stop`,
 `reset` — plus optional ones for the parts of the surface that answer back:
 `respondToTool`, `dequeue`, `dismissError`, `retry`, `fork`, `retryFrom`, `selectProvider`,
-`selectModel`, `setThinkingLevel`, `saveKey`, `forgetKey`, `setPickerOpen`,
-`openConversation`, `forgetConversation`, `setHistoryOpen`, `setOptions`.
+`selectModel`, `setThinkingLevel`, `saveKey`, `forgetKey`, `setKeyLock`, `unlockKeys`,
+`setPickerOpen`, `openConversation`, `forgetConversation`, `setHistoryOpen`, `setOptions`.
 **Absent means gone, not broken.** A harness with one
 fixed model carries no `providers`, and `settings.tsx` then heads its own model list under
 `providerLabel`; one with no token accounting carries no `usage`, and the composer shows
@@ -51,7 +51,9 @@ Data and method pair up: `models` with `selectModel`, `providers` with `selectPr
 `retry`. One without the other is a list nothing chooses from, or a method nothing calls.
 `saveKey` pairs with `forgetKey` the same way: a key that can only be replaced is a key
 the browser keeps for good, so the settings page shows a remove button only where the
-harness answers for one.
+harness answers for one. `keyLock` pairs with both `setKeyLock` and `unlockKeys`: a lock
+the surface can read and not open is a state with no way out of it. The built-in session
+reports one only where the store it was given can seal — see [`pi.md`](pi.md).
 
 **`thinkingLevels` is what the chosen model offers, not the scale.** pi's scale is
 `off | minimal | low | medium | high | xhigh | max`, but a model takes only part of it

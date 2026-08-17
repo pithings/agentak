@@ -212,7 +212,13 @@ A model without reasoning support shows no thinking-level choice.
 A saved key can be replaced or removed. The key section then shows both buttons, and
 "Remove" drops the key through the session's `forgetKey`. The Pi session takes it out of
 its store and steps off the provider, which then needs a key again. A session without
-`forgetKey` shows only "Change key".
+`forgetKey` shows only "Change key". A key that is stored and locked shows neither: there
+is nothing here to change or remove until it is read, so the section offers "Unlock" with
+"Use another key" beside it.
+
+A fifth section sits under the key, where the session reports a `keyLock` — the device
+lock, one button and a line saying what it is doing. It reads next to the key because it
+is about that key and nothing else on the page.
 
 The stored conversations are the second page, `components/chat/history.tsx`. A clock
 button in the header opens it, and the page again replaces the transcript —
@@ -392,6 +398,23 @@ lives for the session. The panel does not wrap its own store, because
 `chrome.storage.local` is not a store a page script can read. See `src/pi/secret.ts` and
 [`.agents/pi.md`](.agents/pi.md).
 
+A person can ask for more than that key, and the settings page is where: **Device lock**
+puts the sealing key in the device's own authenticator instead. `src/pi/passkey.ts` is
+WebAuthn's `prf` extension — a salt in, 32 bytes out of the TPM or the Secure Enclave, the
+same bytes every time, and only with a fingerprint, a face or a PIN in front of them —
+through HKDF into a key that was never in the browser's storage at all. What is stored is a
+credential id and a salt, neither of them secret. `src/pi/vault.ts` holds both answers and
+the lock between them; `SecretLock` is the seam, and `ChatSession` shows it as `keyLock`
+with `setKeyLock` and `unlockKeys`.
+
+It is off by default and shown only where the browser names `extension:prf`. The dialog
+needs a user gesture, so the chat opens locked and the **send** is what unlocks: a sealed
+key is spotted before the turn, the click is spent on the device, and the message goes.
+The settings page has the same button, marks a locked provider "Locked", and offers to save
+another key beside it — a deleted passkey takes the keys sealed under it with it. Turning
+the lock on or off re-seals what the session holds in memory, because nothing else can read
+it to re-seal. `chrome-extension:` origins have no WebAuthn, so the panel has no lock.
+
 ### Next tasks
 
 1. **Test the UI in a real browser.** Test the chat inside a host page and test the agent
@@ -418,6 +441,18 @@ lives for the session. The panel does not wrap its own store, because
    instantiate means `wasm-unsafe-eval` or the path. Then the turn itself: pick LFM2.5
    350M, the smallest, and check that the download reports its percentage, that the
    second open loads from OPFS without one, and that a tool call still parses.
+
+   The ninth is the **device lock**, which no test here can really answer either: a fake
+   authenticator answers a salt, a real one asks a person. On the playground over
+   `localhost` — a secure context, so WebAuthn works — check that the section appears at
+   all (it goes on `getClientCapabilities()` naming `extension:prf`, so a browser without
+   it should show nothing), that turning it on opens the platform dialog and not a
+   security-key one, that the key still answers a turn straight after, that a reload
+   leaves the provider listed as "Locked", that the first send opens the dialog on the
+   click rather than being refused for want of a gesture — this is the one most likely to
+   break, and Safari is the likeliest to break it — that dismissing the dialog leaves the
+   message in the composer, and that turning the lock off leaves a working key behind.
+
 2. **Add conversation compaction.** Pi exports `compact()`, but it needs a `Models` store
    and the session's own `Entry[]`. Long conversations can still reach the context limit.
    The warning is already implemented: the context meter turns amber when

@@ -399,6 +399,21 @@ export const KeyIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const LockIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect height="11" rx="2" ry="2" width="18" x="3" y="11" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </Icon>
+);
+
+/** The same lock with the shackle open — what the keys are while a visit lasts. */
+export const UnlockIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect height="11" rx="2" ry="2" width="18" x="3" y="11" />
+    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+  </Icon>
+);
+
 export const PlugIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M12 22v-5" />
@@ -471,6 +486,8 @@ const ICONS: ((props: IconProps) => JSX.Element)[] = [
   TerminalIcon,
   TrashIcon,
   KeyIcon,
+  LockIcon,
+  UnlockIcon,
   PlugIcon,
   SlidersIcon,
 ];

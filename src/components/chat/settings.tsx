@@ -2,7 +2,7 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
-import type { ChatModel, ChatProvider, ChatThinkingLevel } from "./types.ts";
+import type { ChatKeyLock, ChatModel, ChatProvider, ChatThinkingLevel } from "./types.ts";
 import { Button, buttonSx } from "../ui/button.tsx";
 import {
   DropdownMenu,
@@ -19,8 +19,10 @@ import {
   ChevronDownIcon,
   ExternalLinkIcon,
   KeyIcon,
+  LockIcon,
   SlidersIcon,
   TrashIcon,
+  UnlockIcon,
 } from "../../lib/icons.tsx";
 import { reset, u } from "../../styles/base.ts";
 import { sx, type Sx } from "../../styles/sx.ts";
@@ -59,6 +61,8 @@ const S = {
     color: "var(--muted-foreground)",
     fontSize: "0.75rem",
   },
+  // A refusal is still a note, in the one colour that says it went wrong.
+  noteBad: { color: "var(--destructive)" },
   // The `Popover` root is the anchor and is `inline-block`, which would shrink
   // the whole control to its trigger's text. Block, so the row is the section's
   // width and the panel below can take it too.
@@ -228,6 +232,15 @@ export interface ChatSettingsProps {
    * replaced, never taken out — so the section then offers no remove button.
    */
   onForgetKey?: (providerId: string) => void;
+  /**
+   * The device lock over the stored keys. Without it the page shows no such
+   * section — a harness that stores nothing has nothing to lock.
+   */
+  keyLock?: ChatKeyLock;
+  /** Turn the lock on, or off again. Both open the device's own dialog. */
+  onKeyLockChange?: (on: boolean) => void;
+  /** Ask the device for the key, for this visit. Pairs with a `locked` state. */
+  onUnlockKeys?: () => void;
   /** Heads the model list. Only needed when the page carries no providers. */
   providerLabel?: string;
   /**
@@ -273,6 +286,9 @@ export function ChatSettings({
   onProviderChange,
   onSaveKey,
   onForgetKey,
+  keyLock,
+  onKeyLockChange,
+  onUnlockKeys,
   providerLabel,
   thinkingLevel = "off",
   thinkingLevels,
@@ -299,6 +315,10 @@ export function ChatSettings({
   // A key is already stored and nothing has asked to replace it: there is
   // nothing to type, so the section is one button rather than an empty field.
   const stored = Boolean(target?.hasKey) && editing?.id !== target?.id;
+  // The stored key is there and shut. Nothing can be done with it but unlock,
+  // so that is what the section offers — with the field one click away, because
+  // a passkey that is gone leaves typing another key as the only way back.
+  const shut = stored && Boolean(target?.locked);
   // One level is no choice — a model with no reasoning offers `off` alone.
   const levels = thinkingLevels && thinkingLevels.length > 1 ? thinkingLevels : undefined;
 
@@ -406,7 +426,31 @@ export function ChatSettings({
       {target && (
         <section ref={keyRef} style={S.section}>
           <h3 style={sx(reset.text, S.heading)}>{target.label} API key</h3>
-          {stored ? (
+          {shut ? (
+            <div style={S.keyRow}>
+              <Button
+                disabled={keyLock?.busy}
+                onClick={() => onUnlockKeys?.()}
+                size="sm"
+                type="button"
+              >
+                <UnlockIcon />
+                Unlock
+              </Button>
+              <Button
+                onClick={() => {
+                  setKeying(target.id);
+                  setDraft("");
+                }}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                <KeyIcon />
+                Use another key
+              </Button>
+            </div>
+          ) : stored ? (
             // The key itself is never shown — nothing reads one back out of
             // storage to fill a field with, and a row of dots says no more than
             // the button does. So the two things left to do with one are the
@@ -457,6 +501,11 @@ export function ChatSettings({
               </Button>
             </div>
           )}
+          {shut && (
+            <p style={S.note}>
+              The saved key is locked to this device. Unlock it, or save another one.
+            </p>
+          )}
           {!stored && target.keyUrl && (
             <a href={target.keyUrl} rel="noreferrer noopener" style={S.keyLink} target="_blank">
               Get a key
@@ -469,11 +518,61 @@ export function ChatSettings({
                 ? "The new key replaces the one saved."
                 : "Kept in this browser, and sent only to the provider you pick."}
             </p>
-          ) : onForgetKey ? (
+          ) : shut ? null : onForgetKey ? (
             // What removing it costs: a keyed provider answers nothing without
             // one, so it is a provider to set up again.
             <p style={S.note}>Removing the key stops {target.label} until another is saved.</p>
           ) : null}
+        </section>
+      )}
+
+      {keyLock && (
+        <section style={S.section}>
+          <h3 style={sx(reset.text, S.heading)}>Device lock</h3>
+          <div style={S.keyRow}>
+            {keyLock.state === "off" ? (
+              <Button
+                disabled={keyLock.busy}
+                onClick={() => onKeyLockChange?.(true)}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <LockIcon />
+                Lock keys to this device
+              </Button>
+            ) : keyLock.state === "locked" ? (
+              <Button
+                disabled={keyLock.busy}
+                onClick={() => onUnlockKeys?.()}
+                size="sm"
+                type="button"
+              >
+                <UnlockIcon />
+                Unlock
+              </Button>
+            ) : (
+              <Button
+                disabled={keyLock.busy}
+                onClick={() => onKeyLockChange?.(false)}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <UnlockIcon />
+                Turn the lock off
+              </Button>
+            )}
+            {keyLock.busy && <Spinner />}
+          </div>
+          <p style={S.note}>
+            {keyLock.state === "off"
+              ? "Your keys are encrypted in this browser. Locking them keeps the key that opens them in this device’s own hardware, behind your fingerprint, face or PIN."
+              : keyLock.state === "locked"
+                ? "Your saved keys are locked. Unlocking them lasts until this page is closed; sending a message asks for them too."
+                : "Unlocked until this page is closed. Turning the lock off puts the keys back behind this browser’s own key."}
+          </p>
+          {keyLock.error && <p style={sx(S.note, S.noteBad)}>{keyLock.error}</p>}
         </section>
       )}
 
@@ -557,6 +656,7 @@ export function ChatSettings({
  */
 function providerState(provider: ChatProvider): string {
   if (!provider.keyed) return "Free";
+  if (provider.locked) return "Locked";
   return provider.hasKey ? "Key saved" : "Needs key";
 }
 

@@ -17,6 +17,12 @@ export interface ChatProvider {
   keyed?: boolean;
   /** A key for it is stored already. */
   hasKey?: boolean;
+  /**
+   * The stored key is behind the device lock and cannot be read yet. It is a
+   * key the provider has, so `hasKey` is true with it — what changes is what
+   * the page offers to do about it: unlock, rather than change or remove.
+   */
+  locked?: boolean;
   /** Where a key comes from, and the shape of one. */
   keyUrl?: string;
   keyPlaceholder?: string;
@@ -56,6 +62,22 @@ export interface ChatAgent {
 export interface ChatQueueItem {
   id: string;
   text: string;
+}
+
+/**
+ * The lock over the stored keys, where the harness offers one.
+ *
+ * `off` is a key the browser keeps for itself; `locked` and `open` are the same
+ * key held by the device's own authenticator — a fingerprint, a face, a PIN —
+ * asked for once per visit. Absent, the settings page shows no such section:
+ * a harness that stores nothing has nothing to lock.
+ */
+export interface ChatKeyLock {
+  state: "off" | "locked" | "open";
+  /** The dialog is up, or the browser is still being asked. */
+  busy?: boolean;
+  /** What the last attempt failed with, in words for the person reading it. */
+  error?: string;
 }
 
 /** One stored conversation, as the history page lists it. */

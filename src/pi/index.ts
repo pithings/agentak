@@ -42,7 +42,28 @@ export {
   type PiChoices,
   type PiStorage,
 } from "./storage.ts";
-export { encryptedStorage, isSecret } from "./secret.ts";
+export {
+  encryptedStorage,
+  isSecret,
+  isSecretStorage,
+  type SecretStorage,
+  type SecretStorageOptions,
+} from "./secret.ts";
+export {
+  createVault,
+  type SecretLock,
+  type SecretLockState,
+  type SecretVault,
+  type VaultOptions,
+} from "./vault.ts";
+export {
+  createPasskey,
+  derivePasskey,
+  type PasskeyOptions,
+  passkeyFailure,
+  type PasskeyRecord,
+  passkeySupported,
+} from "./passkey.ts";
 export {
   createHistory,
   mintConversationId,

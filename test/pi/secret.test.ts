@@ -181,7 +181,7 @@ describe("encryptedStorage", () => {
   it("takes a wider test of what a secret is", async () => {
     wipeDatabases();
     const inner = watchedStorage();
-    const store = encryptedStorage(inner, (name) => name.startsWith("chat:"));
+    const store = encryptedStorage(inner, { secret: (name) => name.startsWith("chat:") });
 
     await store.set("chat:c1", "a conversation");
     await store.set(KEY, SECRET);

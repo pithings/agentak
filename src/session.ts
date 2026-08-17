@@ -33,6 +33,7 @@ export type ChatSnapshot = Pick<
   | "modelsLoading"
   | "thinkingLevel"
   | "thinkingLevels"
+  | "keyLock"
   | "pickerOpen"
   | "history"
   | "conversationId"
@@ -171,6 +172,25 @@ export interface ChatSession {
    * again — and steps off it if it was the one running.
    */
   forgetKey?(providerId: string): void;
+  /**
+   * Put the stored keys behind the device's own authenticator, or take them
+   * back out from behind it. Pairs with `keyLock`; without both, the settings
+   * page shows no such section.
+   *
+   * Called from a click, because that is what the browser wants before it opens
+   * the dialog either one leads to.
+   */
+  setKeyLock?(on: boolean): void;
+  /**
+   * Ask the device for the key, for this visit. The other half of a `locked`
+   * state, and the one thing that reads a key back out of a locked store.
+   *
+   * The surface calls it from the settings page. A harness may also call it
+   * itself where a message is sent with the keys locked — the built-in one
+   * does, since the send is a click and so carries what the dialog needs.
+   */
+  unlockKeys?(): void;
+
   /**
    * Only a session that opens the picker itself needs this — the built-in one
    * does, because a first message with no provider chosen asks. Implementing it
