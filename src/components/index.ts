@@ -41,8 +41,7 @@ export * from "./ai-elements/task.tsx";
 export * from "./ai-elements/tool.tsx";
 
 // Parked: ported, exported, and rendered by nothing the chat builds. Each waits
-// on a source — a tool, a message role, a picker. The playground catalog is
-// where they are looked at. See `.agents/components.md`.
+// on a source — a tool, a message role, a picker. See `.agents/components.md`.
 export * from "./_parked/ui/avatar.tsx";
 export * from "./_parked/ui/card.tsx";
 export * from "./_parked/ui/carousel.tsx";

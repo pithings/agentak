@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import preact from "@preact/preset-vite";
 import { defineConfig } from "vitest/config";
 
-/** The library's own tests. The playground has none — a human checks the page. */
+/** The library's own tests. Browser behavior is checked by hand. */
 export default defineConfig({
   plugins: [preact({ reactAliasesEnabled: false })],
   resolve: {

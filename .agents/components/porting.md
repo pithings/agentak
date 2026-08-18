@@ -5,9 +5,9 @@
    Replace Lucide with `lib/icons.ts` and Radix state helpers with local primitives.
 3. Copy only required AI SDK type fields into `src/types.ts`.
 4. Convert every class to module-scope `Sx`; follow [`styling.md`](styling.md).
-5. Prefer a playground demo wrapper over adding data-only props to the shipped component.
+5. Prefer a demo wrapper over adding data-only props to the shipped component.
 6. Park a complete component if nothing renders it. Do not add a dependency casually.
-7. Show the port in the playground and run typecheck, tests, lint, and format.
+7. Run typecheck, tests, lint, and format.
 
 Important deviations: no `asChild`, no remote assets, no `dangerouslySetInnerHTML`, no
 command dialog, and no React-only packages. ANSI output uses `src/lib/ansi.ts`. Compound

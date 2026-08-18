@@ -182,7 +182,7 @@ export type CommitHeaderProps = WithSx<ComponentProps<"div">>;
  * Upstream makes the whole header the collapsible trigger. Here the trigger is
  * a real `<button>`, so anything with a button of its own — `CommitActions`, or
  * `CommitCopyButton` beside the hash — stays outside `CommitHeaderTrigger`. The
- * trigger wraps the message line alone; see `CommitDemo` in the playground.
+ * trigger wraps the message line alone.
  */
 export const CommitHeader = ({ className, style, ...props }: CommitHeaderProps) => (
   <div className={className} style={sx(S.commitHeader, style)} {...props} />

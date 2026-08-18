@@ -281,8 +281,8 @@ export const findProvider = (id?: string): Provider | undefined =>
 
 /**
  * Whether this runtime is outside CORS. An extension page fetches through its
- * `host_permissions`, which the preflight never gates; a page — the playground,
- * a host site, the panel served by vite in dev — is gated by it.
+ * `host_permissions`, which the preflight never gates; a page — a host site, the
+ * panel served by vite in dev — is gated by it.
  */
 export const corsFree = (): boolean => globalThis.location?.protocol === "chrome-extension:";
 

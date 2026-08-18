@@ -35,12 +35,10 @@
     }
   },
   "scripts": {
-    "dev": "pnpm --filter @agentak/playground dev",
-    "build": "obuild && pnpm --filter @agentak/playground build",
+    "build": "obuild",
     "build:lib": "obuild",
     "build:extension": "pnpm --filter @agentak/extension build",
-    "preview": "pnpm --filter @agentak/playground preview",
-    "typecheck": "tsc --noEmit && pnpm --filter @agentak/playground typecheck && tsc --noEmit -p extension",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p extension",
     "size": "node scripts/bundle.ts",
     "lint": "oxlint",
     "fmt": "oxfmt .",

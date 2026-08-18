@@ -12,8 +12,8 @@ const root = fileURLToPath(new URL(".", import.meta.url));
 const outDir = fileURLToPath(new URL("./dist", import.meta.url));
 
 /**
- * WIP MV3 build. `@` points at the library source, as in the playground — the
- * panel hosts the surface itself, and is not a consumer of `dist`.
+ * WIP MV3 build. `@` points at the library source — the panel hosts the surface
+ * itself, and is not a consumer of `dist`.
  */
 export default defineConfig({
   plugins: [

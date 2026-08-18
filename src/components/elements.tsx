@@ -16,7 +16,7 @@ import { Image } from "./ai-elements/image.tsx";
  * source emits costs every host its bytes — the nine-name map cost 7.6 kB
  * gzipped for seven names nothing could reach. Register a renderer when the
  * tool that emits it lands, not before. A host adds its own through
- * `registerElements()`; the playground does that in `demo-elements.tsx`.
+ * `registerElements()`.
  */
 export type ElementRenderer = (props: Record<string, unknown>) => ComponentChildren;
 
