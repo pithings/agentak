@@ -464,6 +464,22 @@ export const PanelRightCloseIcon = (props: IconProps) => (
 );
 
 /**
+ * A host's own geometry, in the frame the built-in icons are drawn in.
+ *
+ * A definition names an icon this library ships, or carries the path data of
+ * one it does not — see `ChatIcon` in `components/chat/types.ts`. The data is
+ * geometry and never markup, so a host adds an icon without a preact node and
+ * without any way to put elements of its own on the surface.
+ */
+export const PathIcon = ({ paths, ...props }: IconProps & { paths: string[] }) => (
+  <Icon {...props}>
+    {paths.map((d) => (
+      <path d={d} key={d} />
+    ))}
+  </Icon>
+);
+
+/**
  * Runtime marker for the icons above. A component that renders `children` can
  * then size and colour a caller-passed icon without a prop reaching this
  * deep — see `isIconChild`.
@@ -526,6 +542,8 @@ const ICONS: ((props: IconProps) => JSX.Element)[] = [
   PanelRightCloseIcon,
 ];
 for (const component of ICONS) (component as IconComponent).isIcon = true;
+// The host's own geometry is one of them too, so a button sizes it the same.
+(PathIcon as unknown as IconComponent).isIcon = true;
 
 /**
  * True for one of the icons above, or a raw `<svg>` from elsewhere. Narrows to
@@ -537,3 +555,41 @@ export function isIconChild(child: ComponentChild): child is VNode<WithSx<IconPr
   const type = (child as VNode).type;
   return type === "svg" || (typeof type === "function" && (type as IconComponent).isIcon === true);
 }
+
+/**
+ * The icons a definition can name, by their lucide names.
+ *
+ * Host chrome is a handful of glyphs — put away, open, go back, read more — so
+ * this is a short list and not the whole file: a name map holds every icon it
+ * lists in the bundle, and a host whose glyph is not here passes the path data
+ * instead. Add a name when a host needs one, not before.
+ */
+export const CHAT_ICONS = {
+  "alert-triangle": AlertTriangleIcon,
+  "arrow-left": ArrowLeftIcon,
+  "arrow-right": ArrowRightIcon,
+  book: BookIcon,
+  bot: BotIcon,
+  check: CheckIcon,
+  clock: ClockIcon,
+  code: CodeIcon,
+  copy: CopyIcon,
+  download: DownloadIcon,
+  "external-link": ExternalLinkIcon,
+  file: FileIcon,
+  key: KeyIcon,
+  "message-circle": MessageCircleIcon,
+  minus: MinusIcon,
+  "panel-right-close": PanelRightCloseIcon,
+  plus: PlusIcon,
+  "rotate-ccw": RotateCcwIcon,
+  search: SearchIcon,
+  sliders: SlidersIcon,
+  terminal: TerminalIcon,
+  trash: TrashIcon,
+  wrench: WrenchIcon,
+  x: XIcon,
+} satisfies Record<string, (props: IconProps) => JSX.Element>;
+
+/** The name of one of them. */
+export type ChatIconName = keyof typeof CHAT_ICONS;

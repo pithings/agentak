@@ -72,6 +72,7 @@ export * from "./_parked/ai-elements/web-preview.tsx";
 
 // The chat surface and its parts, the markdown renderer, and the element registry.
 export * from "./chat.tsx";
+export * from "./chat/actions.tsx";
 export * from "./chat/bar.tsx";
 export * from "./chat/composer.tsx";
 export * from "./chat/empty.tsx";

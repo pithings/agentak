@@ -1,34 +1,14 @@
 // Docs: @docs/3.widget.md
-import type { ComponentChildren } from "preact";
-import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
 
-import { Chat, type ChatPrompt } from "./components/chat.tsx";
-import { Button } from "./components/ui/button.tsx";
-import { SlidersIcon } from "./lib/icons.tsx";
+import { Chat, type ChatAction, type ChatEmptyItem, type ChatPrompt } from "./components/chat.tsx";
 import {
   CHAT_SESSION_OPTIONS,
   type ChatSession,
   type ChatSessionOptions,
   useSession,
 } from "./session.ts";
-import { reset } from "./styles/base.ts";
-import { sx, type Sx } from "./styles/sx.ts";
-
-const S = {
-  hint: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "0.5rem",
-    textAlign: "center",
-  },
-  hintNote: {
-    margin: "0",
-    color: "var(--muted-foreground)",
-    fontSize: "0.75rem",
-  },
-} satisfies Record<string, Sx>;
+import type { Sx } from "./styles/sx.ts";
 
 export interface AgentChatProps extends ChatSessionOptions {
   /**
@@ -41,15 +21,20 @@ export interface AgentChatProps extends ChatSessionOptions {
   /** Merged over the chat's own box — how a host sizes the element. */
   style?: Sx;
   /**
-   * Host buttons for the end of the header, so a page can put its own chrome —
-   * minimise, and whatever else it owns — on the agent's one title bar.
+   * Host buttons for the trailing end of the title bar, so a page can put its
+   * own chrome — minimise, and whatever else it owns — on the agent's one title
+   * row.
+   *
+   * Definitions and not nodes: a host in any framework describes its button and
+   * the surface draws it. See `ChatAction`.
    */
-  actions?: ComponentChildren;
+  actions?: ChatAction[];
   /**
-   * Host content for the chat's empty state — a suggestion, a launcher. It
-   * shows only before the first message.
+   * Host content for the chat's empty state — a note, a launcher. It shows only
+   * before the first message, and is data on the same terms: see
+   * `ChatEmptyItem`.
    */
-  emptyActions?: ComponentChildren;
+  emptyItems?: ChatEmptyItem[];
   /**
    * Starter messages for that same empty state, one button each: a click sends
    * one to the session. A string is both the button and the message, and
@@ -84,7 +69,7 @@ export function AgentChat({
   style,
   actions,
   autoFocus,
-  emptyActions,
+  emptyItems,
   linkBase,
   prompts,
   ...options
@@ -123,19 +108,6 @@ export function AgentChat({
   const historyOpen = session.setHistoryOpen ? (snapshot.historyOpen ?? false) : heldHistory;
   const onHistoryOpenChange = session.setHistoryOpen ?? setHeldHistory;
 
-  // Nothing can answer yet: the first message would only open the settings page,
-  // so the empty state says so first. It leads the host's own content, because
-  // choosing a model comes before whatever a launcher offers to do with one.
-  const unset = Boolean(snapshot.providers?.length) && !snapshot.providerId;
-  const empty = unset ? (
-    <Fragment>
-      <PickHint onOpen={() => onPickerOpenChange(true)} />
-      {emptyActions}
-    </Fragment>
-  ) : (
-    emptyActions
-  );
-
   // The callbacks go through the session rather than out of it as bare
   // functions, so a session written as a class keeps its `this`. An absent one
   // stays absent: the surface leaves out what nothing answers.
@@ -145,7 +117,7 @@ export function AgentChat({
       actions={actions}
       autoFocus={autoFocus}
       className={className}
-      emptyActions={empty}
+      emptyItems={emptyItems}
       historyOpen={historyOpen}
       linkBase={linkBase}
       onCallTool={session.callTool && ((name) => session.callTool?.(name))}
@@ -181,18 +153,5 @@ export function AgentChat({
       prompts={prompts}
       style={style}
     />
-  );
-}
-
-/** The empty state's way to the settings page, before any provider is set. */
-function PickHint({ onOpen }: { onOpen: () => void }) {
-  return (
-    <div style={S.hint}>
-      <Button onClick={onOpen} size="sm" type="button" variant="outline">
-        <SlidersIcon />
-        Select a model
-      </Button>
-      <p style={sx(reset.text, S.hintNote)}>Choose a provider and a model to start.</p>
-    </div>
   );
 }

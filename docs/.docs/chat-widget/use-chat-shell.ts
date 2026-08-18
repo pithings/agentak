@@ -1,25 +1,16 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, type Ref, ref, watchEffect } from "vue";
+import { readCookie, writeCookie } from "./cookie.ts";
 
-/**
- * The cookie the reader's choice is kept in, and how long it is kept for. A
- * cookie rather than `localStorage` because this one thing is about the site
- * rather than about the chat: what the chat itself stores — the provider, the
- * key and the conversations — is the session's own store.
- */
+/** The cookie the reader's choice is kept in — see `cookie.ts`. */
 const COOKIE = "agentak-chat";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
 
 /** Only what a reader left open is written, so an unset cookie reads as closed. */
 function readOpen() {
-  return document.cookie.split("; ").includes(`${COOKIE}=open`);
+  return readCookie(COOKIE) === "open";
 }
 
 function writeOpen(open: boolean) {
-  // `lax` because nothing here follows a cross-site request, and `secure` off a
-  // plain-http `localhost`, which is where the site is developed.
-  const secure = location.protocol === "https:" ? "; secure" : "";
-  const value = open ? "open" : "closed";
-  document.cookie = `${COOKIE}=${value}; path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax${secure}`;
+  writeCookie(COOKIE, open ? "open" : "closed");
 }
 
 /**

@@ -1,4 +1,6 @@
 // Docs: @docs/3.widget.md
+import { ChatActions } from "./actions.tsx";
+import type { ChatAction } from "./types.ts";
 import { Button } from "../ui/button.tsx";
 import { ArrowLeftIcon, ClockIcon, PlusIcon } from "../../lib/icons.tsx";
 import { reset } from "../../styles/base.ts";
@@ -59,6 +61,16 @@ export interface ChatHeaderProps {
    * and while a page is up.
    */
   onHistory?: () => void;
+  /**
+   * Host buttons for the trailing end of the bar — collapse, minimise, whatever
+   * chrome the page around the chat owns. They come after the chat's own two,
+   * and they stay there on every page: what a page replaces are the controls of
+   * the conversation, and these are not the chat's to drop.
+   *
+   * Definitions and not nodes: the host says what each button is and does, and
+   * the header draws it as it draws its own — see `ChatAction`.
+   */
+  actions?: ChatAction[];
 }
 
 /**
@@ -66,13 +78,17 @@ export interface ChatHeaderProps {
  * change which conversation it is about.
  *
  * What is *running* — the model, the context it has spent — reads under the
- * composer instead, with the host's own chrome; see `bar.tsx`. What is left
- * here is the conversation itself: the name leads, and starting a new one and
- * opening a stored one follow it, in the order they are reached for. The back
- * arrow is the one thing before the name, because on a page it is not a control
- * of the chat but the way out of the page the name states.
+ * composer instead; see `bar.tsx`. What is left here is the conversation
+ * itself: the name leads, and starting a new one and opening a stored one
+ * follow it, in the order they are reached for. The back arrow is the one thing
+ * before the name, because on a page it is not a control of the chat but the
+ * way out of the page the name states.
+ *
+ * The host's own chrome ends the row, past the corner the chat's buttons stop
+ * at: a collapse or a minimise is about the surface and not about the
+ * conversation, so it is read where a window's own controls are read.
  */
-export function ChatHeader({ onReset, title, onBack, onHistory }: ChatHeaderProps) {
+export function ChatHeader({ actions, onReset, title, onBack, onHistory }: ChatHeaderProps) {
   return (
     <header style={S.header}>
       {onBack ? (
@@ -113,6 +129,11 @@ export function ChatHeader({ onReset, title, onBack, onHistory }: ChatHeaderProp
           <ClockIcon />
         </Button>
       ) : null}
+
+      {/* Last, at the corner: the page's own chrome is outside the
+          conversation, so it sits outside the buttons that change which
+          conversation this is. */}
+      <ChatActions actions={actions} />
     </header>
   );
 }

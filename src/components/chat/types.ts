@@ -1,5 +1,6 @@
 // Docs: @docs/3.widget.md
 import type { ContextCosts } from "../ai-elements/context.tsx";
+import type { ChatIconName } from "../../lib/icons.tsx";
 import type { LanguageModelUsage, ToolDefinition } from "../../types.ts";
 
 /** One entry of the model picker. */
@@ -83,6 +84,56 @@ export interface ChatAgent {
  * row of buttons is read at a glance, and what the model is asked is a sentence.
  */
 export type ChatPrompt = string | { label: string; prompt?: string };
+
+/**
+ * The picture on a host's own button: the name of one this library ships, or
+ * the path data of one it does not.
+ *
+ * `CHAT_ICONS` in `lib/icons.tsx` is the list of names. The path form is the
+ * `d` of each `<path>` of a 24x24 lucide-style glyph, drawn in the same frame
+ * as the built-in ones — geometry, never markup.
+ */
+export type ChatIcon = ChatIconName | { paths: string[] };
+
+/**
+ * One control a host adds to the surface, as data.
+ *
+ * The surface is preact and a host is often not, so a host describes its button
+ * rather than building one: the same object works from vue, react, plain
+ * javascript and preact alike, and no host ever holds a node this library has
+ * to render. The chat draws it in its own chrome, so a host's button matches
+ * the buttons beside it.
+ */
+export interface ChatAction {
+  /** Distinguishes one action from the next. Not shown. */
+  id: string;
+  /** The name the button answers to, and its tooltip. Always required. */
+  label: string;
+  /** What a click does. */
+  onClick: () => void;
+  /** The picture on it. Without one the button carries its words instead. */
+  icon?: ChatIcon;
+  /** Words on the button. With an icon, the icon leads and these follow. */
+  text?: string;
+  variant?: "ghost" | "outline" | "secondary" | "default" | "destructive";
+  disabled?: boolean;
+  /** A switch rather than a button: the state is `aria-pressed`. */
+  pressed?: boolean;
+}
+
+/**
+ * One thing a host puts in the empty state, under the greeting, as data.
+ *
+ * `text` is a line of prose, `actions` a row of the same buttons the bar takes,
+ * and `element` a renderer registered by name through `registerElements()` from
+ * `agentak/components` — the one door left for a host that renders its own
+ * content, and the same registry a transcript `{ kind: "element" }` part goes
+ * through.
+ */
+export type ChatEmptyItem =
+  | { kind: "text"; text: string }
+  | { kind: "actions"; actions: ChatAction[] }
+  | { kind: "element"; name: string; props?: Record<string, unknown> };
 
 /** A message typed while the agent was working, waiting its turn. */
 export interface ChatQueueItem {

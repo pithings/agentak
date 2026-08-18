@@ -43,7 +43,7 @@ const REQUIRED = { type: null, required: true } as const;
 const PANEL_PROPS: Required<ComponentObjectPropsOptions<ChatPanelProps>> = {
   actions: null,
   autoFocus: FLAG,
-  emptyActions: null,
+  emptyItems: null,
   generateTitle: FLAG,
   linkBase: null,
   prompts: null,
@@ -57,7 +57,7 @@ const VIEW_PROPS: Required<ComponentObjectPropsOptions<ChatViewProps>> = {
   agent: null,
   autoFocus: FLAG,
   conversationId: null,
-  emptyActions: null,
+  emptyItems: null,
   error: null,
   history: null,
   historyOpen: FLAG,
@@ -163,9 +163,9 @@ function island<P extends ChatHostProps>(surface: Surface<P>, props: P) {
  * box the surface fills — so the page sizes the chat the way it sizes any other
  * component.
  *
- * The surface itself is preact, so `actions` and `emptyActions` are preact
- * children rather than slots — build them with `h()` from preact, or leave them
- * out.
+ * `actions` and `emptyItems` are plain objects rather than slots — the surface
+ * is preact and this app is not, so a host describes its own chrome and the
+ * chat draws it. See `ChatAction` and `ChatEmptyItem`.
  */
 export const ChatPanel = defineComponent((props: ChatPanelProps) => island(AgentChat, props), {
   name: "ChatPanel",

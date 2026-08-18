@@ -42,6 +42,49 @@
   flex: 1 1 auto;
 }
 
+/* The edge the rail is dragged by, along the border it is docked at. The rail
+   only: the sheet below `lg` is the whole screen, and a screen has no edge to
+   give — so it is drawn in the wide layout alone, and is out of the tab order
+   everywhere else, because `display: none` takes an element off the page.
+
+   Inside the panel, because the panel clips what it holds. Nothing is drawn at
+   rest: the border it lies on is the line, and the rail's own colour marks it
+   only once it is pointed at or taken. */
+.chat-resize {
+  position: absolute;
+  z-index: 1;
+  display: none;
+  inset: 0 auto 0 0;
+  width: 0.5rem;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: col-resize;
+  /* The drag is the browser's to give up: a rail is not scrolled sideways. */
+  touch-action: none;
+}
+
+.chat-resize::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 1px;
+  background: var(--brand);
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+
+.chat-resize:hover::before,
+.chat-resize:focus-visible::before,
+.chat-resizing .chat-resize::before {
+  opacity: 1;
+}
+
+.chat-resize:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
 /* The placeholder, which is the panel the server can draw: three hairlines at
    the chat's own measurements — the title bar's rule (`2rem` of buttons in
    `0.375rem` of padding), the rule the composer sits above, and the box a
@@ -229,6 +272,27 @@
     transform: none;
     transition: transform var(--chat-move) ease-out;
   }
+
+  .chat-resize {
+    display: block;
+  }
+}
+
+/* A rail under the pointer, for as long as the drag lasts. The width is written
+   frame by frame, so the transition that carries an open or a close would leave
+   the rail and the page it narrows 260ms behind the hand. And the pointer is
+   dragging a border, so nothing beside it is selected on the way.
+
+   Named against the open state rather than beside it: the rules above are
+   matched on specificity, and `is-open` is what holds the transition. */
+html.chat-resizing:has(.chat-panel.is-open),
+html.chat-resizing .chat-panel.is-open {
+  transition: none;
+}
+
+html.chat-resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 
 /* Each state is named again, so that the rules above are matched on specificity
@@ -241,7 +305,8 @@
   .chat-panel.is-open,
   .chat-panel.is-closed,
   .chat-button,
-  .chat-button.is-open {
+  .chat-button.is-open,
+  .chat-resize::before {
     transition: none;
   }
 

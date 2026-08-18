@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { closeAction } from "../chat-widget/close-action.ts";
 import { useChatAgent } from "../chat-widget/use-chat-agent.ts";
+import { useChatResize } from "../chat-widget/use-chat-resize.ts";
 import { useChatShell } from "../chat-widget/use-chat-shell.ts";
 
 /**
@@ -33,7 +34,9 @@ import { useChatShell } from "../chat-widget/use-chat-shell.ts";
  *
  * - **`lg` and up — a docked rail** on the right, full height, slid in from the
  *   edge by the button. It is chrome of the site rather than a dialog: the page
- *   gives up the room while it is open, so the rail covers nothing.
+ *   gives up the room while it is open, so the rail covers nothing. Its own
+ *   border is a handle: the reader drags the rail to the width they want it,
+ *   and that width is remembered with the state.
  * - **Below `lg` — a sheet** over the whole screen, opened by the button. A
  *   small screen has no room beside the page, so the chat takes all of it and
  *   the page holds still underneath. It grows out of the button: the morph is a
@@ -55,10 +58,23 @@ import { useChatShell } from "../chat-widget/use-chat-shell.ts";
 const panel = ref<HTMLElement>();
 const button = ref<HTMLButtonElement>();
 
-const { load, Panel, session, ui } = useChatAgent();
+const { load, Panel, session } = useChatAgent();
 const shell = useChatShell({ button, load, panel });
 const { open, state, toggle } = shell;
-const actions = closeAction(ui, shell);
+
+/**
+ * The rail's width, dragged by its own left border. A reader who reads code in
+ * the chat gives it more of the screen, and the width they left is what the
+ * next page is served into — see `chat-widget/use-chat-resize.ts`.
+ */
+const resize = useChatResize(panel);
+
+/**
+ * The collapse button the chat carries at the corner of its own title bar.
+ * Declared once, like the prompts below: a new array on every render would
+ * redraw the surface for it.
+ */
+const actions = closeAction(shell);
 
 /**
  * The one thing the empty chat offers to say. The site's own tools answer it on
@@ -74,6 +90,19 @@ const prompts = ["Summarize this page"];
   <!-- Rendered by the server, empty and folded away: the panel is on the page
        before the chat is, so nothing moves when the chat arrives. -->
   <section ref="panel" :class="['chat-panel', state]" :inert="!open" aria-label="Assistant">
+    <!-- The border of the rail, which is also what resizes it. A separator and
+         not a button: it divides the page from the chat, and the arrow keys
+         move it. It is drawn in the wide layout alone. -->
+    <div
+      class="chat-resize"
+      role="separator"
+      aria-label="Resize the assistant"
+      aria-orientation="vertical"
+      tabindex="0"
+      @keydown="resize.onKeydown"
+      @pointerdown="resize.onPointerDown"
+    ></div>
+
     <component
       :is="Panel"
       v-if="Panel && session"

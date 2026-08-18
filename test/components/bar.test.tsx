@@ -40,7 +40,6 @@ describe("ChatBar", () => {
   it("reads from both ends: what a click changes, then what the turns cost", () => {
     const { container } = render(
       bar({
-        actions: <button type="button">Collapse</button>,
         onToolPolicyChange: () => {},
         toolPolicy: "bypass",
         usage: { maxTokens: 200_000, usedTokens: 20_000 },
@@ -48,12 +47,13 @@ describe("ChatBar", () => {
     );
 
     const row = container.firstElementChild as HTMLElement;
+    // The row ends at the meter: the host's own chrome heads the surface with
+    // the title instead.
     expect([...row.children].map((el) => el.textContent)).toEqual([
       "GPT-5 (OpenAI)",
       "Bypass",
       "", // The gap that holds the two ends apart.
       "1010%20K / 200K", // The meter: the ring's own label, then the reading.
-      "Collapse",
     ]);
   });
 

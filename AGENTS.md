@@ -21,7 +21,9 @@ Chrome MV3 side panel. This is a pnpm workspace.
   framework entries must not import `@earendil-works/*`; only `agentak/pi` loads Pi.
 - A `session` is required. UI wrappers never dispose it; the creator owns disposal.
 - React and Vue wrappers own one outer element. Preact alone owns its children.
-  `actions` and `emptyActions` are Preact nodes even when the host is React or Vue.
+  No Preact node crosses the public boundary: hosts contribute with definitions —
+  `actions` (`ChatAction[]`), `emptyItems` (`ChatEmptyItem[]`) and `prompts`. The only
+  door for host rendering is `registerElements()` on `agentak/components`.
 - All dependencies stay external. Lazy Pi provider/catalog/Markdown imports must remain
   lazy for consumer bundlers and MV3.
 - The extension compiles library source through `@`, not `dist`.

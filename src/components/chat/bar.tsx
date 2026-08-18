@@ -1,6 +1,4 @@
 // Docs: @docs/3.widget.md
-import type { ComponentChildren } from "preact";
-
 import {
   Context,
   ContextCacheUsage,
@@ -70,18 +68,12 @@ export interface ChatBarProps extends ChatSettingsProps {
   toolPolicy?: ChatToolPolicy;
   /** The other half of it. Without it the state is read and not changed. */
   onToolPolicyChange?: (policy: ChatToolPolicy) => void;
-  /**
-   * Host buttons for the end of the row — collapse, minimise, whatever chrome
-   * the surface around the chat owns. They stay here on every page.
-   */
-  actions?: ComponentChildren;
   /** Merged over the bar's own box — `Chat` draws its seam with it. */
   style?: Sx;
 }
 
 /**
- * The chat's status row, under the composer: what is running, and the host's
- * own chrome.
+ * The chat's status row, under the composer: what is running.
  *
  * Which model answers and how much of its window is spent are readings and not
  * questions, so they sit under the field they apply to rather than in the title
@@ -92,12 +84,12 @@ export interface ChatBarProps extends ChatSettingsProps {
  * on and what a click changes: the model, which doubles as the way to the
  * settings page, and then whether a tool call is confirmed — one control each
  * for "what is running" and "change it". The trailing edge is what the turns so
- * far have cost, and then the host's own chrome: the meter is a number that
- * only grows, so it is read where a number is read rather than in front of the
- * controls it would push along as it widens.
+ * far have cost: the meter is a number that only grows, so it is read where a
+ * number is read rather than in front of the controls it would push along as it
+ * widens. Nothing of the host's is here — its own chrome heads the surface with
+ * the title; see `header.tsx`.
  */
 export function ChatBar({
-  actions,
   usage,
   style,
   toolPolicy,
@@ -165,8 +157,6 @@ export function ChatBar({
           </ContextContent>
         </Context>
       )}
-
-      {actions}
     </div>
   );
 }

@@ -47,7 +47,7 @@ type HostOwned =
   | "style"
   | "actions"
   | "autoFocus"
-  | "emptyActions"
+  | "emptyItems"
   | "prompts"
   | "linkBase";
 

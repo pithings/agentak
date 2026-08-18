@@ -1,46 +1,26 @@
-import { computed, type ShallowRef } from "vue";
-import type { ChatUi } from "./use-chat-agent.ts";
+import type { ChatAction } from "../../../src/index.ts";
 
 /**
  * The collapse button, on the chat's own status bar.
  *
  * The surface heads itself, so the site adds no second title bar: `actions`
- * goes at the end of the bar under the composer, after what that bar says is
- * running. It is a preact child, whatever renders the page around it — `Button`
- * is the one the buttons beside it use, so they match.
+ * goes at the corner of the chat's own title bar, after the buttons that change
+ * which conversation it is. It is a definition and not a node — the site is vue
+ * and the surface is preact, so the site says what its button is and the chat
+ * draws it with the buttons beside it.
  *
  * A workspace folding into its edge, not a cross: nothing is closed here and
  * nothing is lost — the chat is hidden and not unmounted, so the transcript is
- * there again on the way back. The geometry is lucide's `panel-right-close`,
- * drawn inline because the site loads the library for `Button` and `h` alone.
+ * there again on the way back. `panel-right-close` is that glyph, and the chat
+ * ships it under that name.
  */
-export function closeAction(ui: ShallowRef<ChatUi | undefined>, shell: { close: () => void }) {
-  return computed(() => {
-    if (!ui.value) return undefined;
-    const { Button, h } = ui.value;
-    return h(
-      Button as never,
-      {
-        "aria-label": "Collapse the assistant",
-        onClick: shell.close,
-        size: "icon-sm",
-        title: "Collapse",
-        variant: "ghost",
-      },
-      h(
-        "svg",
-        {
-          fill: "none",
-          stroke: "currentColor",
-          "stroke-linecap": "round",
-          "stroke-linejoin": "round",
-          "stroke-width": "2",
-          viewBox: "0 0 24 24",
-        },
-        h("rect", { height: "18", rx: "2", width: "18", x: "3", y: "3" }),
-        h("path", { d: "M15 3v18" }),
-        h("path", { d: "m8 9 3 3-3 3" }),
-      ),
-    );
-  });
+export function closeAction(shell: { close: () => void }): ChatAction[] {
+  return [
+    {
+      icon: "panel-right-close",
+      id: "close",
+      label: "Collapse the assistant",
+      onClick: shell.close,
+    },
+  ];
 }

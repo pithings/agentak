@@ -1,5 +1,5 @@
 // Docs: @docs/3.widget.md
-import type { ComponentChildren, RefObject } from "preact";
+import type { RefObject } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import {
@@ -17,7 +17,9 @@ import { ChatMessage, type ChatRespond } from "./chat/message.tsx";
 import { ChatQueue } from "./chat/queue.tsx";
 import { ChatSettings } from "./chat/settings.tsx";
 import type {
+  ChatAction,
   ChatAgent,
+  ChatEmptyItem,
   ChatPrompt,
   ChatQueueItem,
   ChatToolPolicy,
@@ -33,7 +35,10 @@ import { reset, u } from "../styles/base.ts";
 import { sx, type Sx } from "../styles/sx.ts";
 
 export type {
+  ChatAction,
   ChatAgent,
+  ChatEmptyItem,
+  ChatIcon,
   ChatHistoryEntry,
   ChatModel,
   ChatPrompt,
@@ -200,15 +205,20 @@ export interface ChatProps extends ChatComposerProps, ChatHistoryProps {
   /** Ask before a tool runs, or let them run. Pairs with `toolPolicy`. */
   onToolPolicyChange?: (policy: ChatToolPolicy) => void;
   /**
-   * Host buttons for the end of the bar under the composer — minimise, switch,
-   * whatever chrome the page around the chat owns. One row of it, not two.
+   * Host buttons for the trailing end of the title bar — minimise, switch,
+   * whatever chrome the page around the chat owns. One row of it, not two, and
+   * the same row on every page.
+   *
+   * Definitions and not nodes, so a host in any framework — or none — describes
+   * its chrome and the surface draws it: see `ChatAction`.
    */
-  actions?: ComponentChildren;
+  actions?: ChatAction[];
   /**
-   * Host content for the empty state — a suggestion, a launcher. It goes under
-   * the greeting, and only before the first message.
+   * Host content for the empty state — a note, a launcher. It goes under the
+   * greeting, and only before the first message. Definitions again, on the same
+   * terms: see `ChatEmptyItem`.
    */
-  emptyActions?: ComponentChildren;
+  emptyItems?: ChatEmptyItem[];
   /**
    * Messages the empty state offers as a way in, one button each. A click sends
    * one, so a chat that has never been used still has something to say in it.
@@ -245,7 +255,7 @@ export function Chat({
   toolPolicy,
   onToolPolicyChange,
   actions,
-  emptyActions,
+  emptyItems,
   prompts,
   pickerOpen,
   onPickerOpenChange,
@@ -292,6 +302,10 @@ export function Chat({
     if (open) setSettingsOpen(false);
     setHistoryOpen(open);
   };
+
+  // There are providers and none is picked, so nothing can answer yet: the
+  // empty state offers the way to the settings page before anything else there.
+  const unset = Boolean(composer.providers?.length) && !composer.providerId;
 
   // Starting a conversation and opening a stored one both end with a transcript
   // and nothing to do but say something, so both hand the focus to the composer.
@@ -344,6 +358,7 @@ export function Chat({
     <LinkBase.Provider value={linkBase}>
       <div className={className} ref={surfaceRef} style={sx(S.chat, style)}>
         <ChatHeader
+          actions={actions}
           onBack={
             settingsOpen || historyOpen
               ? () => {
@@ -393,15 +408,17 @@ export function Chat({
                 <ChatEmpty
                   agent={agent}
                   history={history}
+                  items={emptyItems}
                   onOpenConversation={openConversation}
                   // Sent as the composer sends one: the transcript is what is on
                   // screen here, so there is no page to close first.
                   onPrompt={composer.onSend}
                   onShowHistory={history?.length ? () => showHistory(true) : undefined}
+                  // Nothing can answer yet: the first message would only open
+                  // the settings page, so the empty state says so first.
+                  onPickModel={unset ? () => showSettings(true) : undefined}
                   prompts={prompts}
-                >
-                  {emptyActions}
-                </ChatEmpty>
+                />
               ) : (
                 messages.map((message) => (
                   <ChatMessage
@@ -476,7 +493,6 @@ export function Chat({
 
           <ChatBar
             {...composer}
-            actions={actions}
             // The trigger is a toggle here: it names the model on the way to the
             // page, and closes the page it opened.
             onPickerOpenChange={showSettings}

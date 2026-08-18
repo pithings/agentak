@@ -4,6 +4,10 @@
 // from anything. The built-in loop is `agentak/pi` — `createPiSession()` — and a
 // host mounts the surface with `mountChat()`, or with preact's `render` itself.
 export { Chat, type ChatProps } from "./components/chat.tsx";
+// What a host contributes to the surface, as data: one button of its own on the
+// status bar, and its own content in the empty state. No preact node crosses the
+// boundary — see `.agents/components.md`.
+export type { ChatAction, ChatEmptyItem, ChatIcon, ChatPrompt } from "./components/chat/types.ts";
 export { AgentChat, type AgentChatProps } from "./agent-chat.tsx";
 // One call for a page with no framework: the tokens, the box, the surface.
 export { type ChatMount, mountChat, type MountChatOptions } from "./wrap.ts";

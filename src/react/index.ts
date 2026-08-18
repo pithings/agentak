@@ -78,8 +78,9 @@ function useIsland<P extends ChatHostProps>(surface: Surface<P>, props: P) {
  *
  * Whoever made the session ends it — this component never does.
  *
- * `actions` and `emptyActions` are preact children, not react ones — build them
- * with `h()` from preact, or leave them out.
+ * `actions` and `emptyItems` are plain objects, not react children — a host
+ * describes its own chrome and the surface draws it. See `ChatAction` and
+ * `ChatEmptyItem`.
  */
 export function ChatPanel(props: ChatPanelProps): ReactElement {
   const host = useIsland(AgentChat, props);
