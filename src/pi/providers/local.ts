@@ -182,6 +182,18 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         tools: true,
       },
       {
+        id: "qwen2.5-coder-1.5b",
+        name: "Qwen2.5 Coder 1.5B",
+        repo: "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF",
+        file: "qwen2.5-coder-1.5b-instruct-q6_k.gguf",
+        size: "1.5 GB",
+        context: 8_192,
+        maxTokens: 2_048,
+        // Written for code, and small, so it is a Q6_K like the 2B. It does not
+        // think: the turn is the answer alone.
+        tools: true,
+      },
+      {
         id: WLLAMA_MODEL_ID,
         name: "Qwen3.5 2B",
         repo: "unsloth/Qwen3.5-2B-GGUF",
