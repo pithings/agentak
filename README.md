@@ -5,14 +5,16 @@
 <h1 align="center">Agentak</h1>
 
 <p align="center">
-  Add an AI chat to any web page with one component.
+  Add browser-native AI chat and WebMCP tools to any web page.
 </p>
 
 Agentak provides a complete chat UI for React, Vue, Preact, and plain JavaScript. Use the
-included Pi agent or connect the UI to your own agent.
+included Pi agent, let it discover tools published by the page through WebMCP, or connect
+the UI to your own agent.
 
 - Streams answers and renders Markdown and code blocks
-- Supports tool calls, approvals, queued messages, and conversation restore
+- Discovers WebMCP tools from the page and follows tool changes
+- Supports typed host tools, approvals, queued messages, and conversation restore
 - Includes provider, model, thinking level, and API key controls
 - Works with 8 AI providers, including free options that need no API key
 - Uses inline styles, with light and dark themes
@@ -33,7 +35,7 @@ npx nypm i agentak
   import { mountChat } from "https://esm.sh/agentak";
   import { createPiSession } from "https://esm.sh/agentak/pi";
 
-  const session = createPiSession();
+  const session = createPiSession({ page: true });
   mountChat("#chat", { session });
 </script>
 ```
@@ -45,8 +47,8 @@ host stores them in `localStorage`, they are encrypted with a non-extractable We
 
 ## Side panel
 
-The repository also builds a Chrome side panel over the same UI. It adds one tool of its
-own: the agent can read the text of the page you are looking at.
+The repository also builds a Chrome side panel over the same UI. It can read the active
+page and discover the WebMCP tools that page publishes on `document.modelContext`.
 
 ```sh
 pnpm build:extension
@@ -59,8 +61,9 @@ Click the toolbar button to open the panel.
 
 1. [Getting started](https://agentak.dev/getting-started)
 2. [Chat components](https://agentak.dev/chat-components)
-3. [Pi agent](https://agentak.dev/pi-agent)
-4. [Save conversations](https://agentak.dev/conversations)
-5. [Custom agents](https://agentak.dev/custom-agents)
+3. [Pi agent](https://agentak.dev/agents/pi-agent)
+4. [WebMCP page tools](https://agentak.dev/agents/pi-agent/webmcp)
+5. [Save conversations](https://agentak.dev/agents/pi-agent/conversations)
+6. [Custom agents](https://agentak.dev/agents/custom-agents)
 
 The documentation includes setup examples for React, Vue, Preact, and plain JavaScript.

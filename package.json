@@ -1,7 +1,7 @@
 {
   "name": "agentak",
   "version": "0.0.0",
-  "description": "Standalone agent chat surface + Chrome extension",
+  "description": "Browser-native AI chat with WebMCP page tools and a Chrome side panel",
   "license": "MIT",
   "files": [
     "dist"

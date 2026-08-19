@@ -1,8 +1,8 @@
 # yaml-language-server: $schema=https://unpkg.com/undocs/schema/config.json
 
 name: "Agentak"
-shortDescription: "A complete AI chat widget that runs in the browser."
-description: "Embed a streaming AI chat with an in-browser Pi agent, provider settings, tools, and conversation history."
+shortDescription: "Browser-native AI chat with WebMCP page tools."
+description: "Embed browser-native AI chat with direct or on-device models. Agentak discovers WebMCP page tools and includes a Chrome side-panel agent."
 github: "pithings/agentak"
 themeColor: cyan
 url: "https://agentak.dev"
@@ -22,17 +22,22 @@ redirects:
   "/conversations": "/agents/pi-agent/conversations"
 
 landing:
-  title: "Agentak — browser-native AI chat"
-  description: "Add a complete AI chat to any web page. The widget and Pi agent loop run client-side, with direct providers and on-device models."
+  title: "Agentak — browser-native AI chat with WebMCP"
+  description: "Add a browser-native AI agent to any page. Use direct or on-device models, typed tools, and tools published by the page through WebMCP."
   heroTitle: "Agentak"
-  heroSubtitle: "AI chat, in your browser."
-  heroDescription: "Drop a complete chat widget into any page. The UI, Pi agent loop, settings, tools, and history run client-side—use an on-device model or connect directly to an AI provider."
+  heroSubtitle: "AI chat that works with your page."
+  heroDescription: "Embed a complete browser-native agent. It can use direct or on-device models, call your typed tools, and discover actions that the page publishes through WebMCP."
   heroLinks:
+    webmcp:
+      label: "Explore WebMCP"
+      icon: "system-uicons:browser"
+      to: "/agents/pi-agent/webmcp"
+      order: 10
     chrome:
       label: "Chrome Extension"
       icon: "i-reicon-chrome"
       to: "/extension"
-      order: 10
+      order: 20
   heroCode:
     title: "browser.ts"
     lang: "ts"
@@ -40,7 +45,10 @@ landing:
       import { mountChat } from "agentak";
       import { createPiSession } from "agentak/pi";
 
-      const session = createPiSession({ history: true });
+      const session = createPiSession({
+        history: true,
+        page: true, // discover this page's WebMCP tools
+      });
       mountChat("#chat", { session });
   featuresTitle: "Everything a browser agent needs"
   features:
@@ -56,9 +64,9 @@ landing:
     - title: "Complete chat UX"
       icon: "i-lucide-message-square"
       description: "Markdown, code, thinking, tool output, queues, retry, copy, read aloud, slash commands, and mobile keyboard support."
-    - title: "Tools from the page"
+    - title: "WebMCP page tools"
       icon: "i-lucide-wrench"
-      description: "Add typed Pi tools or let the agent discover WebMCP tools published by the current document."
+      description: "Turn on one option to discover structured tools from document.modelContext and keep the tool list current as the page changes."
     - title: "Your framework or none"
       icon: "i-lucide-blocks"
       description: "Use React, Vue, Preact, plain JavaScript, or connect the UI to a custom agent through ChatSession."
