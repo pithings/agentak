@@ -1,6 +1,6 @@
-// Docs: @docs/4.agents/2.pi-agent/1.index.md
-// Docs: @docs/4.agents/2.pi-agent/7.conversations.md
-// Docs: @docs/4.agents/2.pi-agent/8.runtime-behavior.md
+// Docs: @docs/4.agents/2.pi/1.index.md
+// Docs: @docs/4.agents/2.pi/7.conversations.md
+// Docs: @docs/4.agents/2.pi/8.runtime-behavior.md
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { clampThinkingLevel, getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 

@@ -1,4 +1,4 @@
-// Docs: @docs/4.agents/3.custom-agents.md
+// Docs: @docs/4.agents/3.custom.md
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import type { ChatProps, ChatThinkingLevel, ChatToolPolicy } from "./components/chat.tsx";

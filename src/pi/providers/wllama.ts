@@ -1,4 +1,4 @@
-// Docs: @docs/4.agents/2.pi-agent/3.on-device-models.md
+// Docs: @docs/4.agents/2.pi/3.on-device-models.md
 /**
  * The `wllama` api: llama.cpp compiled to WebAssembly, spoken the way pi speaks
  * to a provider. Loaded only when a local model is picked, like every other api

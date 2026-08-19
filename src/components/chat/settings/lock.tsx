@@ -1,5 +1,5 @@
 // Docs: @docs/3.widget.md
-// Docs: @docs/4.agents/2.pi-agent/2.providers-and-models.md
+// Docs: @docs/4.agents/2.pi/2.providers-and-models.md
 import type { ChatKeyLock } from "../types.ts";
 import { S, SettingsSection } from "./section.tsx";
 import { Button } from "../../ui/button.tsx";

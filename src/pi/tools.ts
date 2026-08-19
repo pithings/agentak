@@ -1,4 +1,4 @@
-// Docs: @docs/4.agents/2.pi-agent/5.webmcp.md
+// Docs: @docs/4.agents/2.pi/5.webmcp.md
 /**
  * The page's tools, as pi takes them.
  *

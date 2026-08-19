@@ -61,9 +61,9 @@ Click the toolbar button to open the panel.
 
 1. [Getting started](https://agentak.dev/getting-started)
 2. [Chat components](https://agentak.dev/chat-components)
-3. [Pi agent](https://agentak.dev/agents/pi-agent)
-4. [WebMCP page tools](https://agentak.dev/agents/pi-agent/webmcp)
-5. [Save conversations](https://agentak.dev/agents/pi-agent/conversations)
-6. [Custom agents](https://agentak.dev/agents/custom-agents)
+3. [Pi agent](https://agentak.dev/agents/pi)
+4. [WebMCP page tools](https://agentak.dev/agents/pi/webmcp)
+5. [Save conversations](https://agentak.dev/agents/pi/conversations)
+6. [Custom agents](https://agentak.dev/agents/custom)
 
 The documentation includes setup examples for React, Vue, Preact, and plain JavaScript.

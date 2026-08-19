@@ -1,4 +1,4 @@
-// Docs: @docs/4.agents/2.pi-agent/6.storage-and-api-keys.md
+// Docs: @docs/4.agents/2.pi/6.storage-and-api-keys.md
 import {
   encryptedStorage,
   type SecretStorage,

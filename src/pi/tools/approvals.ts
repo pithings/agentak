@@ -1,4 +1,4 @@
-// Docs: @docs/4.agents/2.pi-agent/4.tools-and-approvals.md
+// Docs: @docs/4.agents/2.pi/4.tools-and-approvals.md
 import type { BeforeToolCallContext, BeforeToolCallResult } from "@earendil-works/pi-agent-core";
 
 import type { ToolApproval } from "../../types.ts";

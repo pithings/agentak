@@ -1,5 +1,5 @@
-// Docs: @docs/4.agents/2.pi-agent/1.index.md
-// Docs: @docs/4.agents/2.pi-agent/9.advanced-api.md
+// Docs: @docs/4.agents/2.pi/1.index.md
+// Docs: @docs/4.agents/2.pi/9.advanced-api.md
 // The pi-agent-core loop, under the `agentak/pi` subpath — the one entry that
 // pulls pi in. `createPiSession` is what `AgentChat` runs on; the rest is for a
 // host that wants the loop under a surface of its own.

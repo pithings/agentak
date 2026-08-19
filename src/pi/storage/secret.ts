@@ -1,4 +1,4 @@
-// Docs: @docs/4.agents/2.pi-agent/6.storage-and-api-keys.md
+// Docs: @docs/4.agents/2.pi/6.storage-and-api-keys.md
 /**
  * The secrets in a store, sealed — so what `localStorage` holds is ciphertext
  * and what it is read with is a key no script can copy out.

@@ -1,5 +1,5 @@
 // Docs: @docs/7.extension.md
-// Docs: @docs/4.agents/2.pi-agent/3.on-device-models.md
+// Docs: @docs/4.agents/2.pi/3.on-device-models.md
 /**
  * The worker wllama asked for, started from a file instead of a `blob:` url.
  *

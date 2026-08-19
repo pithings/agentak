@@ -1,5 +1,5 @@
 // Docs: @docs/3.widget.md
-// Docs: @docs/4.agents/2.pi-agent/7.conversations.md
+// Docs: @docs/4.agents/2.pi/7.conversations.md
 import type { ComponentChildren } from "preact";
 
 import type { ChatHistoryEntry } from "./types.ts";

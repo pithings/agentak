@@ -1,4 +1,4 @@
-// Docs: @docs/4.agents/2.pi-agent/2.providers-and-models.md
+// Docs: @docs/4.agents/2.pi/2.providers-and-models.md
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { Api, AssistantMessageEventStream, FetchFunction, Model } from "@earendil-works/pi-ai";
 

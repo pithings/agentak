@@ -1,4 +1,4 @@
-// Docs: @docs/4.agents/2.pi-agent/7.conversations.md
+// Docs: @docs/4.agents/2.pi/7.conversations.md
 import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
 
 /**
