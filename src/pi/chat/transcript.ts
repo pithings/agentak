@@ -5,6 +5,7 @@ import type { ImageContent, TextContent, Usage } from "@earendil-works/pi-ai";
 
 import type { ApprovalRequest } from "../tools/approvals.ts";
 import { describeFailure } from "./errors.ts";
+import { splitProgress } from "../../lib/progress.ts";
 import type { PageToolDetails } from "../tools.ts";
 import type { AnyModel } from "../providers.ts";
 import type { ContextCosts } from "../../components/ai-elements/context.tsx";
@@ -45,6 +46,22 @@ const imageParts = (content: string | (TextContent | ImageContent)[]): ViewPart[
           name: "image",
           props: { base64: block.data, mediaType: block.mimeType, alt: "Tool output" },
         }));
+
+/**
+ * The words of one block, with any `::progress{…}` marker in them drawn as a
+ * bar instead — see `lib/progress.ts`. A block without a marker, which is
+ * almost every block, keeps the one part it always had.
+ */
+const wordParts = (kind: "text" | "thinking", text: string): ViewPart[] => {
+  const segments = splitProgress(text);
+  if (!segments) return text ? [{ kind, text }] : [];
+
+  return segments.map((segment) =>
+    segment.kind === "text"
+      ? { kind, text: segment.text }
+      : { kind: "element" as const, name: "progress", props: { ...segment.props } },
+  );
+};
 
 const userParts = (content: string | (TextContent | ImageContent)[]): ViewPart[] => {
   const text = textOf(content);
@@ -90,9 +107,9 @@ export function toViewMessages(
 
         for (const block of message.content) {
           if (block.type === "text") {
-            if (block.text) parts.push({ kind: "text", text: block.text });
+            parts.push(...wordParts("text", block.text));
           } else if (block.type === "thinking") {
-            parts.push({ kind: "thinking", text: block.redacted ? REDACTED : block.thinking });
+            parts.push(...wordParts("thinking", block.redacted ? REDACTED : block.thinking));
           } else {
             const part: ViewToolPart = {
               kind: "tool",

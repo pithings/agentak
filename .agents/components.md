@@ -42,3 +42,7 @@ Read this before UI work, then the relevant focused file:
 `src/components/index.ts` exports every included component. `src/index.ts` exports only
 the chat shell. Register a renderer in `components/elements.tsx` only when Pi or a tool can
 actually emit it; registration adds it to every chat bundle.
+
+`progress` is registered because a provider can write a `::progress{…}` marker into the
+words of a turn — `lib/progress.ts` parses it, `toViewMessages()` swaps it for the element
+part. Only the four fields the bar reads cross over; the words come from a model.

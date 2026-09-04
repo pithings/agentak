@@ -149,6 +149,13 @@ const local = (spec: Spec): LocalModel => ({
  * distilled while quantized rather than cut down afterwards, so it answers at
  * about 97% of what the full weights do while weighing what a Q4 weighs. Where
  * one exists it is taken, and the row costs a quarter of the download.
+ *
+ * The window is the other half of the heap, and it is not the same price for
+ * every row. A hybrid keeps attention in a few of its layers and a cheap state
+ * in the rest — LFM2.5 puts a convolution there, Qwen3.5 a linear attention —
+ * so a token of its KV cache costs 12 to 32 KiB. Granite has attention in all
+ * forty of its layers and pays 80. Each window below is the largest that
+ * leaves the weights and the cache inside about 2.6 GiB together.
  */
 export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
   (
@@ -159,7 +166,7 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         repo: "LiquidAI/LFM2.5-230M-GGUF",
         file: "LFM2.5-230M-QAD-Q4_0.gguf",
         size: "149 MB",
-        context: 4_096,
+        context: 32_768,
         maxTokens: 1_024,
         // The smallest row there is. It routes a call and reads a page; it is
         // not asked to reason about either.
@@ -171,7 +178,7 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         repo: "LiquidAI/LFM2.5-350M-GGUF",
         file: "LFM2.5-350M-QAD-Q4_0.gguf",
         size: "219 MB",
-        context: 4_096,
+        context: 32_768,
         maxTokens: 1_024,
         // Tool use and structured output are what it is for. Not programming.
         tools: true,
@@ -182,7 +189,7 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         repo: "unsloth/Qwen3.5-0.8B-GGUF",
         file: "Qwen3.5-0.8B-Q4_K_M.gguf",
         size: "533 MB",
-        context: 8_192,
+        context: 32_768,
         maxTokens: 2_048,
         reasoning: true,
         tools: true,
@@ -193,7 +200,7 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         repo: "openbmb/MiniCPM5-1B-GGUF",
         file: "MiniCPM5-1B-Q4_K_M.gguf",
         size: "688 MB",
-        context: 8_192,
+        context: 16_384,
         maxTokens: 2_048,
         reasoning: true,
         tools: true,
@@ -204,7 +211,7 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         repo: "LiquidAI/LFM2.5-1.2B-Instruct-GGUF",
         file: "LFM2.5-1.2B-Instruct-QAD-Q4_0.gguf",
         size: "696 MB",
-        context: 8_192,
+        context: 32_768,
         maxTokens: 2_048,
         // It calls a tool better than models twice its weight, and under 1 GB.
         // It does not think: the turn is the answer alone.
@@ -228,7 +235,7 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         repo: "LiquidAI/LFM2.5-2.6B-GGUF",
         file: "LFM2.5-2.6B-QAD-Q4_0.gguf",
         size: "1.6 GB",
-        context: 8_192,
+        context: 32_768,
         maxTokens: 2_048,
         // The best tool caller here, and a Q4 rather than the Q2 the 4B is cut
         // to. It does not think, which is what makes the call arrive at once.
@@ -240,7 +247,7 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         repo: "unsloth/Qwen3.5-2B-GGUF",
         file: "Qwen3.5-2B-Q6_K.gguf",
         size: "1.6 GB",
-        context: 8_192,
+        context: 32_768,
         maxTokens: 2_048,
         reasoning: true,
         tools: true,
@@ -251,9 +258,9 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         repo: "unsloth/Qwen3.5-4B-GGUF",
         file: "Qwen3.5-4B-UD-Q2_K_XL.gguf",
         size: "1.9 GB",
-        // Its KV cache shares the heap with 1.9 GB of weights, so the window
-        // is half of what the 2B is loaded with.
-        context: 4_096,
+        // Its KV cache costs 32 KiB a token against the 2B's 12, and shares
+        // the heap with 1.9 GB of weights, so the window is the shorter one.
+        context: 16_384,
         maxTokens: 2_048,
         reasoning: true,
         tools: true,
@@ -264,10 +271,11 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         repo: "ibm-granite/granite-4.1-3b-GGUF",
         file: "granite-4.1-3b-Q4_K_S.gguf",
         size: "2.0 GB",
-        // The largest file that still fits under the 2 GB a single gguf may be,
-        // so the window is the small one. A plain transformer that answers a
-        // tool in json, and does not think.
-        context: 4_096,
+        // The only row with attention in every layer, so its KV cache costs
+        // 80 KiB a token — five times what the hybrids ask — and the window is
+        // the shortest here. A plain transformer that answers a tool in json,
+        // and does not think.
+        context: 8_192,
         maxTokens: 2_048,
         tools: true,
       },

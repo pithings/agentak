@@ -35,12 +35,16 @@ import {
   promptApi,
   type PromptTurn,
 } from "./on-device.ts";
+import { progressMarker } from "../../lib/progress.ts";
 
 /** Chrome's own default. Sent only to complete the pair a temperature needs. */
 const DEFAULT_TOP_K = 3;
 
 /** How often the download is asked how far it has come. */
 const PROGRESS_MS = 500;
+
+/** The bar the download draws — one id, so every tick updates the same one. */
+const DOWNLOADING = "model-download";
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -223,23 +227,41 @@ async function* run(
     // The weights are ~4 GB and arrive once, on the first `create()`. Nothing
     // else in the protocol carries work that is not the answer, so it is told
     // as thinking — which the chat shows and this module never sends back.
+    //
+    // A stream only appends, so the download is a marker per tick and the chat
+    // draws one bar — see `lib/progress.ts`. The label is written once; the
+    // ticks after it carry the reading alone.
     if (availability !== "available") {
       const note: ThinkingContent = { type: "thinking", thinking: "" };
       const index = output.content.push(note) - 1;
       yield { type: "thinking_start", contentIndex: index, partial: output };
 
       let shown = -1;
+      const tell = function* (percent: number) {
+        const first = shown < 0;
+        const marker = progressMarker(
+          first
+            ? {
+                id: DOWNLOADING,
+                value: percent,
+                label: "Downloading Gemini Nano, about 4 GB. Once.",
+              }
+            : { id: DOWNLOADING, value: percent },
+        );
+        const delta = first ? marker : `\n${marker}`;
+        note.thinking += delta;
+        shown = percent;
+        yield { type: "thinking_delta" as const, contentIndex: index, delta, partial: output };
+      };
+
       while (!settled) {
         const percent = Math.round(loaded * 100);
-        if (percent !== shown) {
-          const delta =
-            shown < 0 ? `Downloading Gemini Nano, about 4 GB. Once.\n${percent}%` : ` ${percent}%`;
-          note.thinking += delta;
-          shown = percent;
-          yield { type: "thinking_delta", contentIndex: index, delta, partial: output };
-        }
+        if (percent !== shown) yield* tell(percent);
         await Promise.race([quiet, wait(PROGRESS_MS)]);
       }
+      // The last tick a timer saw was short of the end. The bar rests full —
+      // unless nothing was ever told, and there is no bar to fill.
+      if (shown >= 0 && shown < 100) yield* tell(100);
 
       yield { type: "thinking_end", contentIndex: index, content: note.thinking, partial: output };
     }

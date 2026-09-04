@@ -42,6 +42,8 @@ interface Fake {
   chunks: Chunk[];
   /** Thrown by `loadModelFromUrl`, so a failed load can be told. */
   failure?: unknown;
+  /** Awaited inside `loadModelFromUrl`, so a slow download can be told. */
+  hold?: Promise<void>;
   loaded: { url: string; params: Record<string, any> }[];
   calls: Record<string, any>[];
   exited: number;
@@ -57,6 +59,7 @@ const stub = (over: Partial<Fake> = {}): Fake => {
           async loadModelFromUrl(url: string, params: Record<string, any>) {
             fake.loaded.push({ url, params });
             params.progressCallback?.({ loaded: 50, total: 100 });
+            if (fake.hold) await fake.hold;
             if (fake.failure) throw fake.failure;
           }
           async createChatCompletion(options: Record<string, any>) {
@@ -309,6 +312,34 @@ describe("streamSimple", () => {
       "text_end",
       "done",
     ]);
+  });
+
+  it("tells a download as a bar, not as a trail of percentages", async () => {
+    let arrived = () => {};
+    const weights = new Promise<void>((resolve) => (arrived = resolve));
+    stub({
+      chunks: [text("Hello"), { choices: [{ delta: {}, finish_reason: "stop" }] }],
+      hold: weights,
+    });
+
+    vi.useFakeTimers();
+    try {
+      const collecting = collect({ messages: [user("hello")] });
+      // Past the first tick, which reads the half the callback reported.
+      await vi.advanceTimersByTimeAsync(600);
+      arrived();
+      await vi.advanceTimersByTimeAsync(600);
+
+      const events = await collecting;
+      const told = events.find((event) => event.type === "thinking_end");
+      const spec = WLLAMA_MODELS[WLLAMA_MODEL_ID];
+      expect(told?.content.split("\n")).toEqual([
+        `::progress{id="model-load" value="50" label="Loading ${spec.name}, ${spec.size}. Once."}`,
+        '::progress{id="model-load" value="100"}',
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("gathers a streamed tool call into one block", async () => {

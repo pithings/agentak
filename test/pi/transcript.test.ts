@@ -48,6 +48,39 @@ describe("toViewMessages", () => {
     expect(view[1].parts.map((part) => part.kind)).toEqual(["thinking", "text", "tool"]);
   });
 
+  it("draws a progress marker as a bar instead of the words it was written in", () => {
+    const view = toViewMessages([
+      assistant([
+        {
+          type: "thinking",
+          thinking: [
+            '::progress{id="model-load" value="0" label="Loading Granite 4.1 3B, 2.0 GB. Once."}',
+            '::progress{id="model-load" value="40"}',
+            '::progress{id="model-load" value="100"}',
+          ].join("\n"),
+        },
+        { type: "text", text: "Ready." },
+      ]),
+    ]);
+
+    expect(view[0].parts).toEqual([
+      {
+        kind: "element",
+        name: "progress",
+        props: { value: 100, label: "Loading Granite 4.1 3B, 2.0 GB. Once." },
+      },
+      { kind: "text", text: "Ready." },
+    ]);
+  });
+
+  it("keeps the words a marker sits between", () => {
+    const view = toViewMessages([
+      assistant([{ type: "text", text: "one moment\n\n::progress{value=50}\n\nthere" }]),
+    ]);
+
+    expect(view[0].parts.map((part) => part.kind)).toEqual(["text", "element", "text"]);
+  });
+
   it("fills the call a tool result answers, rather than adding a part", () => {
     const part = toolPart([
       assistant([{ type: "toolCall", id: "call-1", name: "lookup", arguments: {} }]),

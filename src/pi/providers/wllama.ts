@@ -31,9 +31,13 @@ import type {
 } from "@earendil-works/pi-ai";
 
 import { findLocalModel, loadWllamaModule, type LocalModel, wllamaWasmUrl } from "./local.ts";
+import { progressMarker } from "../../lib/progress.ts";
 
 /** How often the download is asked how far it has come. */
 const PROGRESS_MS = 500;
+
+/** The bar the download draws — one id, so every tick updates the same one. */
+const LOADING = "model-load";
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -369,28 +373,48 @@ async function* run(
     // work that is not the answer, so it is told as thinking — which the chat
     // shows and this module never sends back. A model already in memory is
     // ready inside the first tick, and says nothing at all.
+    //
+    // A stream only appends, so the download is a marker per tick and the chat
+    // draws one bar — see `lib/progress.ts`. The label is written once; the
+    // ticks after it carry the reading alone.
     const note: ThinkingContent = { type: "thinking", thinking: "" };
     let told = false;
     let shown = -1;
+
+    const tell = function* (percent: number) {
+      const first = !told;
+      if (first) {
+        told = true;
+        output.content.push(note);
+        yield { type: "thinking_start" as const, contentIndex: indexOf(note), partial: output };
+      }
+      const marker = progressMarker(
+        first
+          ? { id: LOADING, value: percent, label: `Loading ${spec.name}, ${spec.size}. Once.` }
+          : { id: LOADING, value: percent },
+      );
+      const delta = first ? marker : `\n${marker}`;
+      note.thinking += delta;
+      shown = percent;
+      yield {
+        type: "thinking_delta" as const,
+        contentIndex: indexOf(note),
+        delta,
+        partial: output,
+      };
+    };
+
     while (!settled) {
       await Promise.race([quiet, wait(PROGRESS_MS)]);
       if (settled) break;
 
       const percent = Math.round(fraction * 100);
       if (told && percent === shown) continue;
-
-      if (!told) {
-        told = true;
-        output.content.push(note);
-        yield { type: "thinking_start", contentIndex: indexOf(note), partial: output };
-      }
-      const delta =
-        shown < 0 ? `Loading ${spec.name}, ${spec.size}. Once.\n${percent}%` : ` ${percent}%`;
-      note.thinking += delta;
-      shown = percent;
-      yield { type: "thinking_delta", contentIndex: indexOf(note), delta, partial: output };
+      yield* tell(percent);
     }
     if (told) {
+      // The last tick a timer saw was short of the end. The bar rests full.
+      if (shown < 100) yield* tell(100);
       const contentIndex = indexOf(note);
       yield { type: "thinking_end", contentIndex, content: note.thinking, partial: output };
     }

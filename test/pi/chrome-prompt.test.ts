@@ -182,8 +182,11 @@ describe("streamSimple", () => {
     expect(kinds).toContain("thinking_end");
     expect(kinds.at(-1)).toBe("done");
 
+    // A bar, not a trail of percentages — see `lib/progress.ts`.
     const first = events.find((event) => event.type === "thinking_delta");
-    expect(first && "delta" in first && first.delta).toContain("Downloading Gemini Nano");
+    expect(first && "delta" in first && first.delta).toBe(
+      '::progress{id="model-download" value="50" label="Downloading Gemini Nano, about 4 GB. Once."}',
+    );
     expect(fake.prompts).toEqual(["hello"]);
   });
 

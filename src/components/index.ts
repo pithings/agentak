@@ -18,6 +18,7 @@ export * from "./ui/dropdown-menu.tsx";
 export * from "./ui/input.tsx";
 export * from "./ui/input-group.tsx";
 export * from "./ui/popover.tsx";
+export * from "./ui/progress.tsx";
 export * from "./ui/scroll-area.tsx";
 export * from "./ui/separator.tsx";
 export * from "./ui/spinner.tsx";

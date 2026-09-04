@@ -27,8 +27,9 @@ already covered by a gateway without a product reason.
   unavailable on phones, and needs a host-supplied source under MV3.
 - wllama tool-call tags can split across chunks. Preserve its incremental parser and
   provider-shaped call IDs.
-- Chrome Prompt download progress is represented as thinking; a destroyed session must be
-  closed.
+- Chrome Prompt and wllama report their one-time download as thinking carrying
+  `::progress{…}` markers, which the transcript draws as one bar — see `lib/progress.ts`.
+  A destroyed Chrome Prompt session must be closed.
 
 ## Tools and approval
 

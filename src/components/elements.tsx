@@ -3,6 +3,7 @@ import type { ComponentChildren } from "preact";
 
 import { Checkpoint, CheckpointIcon, CheckpointTrigger } from "./ai-elements/checkpoint.tsx";
 import { Image } from "./ai-elements/image.tsx";
+import { Progress } from "./ui/progress.tsx";
 
 /**
  * Renderers for `{ kind: "element" }` transcript parts, by name.
@@ -10,8 +11,9 @@ import { Image } from "./ai-elements/image.tsx";
  * Props are unchecked at the call site — a transcript carries plain data, so
  * the cast happens once, here.
  *
- * Only the two names `toViewMessages()` can produce are registered: `image` for
- * `ImageContent`, `checkpoint` for a compaction or branch summary. A renderer
+ * Only the three names `toViewMessages()` can produce are registered: `image`
+ * for `ImageContent`, `checkpoint` for a compaction or branch summary, and
+ * `progress` for a `::progress{…}` marker in the words of a turn. A renderer
  * reaches the chat bundle by being listed here, so registering an element no
  * source emits costs every host its bytes — the nine-name map cost 7.6 kB
  * gzipped for seven names nothing could reach. Register a renderer when the
@@ -33,6 +35,7 @@ const CheckpointPart = ({ label, tooltip }: { label: string; tooltip?: string })
 export const ELEMENTS: Record<string, ElementRenderer> = {
   checkpoint: as(CheckpointPart),
   image: as(Image),
+  progress: as(Progress),
 };
 
 /** Add renderers for names this library does not emit itself. */
