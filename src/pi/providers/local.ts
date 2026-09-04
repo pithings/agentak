@@ -15,7 +15,7 @@
 import { isPhone } from "../../lib/utils.ts";
 
 /** Pinned: the module, the wasm and the model loader must be one build. */
-const WLLAMA_VERSION = "3.5.1";
+const WLLAMA_VERSION = "3.6.1";
 
 const CDN = `https://cdn.jsdelivr.net/npm/@wllama/wllama@${WLLAMA_VERSION}`;
 
@@ -70,7 +70,7 @@ export const useWllamaSource = (next: WllamaSource | undefined): void => {
  * row is offered wherever it says: the side panel ships wllama, its wasm and
  * its worker, so it does. See `extension/wllama/`.
  *
- * A phone is left out whatever it can load. The smallest model here is a 229 MB
+ * A phone is left out whatever it can load. The smallest model here is a 149 MB
  * download over what is often a metered connection, the rest are hundreds of MB
  * more, and the weights then sit in a wasm heap a mobile browser is quick to
  * reclaim — a background tab is discarded and the download starts again. What a
@@ -144,16 +144,33 @@ const local = (spec: Spec): LocalModel => ({
  * same model with less of it thrown away, and the 4B is a dynamic Q2_K_XL,
  * which keeps the tensors that matter at a higher precision. K-quants
  * throughout: wllama's own guidance is that IQ quants answer slowly.
+ *
+ * The LFM2.5 rows are the exception, and the better bargain: a QAD Q4_0 is
+ * distilled while quantized rather than cut down afterwards, so it answers at
+ * about 97% of what the full weights do while weighing what a Q4 weighs. Where
+ * one exists it is taken, and the row costs a quarter of the download.
  */
 export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
   (
     [
       {
+        id: "lfm2.5-230m",
+        name: "LFM2.5 230M",
+        repo: "LiquidAI/LFM2.5-230M-GGUF",
+        file: "LFM2.5-230M-QAD-Q4_0.gguf",
+        size: "149 MB",
+        context: 4_096,
+        maxTokens: 1_024,
+        // The smallest row there is. It routes a call and reads a page; it is
+        // not asked to reason about either.
+        tools: true,
+      },
+      {
         id: "lfm2.5-350m",
         name: "LFM2.5 350M",
         repo: "LiquidAI/LFM2.5-350M-GGUF",
-        file: "LFM2.5-350M-Q4_K_M.gguf",
-        size: "229 MB",
+        file: "LFM2.5-350M-QAD-Q4_0.gguf",
+        size: "219 MB",
         context: 4_096,
         maxTokens: 1_024,
         // Tool use and structured output are what it is for. Not programming.
@@ -182,6 +199,18 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         tools: true,
       },
       {
+        id: "lfm2.5-1.2b",
+        name: "LFM2.5 1.2B",
+        repo: "LiquidAI/LFM2.5-1.2B-Instruct-GGUF",
+        file: "LFM2.5-1.2B-Instruct-QAD-Q4_0.gguf",
+        size: "696 MB",
+        context: 8_192,
+        maxTokens: 2_048,
+        // It calls a tool better than models twice its weight, and under 1 GB.
+        // It does not think: the turn is the answer alone.
+        tools: true,
+      },
+      {
         id: "qwen2.5-coder-1.5b",
         name: "Qwen2.5 Coder 1.5B",
         repo: "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF",
@@ -191,6 +220,18 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         maxTokens: 2_048,
         // Written for code, and small, so it is a Q6_K like the 2B. It does not
         // think: the turn is the answer alone.
+        tools: true,
+      },
+      {
+        id: "lfm2.5-2.6b",
+        name: "LFM2.5 2.6B",
+        repo: "LiquidAI/LFM2.5-2.6B-GGUF",
+        file: "LFM2.5-2.6B-QAD-Q4_0.gguf",
+        size: "1.6 GB",
+        context: 8_192,
+        maxTokens: 2_048,
+        // The best tool caller here, and a Q4 rather than the Q2 the 4B is cut
+        // to. It does not think, which is what makes the call arrive at once.
         tools: true,
       },
       {
@@ -210,11 +251,24 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         repo: "unsloth/Qwen3.5-4B-GGUF",
         file: "Qwen3.5-4B-UD-Q2_K_XL.gguf",
         size: "1.9 GB",
-        // The largest that fits. Its KV cache shares the heap with 1.9 GB of
-        // weights, so the window is half of what the 2B is loaded with.
+        // Its KV cache shares the heap with 1.9 GB of weights, so the window
+        // is half of what the 2B is loaded with.
         context: 4_096,
         maxTokens: 2_048,
         reasoning: true,
+        tools: true,
+      },
+      {
+        id: "granite4.1-3b",
+        name: "Granite 4.1 3B",
+        repo: "ibm-granite/granite-4.1-3b-GGUF",
+        file: "granite-4.1-3b-Q4_K_S.gguf",
+        size: "2.0 GB",
+        // The largest file that still fits under the 2 GB a single gguf may be,
+        // so the window is the small one. A plain transformer that answers a
+        // tool in json, and does not think.
+        context: 4_096,
+        maxTokens: 2_048,
         tools: true,
       },
     ] satisfies Spec[]
