@@ -186,17 +186,6 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         tools: true,
       },
       {
-        id: "qwen3.5-0.8b",
-        name: "Qwen3.5 0.8B",
-        repo: "unsloth/Qwen3.5-0.8B-GGUF",
-        file: "Qwen3.5-0.8B-Q4_K_M.gguf",
-        size: "533 MB",
-        context: 32_768,
-        maxTokens: 2_048,
-        reasoning: true,
-        tools: true,
-      },
-      {
         id: "minicpm5-1b",
         name: "MiniCPM5 1B",
         repo: "openbmb/MiniCPM5-1B-GGUF",
@@ -205,6 +194,9 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         context: 16_384,
         maxTokens: 2_048,
         reasoning: true,
+        // Its calls are xml, and its arguments are wrapped in CDATA where they
+        // carry a `<` or a newline, so llama.cpp reads them only with the
+        // parser it gained in June 2026. The pinned wllama is later than that.
         tools: true,
       },
       {
@@ -217,18 +209,6 @@ export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
         maxTokens: 2_048,
         // It calls a tool better than models twice its weight, and under 1 GB.
         // It does not think: the turn is the answer alone.
-        tools: true,
-      },
-      {
-        id: "qwen2.5-coder-1.5b",
-        name: "Qwen2.5 Coder 1.5B",
-        repo: "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF",
-        file: "qwen2.5-coder-1.5b-instruct-q6_k.gguf",
-        size: "1.5 GB",
-        context: 8_192,
-        maxTokens: 2_048,
-        // Written for code, and small, so it is a Q6_K like the 2B. It does not
-        // think: the turn is the answer alone.
         tools: true,
       },
       {
