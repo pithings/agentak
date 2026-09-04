@@ -70,7 +70,7 @@ export const useWllamaSource = (next: WllamaSource | undefined): void => {
  * row is offered wherever it says: the side panel ships wllama, its wasm and
  * its worker, so it does. See `extension/wllama/`.
  *
- * A phone is left out whatever it can load. The smallest model here is a 149 MB
+ * A phone is left out whatever it can load. The smallest model here is a 219 MB
  * download over what is often a metered connection, the rest are hundreds of MB
  * more, and the weights then sit in a wasm heap a mobile browser is quick to
  * reclaim — a background tab is discarded and the download starts again. What a
@@ -162,18 +162,6 @@ const local = (spec: Spec): LocalModel => ({
 export const WLLAMA_MODELS: Record<string, LocalModel> = Object.fromEntries(
   (
     [
-      {
-        id: "lfm2.5-230m",
-        name: "LFM2.5 230M",
-        repo: "LiquidAI/LFM2.5-230M-GGUF",
-        file: "LFM2.5-230M-QAD-Q4_0.gguf",
-        size: "149 MB",
-        context: 32_768,
-        maxTokens: 1_024,
-        // The smallest row there is. It routes a call and reads a page; it is
-        // not asked to reason about either.
-        tools: true,
-      },
       {
         id: "lfm2.5-350m",
         name: "LFM2.5 350M",
