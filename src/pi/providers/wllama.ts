@@ -390,7 +390,7 @@ async function* run(
       }
       const marker = progressMarker(
         first
-          ? { id: LOADING, value: percent, label: `Loading ${spec.name}, ${spec.size}. Once.` }
+          ? { id: LOADING, value: percent, label: `Loading ${spec.name}. Once.` }
           : { id: LOADING, value: percent },
       );
       const delta = first ? marker : `\n${marker}`;

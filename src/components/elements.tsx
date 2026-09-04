@@ -3,7 +3,7 @@ import type { ComponentChildren } from "preact";
 
 import { Checkpoint, CheckpointIcon, CheckpointTrigger } from "./ai-elements/checkpoint.tsx";
 import { Image } from "./ai-elements/image.tsx";
-import { Progress } from "./ui/progress.tsx";
+import { Progress, type ProgressProps } from "./ui/progress.tsx";
 
 /**
  * Renderers for `{ kind: "element" }` transcript parts, by name.
@@ -32,10 +32,17 @@ const CheckpointPart = ({ label, tooltip }: { label: string; tooltip?: string })
   </Checkpoint>
 );
 
+/**
+ * A bar in a turn reports work, not an answer: when the work is done the bar
+ * fades and leaves, and one read back out of a stored conversation — already
+ * full — never appears at all.
+ */
+const ProgressPart = (props: ProgressProps) => <Progress {...props} hideWhenDone />;
+
 export const ELEMENTS: Record<string, ElementRenderer> = {
   checkpoint: as(CheckpointPart),
   image: as(Image),
-  progress: as(Progress),
+  progress: as(ProgressPart),
 };
 
 /** Add renderers for names this library does not emit itself. */

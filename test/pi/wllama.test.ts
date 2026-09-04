@@ -334,7 +334,7 @@ describe("streamSimple", () => {
       const told = events.find((event) => event.type === "thinking_end");
       const spec = WLLAMA_MODELS[WLLAMA_MODEL_ID];
       expect(told?.content.split("\n")).toEqual([
-        `::progress{id="model-load" value="50" label="Loading ${spec.name}, ${spec.size}. Once."}`,
+        `::progress{id="model-load" value="50" label="Loading ${spec.name}. Once."}`,
         '::progress{id="model-load" value="100"}',
       ]);
     } finally {

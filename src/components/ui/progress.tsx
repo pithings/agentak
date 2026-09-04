@@ -1,6 +1,7 @@
 import type { ComponentProps } from "preact";
+import { useEffect, useState } from "preact/hooks";
 
-import { useAnimation } from "../../lib/use-animation.ts";
+import { prefersReducedMotion, useAnimation } from "../../lib/use-animation.ts";
 import { sx, type Sx, type WithSx } from "../../styles/sx.ts";
 
 // The bar with no reading behind it: a short fill swept across the track,
@@ -19,6 +20,14 @@ const SWEEP_OPTIONS: KeyframeAnimationOptions = {
 };
 
 const FULL = 100;
+
+/**
+ * How long a full bar is left on screen before it goes, and how long it takes
+ * to fade. The rest is the delay `Reasoning` closes a finished thinking block
+ * after: long enough to read as finished, short enough not to be waited on.
+ */
+const REST_MS = 1000;
+const FADE_MS = 300;
 
 const S = {
   progress: {
@@ -52,6 +61,7 @@ const S = {
     transition: "width var(--transition)",
   },
   sweep: { width: "25%" },
+  leaving: { opacity: "0", transition: `opacity ${FADE_MS}ms ease` },
 } satisfies Record<string, Sx>;
 
 export type ProgressProps = Omit<WithSx<ComponentProps<"div">>, "value" | "max" | "label"> & {
@@ -60,6 +70,12 @@ export type ProgressProps = Omit<WithSx<ComponentProps<"div">>, "value" | "max" 
   max?: number;
   /** The words above the bar, and its accessible name. */
   label?: string;
+  /**
+   * A full bar has nothing left to report: it fades and goes. A bar that is
+   * already full when it mounts — a finished download read back out of a
+   * stored conversation — never appears at all.
+   */
+  hideWhenDone?: boolean;
 };
 
 /**
@@ -74,6 +90,7 @@ function Progress({
   value,
   max = FULL,
   label,
+  hideWhenDone = false,
   children,
   ...props
 }: ProgressProps) {
@@ -84,8 +101,35 @@ function Progress({
   // A bar with neither a name nor a reading is the track alone.
   const titled = children !== undefined || label !== undefined || known;
 
+  const done = hideWhenDone && percent === FULL;
+  // The first render answers for the whole life of this bar: full on arrival is
+  // a bar nobody watched fill, so there is no leaving to see.
+  const [gone, setGone] = useState(done);
+  const [leaving, setLeaving] = useState(false);
+
+  useEffect(() => {
+    if (!done || gone) return;
+
+    const fade = prefersReducedMotion() ? 0 : FADE_MS;
+    const starts = setTimeout(() => setLeaving(true), REST_MS);
+    const ends = setTimeout(() => setGone(true), REST_MS + fade);
+
+    return () => {
+      clearTimeout(starts);
+      clearTimeout(ends);
+    };
+  }, [done, gone]);
+
+  if (gone) return null;
+
   return (
-    <div className={className} data-slot="progress" style={sx(S.progress, style)} {...props}>
+    <div
+      className={className}
+      data-slot="progress"
+      data-state={leaving ? "leaving" : "open"}
+      style={sx(S.progress, leaving && S.leaving, style)}
+      {...props}
+    >
       {titled && (
         <div style={S.row}>
           {children ?? <span style={S.label}>{label}</span>}

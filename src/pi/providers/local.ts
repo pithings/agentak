@@ -120,7 +120,9 @@ export interface LocalModel {
 
 const local = (spec: Spec): LocalModel => ({
   id: spec.id,
-  name: spec.name,
+  // The download is the first thing a visitor gives up, so the picker says it
+  // in the row rather than after the click.
+  name: `${spec.name} (${spec.size})`,
   api: "wllama",
   provider: WLLAMA_PROVIDER_ID,
   baseUrl: `https://huggingface.co/${spec.repo}/resolve/main/${spec.file}`,

@@ -45,4 +45,6 @@ actually emit it; registration adds it to every chat bundle.
 
 `progress` is registered because a provider can write a `::progress{…}` marker into the
 words of a turn — `lib/progress.ts` parses it, `toViewMessages()` swaps it for the element
-part. Only the four fields the bar reads cross over; the words come from a model.
+part. Only the four fields the bar reads cross over; the words come from a model. The
+transcript's bar is `hideWhenDone`: a full one fades and leaves, and one that mounts full
+— a stored conversation — never renders. The part stays in the transcript either way.
