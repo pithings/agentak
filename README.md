@@ -67,3 +67,11 @@ Click the toolbar button to open the panel.
 6. [Custom agents](https://agentak.dev/agents/custom)
 
 The documentation includes setup examples for React, Vue, Preact, and plain JavaScript.
+
+## Credits
+
+The chat components are a Preact port of [Vercel AI Elements](https://github.com/vercel/ai-elements).
+
+## License
+
+Published under the [MIT](./LICENSE) license.
