@@ -4,6 +4,7 @@ import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core"
 import type { ImageContent, TextContent, Usage } from "@earendil-works/pi-ai";
 
 import type { AgentRuntime } from "./agent.ts";
+import { compactMessages } from "./chat/compaction.ts";
 import { describeFailure, failureStatus } from "./chat/errors.ts";
 import type { AnyModel } from "./providers.ts";
 import { isFailedTurn } from "./snapshot.ts";
@@ -87,6 +88,26 @@ export interface AgentStore {
    * no result yet, which is exactly what nothing else may be sent into.
    */
   callTool(name: string): void;
+  /**
+   * Summarize the turns so far and run on from the summary, so a conversation
+   * that filled its window keeps going instead of ending.
+   *
+   * One extra request, outside the loop: the transcript never carries the
+   * question, only the summary that comes back. What replaces the transcript is
+   * that summary and the recent turns whole — where the cut lands is pi's own
+   * decision, and it never falls between a tool call and its result.
+   *
+   * No-op while anything else holds the transcript, and no-op where there is
+   * nothing to compact: a conversation short enough that the recent turns are
+   * the whole of it is left exactly as it was. `usage.compacting` says one is
+   * running; a failure lands where a failed turn does, with the retry button.
+   *
+   * `after` runs once the summary has replaced the transcript, and only then —
+   * a compaction that summarized nothing, failed, or was stopped never calls
+   * it. It is how a caller compacting to make room for a turn that would not
+   * fit runs that turn again.
+   */
+  compact(after?: () => void): void;
   setModel(model: AnyModel): void;
   /**
    * Raise or drop the reasoning effort of the next turn. The caller checks the
@@ -183,10 +204,16 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
    * swapped mid-call must not take the result of the one before it.
    */
   let calling: AbortController | undefined;
+  /**
+   * A compaction, which is the third kind of run: a request of its own, made
+   * outside the loop, that ends by replacing the transcript it read. Nothing
+   * else may touch the transcript while one is in flight.
+   */
+  let compacting: AbortController | undefined;
   let generation = 0;
 
-  /** Nothing may be sent while either kind of run holds the transcript. */
-  const busy = () => agent.state.isStreaming || calling !== undefined;
+  /** Nothing may be sent while any kind of run holds the transcript. */
+  const busy = () => agent.state.isStreaming || calling !== undefined || compacting !== undefined;
 
   const notify = () => {
     cached = undefined;
@@ -227,10 +254,13 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
   const load = (messages: AgentMessage[], after?: () => void) => {
     // A hand-run tool is a run of this store's own, and a swap ends it like any
     // other: the generation is what its own continuation reads to find that the
-    // transcript it was called from is gone.
+    // transcript it was called from is gone. A compaction is the same run twice
+    // over — it reads one transcript and writes another — so a swap ends it too.
     generation += 1;
     calling?.abort();
     calling = undefined;
+    compacting?.abort();
+    compacting = undefined;
 
     const swap = () => {
       agent.reset();
@@ -264,8 +294,38 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
     notify();
   };
 
+  /**
+   * What a person said, sent or queued. Hoisted out of the returned object
+   * because a compaction sends again with it: the transcript it queued behind
+   * is replaced, so what was waiting is said into the one that replaced it.
+   */
+  const submit = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    failure = undefined;
+    dismissed = undefined;
+
+    // Queued behind a hand-run tool or a compaction as well: pi drains its
+    // steering queue at the first chance the continuation gives it, which is the
+    // turn that reads the tool's result.
+    if (busy()) {
+      nextId += 1;
+      agent.steer(userMessage(trimmed));
+      queued = [...queued, { id: `q${nextId}`, text: trimmed, at: agent.state.messages.length }];
+      notify();
+      return;
+    }
+
+    agent.prompt(trimmed).catch((error: unknown) => {
+      failure = error instanceof Error ? error.message : String(error);
+      notify();
+    });
+    notify();
+  };
+
   const build = (): AgentSnapshot => {
     const messages = agent.state.messages;
+    const view = toContextUsage(messages, agent.state.model);
     const raw = failure ?? agent.state.errorMessage;
     const error = raw === dismissed ? undefined : raw;
     return {
@@ -273,7 +333,9 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
         answers: approvals.answers(),
         pending: approvals.pending(),
       }),
-      usage: toContextUsage(messages, agent.state.model),
+      // The meter is where a compaction is asked for, so it is where the one
+      // running is shown.
+      usage: view && (compacting ? { ...view, compacting: true } : view),
       // A tool running by hand is the surface's turn as much as the model's: the
       // transcript holds a call with no result yet, and the stop button is what
       // ends it.
@@ -297,29 +359,7 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
       return cached;
     },
 
-    send(text) {
-      const trimmed = text.trim();
-      if (!trimmed) return;
-      failure = undefined;
-      dismissed = undefined;
-
-      // Queued behind a hand-run tool as well: pi drains its steering queue at
-      // the first chance the continuation gives it, which is the turn that reads
-      // the tool's result.
-      if (busy()) {
-        nextId += 1;
-        agent.steer(userMessage(trimmed));
-        queued = [...queued, { id: `q${nextId}`, text: trimmed, at: agent.state.messages.length }];
-        notify();
-        return;
-      }
-
-      agent.prompt(trimmed).catch((error: unknown) => {
-        failure = error instanceof Error ? error.message : String(error);
-        notify();
-      });
-      notify();
-    },
+    send: submit,
 
     dequeue(id) {
       const remaining = queued.filter((item) => item.id !== id);
@@ -332,10 +372,12 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
 
     stop() {
       agent.abort();
-      // The other kind of run this store can be in the middle of. A tool given
+      // The other kinds of run this store can be in the middle of. A tool given
       // no signal of its own ignores it, and the result still lands — what stops
-      // either way is the turn that would have read it.
+      // either way is the turn that would have read it. A stopped compaction
+      // leaves the transcript exactly as it was.
       calling?.abort();
+      compacting?.abort();
       notify();
     },
 
@@ -422,6 +464,72 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
       })();
     },
 
+    /**
+     * The summary is written from the transcript as it stands, and only then
+     * does it replace it: a compaction that fails, or one stopped halfway,
+     * leaves the conversation untouched.
+     *
+     * The key and the stream function are the agent's own, so the summary is
+     * asked of the same provider the conversation runs on — and asked with
+     * whatever key that provider is being given now, which is the one thing a
+     * long-lived session changes underneath itself.
+     */
+    compact(after) {
+      if (busy()) return;
+      const messages = agent.state.messages;
+      const model = agent.state.model as AnyModel;
+      if (messages.length === 0) return;
+
+      failure = undefined;
+      dismissed = undefined;
+      const run = new AbortController();
+      compacting = run;
+      const mine = generation;
+      notify();
+
+      void (async () => {
+        try {
+          const next = await compactMessages({
+            apiKey: await agent.getApiKey?.(model.provider),
+            messages,
+            model,
+            signal: run.signal,
+            streamFn: agent.streamFunction,
+          });
+          // The conversation this was asked about is gone — a new one, or a
+          // stored one opened while the summary was being written.
+          if (mine !== generation) return;
+          compacting = undefined;
+          // Nothing to compact, or the summary is no longer wanted: either way
+          // the transcript stands.
+          if (!next || run.signal.aborted) {
+            notify();
+            return;
+          }
+          // What was typed while the summary was being written. The swap clears
+          // pi's queue with the transcript it belonged to, so those messages are
+          // said again into the one that replaced it — the first starts a turn
+          // and the rest queue behind it, exactly as they would have.
+          const waiting = queued.map((item) => item.text);
+          // Through `load`, so the swap waits on anything the agent still holds
+          // and the approvals go with the turns they belonged to.
+          load(next, () => {
+            after?.();
+            for (const text of waiting) submit(text);
+          });
+        } catch (error: unknown) {
+          if (mine !== generation) return;
+          compacting = undefined;
+          // A summary nobody can write is a failure a person asked for, so it
+          // is shown and not swallowed — unlike a title, which nobody asked for.
+          if (!run.signal.aborted) {
+            failure = error instanceof Error ? error.message : String(error);
+          }
+          notify();
+        }
+      })();
+    },
+
     respond(id, approved, reason) {
       approvals.respond(id, approved, reason);
     },
@@ -439,6 +547,7 @@ export function createAgentStore({ agent, approvals }: AgentRuntime): AgentStore
     dispose() {
       generation += 1;
       calling?.abort();
+      compacting?.abort();
       offAgent();
       offApprovals();
       listeners.clear();

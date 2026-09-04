@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AgentChat } from "../../src/agent-chat.tsx";
 import { availableProviders } from "../../src/pi/providers.ts";
 import { createPiSession, type PiSessionOptions } from "../../src/pi/session.ts";
+import { PI_SNAPSHOT_VERSION } from "../../src/pi/snapshot.ts";
 import { memoryStorage, type PiStorage } from "../../src/pi/storage.ts";
 
 const turn = (content: AssistantMessage["content"], stopReason: StopReason): AssistantMessage => ({
@@ -279,6 +280,157 @@ describe("createPiSession", () => {
     const [call, said] = session.snapshot().messages;
     expect(call.parts[0]).toMatchObject({ kind: "tool", name: "lookup", output: "two plans" });
     expect(said.parts[0]).toEqual({ kind: "text", text: "Two plans." });
+  });
+
+  it("holds a compaction until a provider can answer it, then swaps the transcript", async () => {
+    // Two turns behind the cut point, and one recent turn long enough to be the
+    // whole of what the model's window keeps.
+    const old = "a".repeat(60_000);
+    const recent = "b".repeat(90_000);
+    const session = piSession({
+      snapshot: {
+        messages: [
+          { role: "user", content: old, timestamp: 0 },
+          turn([{ type: "text", text: old }], "stop"),
+          { role: "user", content: recent, timestamp: 0 },
+          turn([{ type: "text", text: "The last one." }], "stop"),
+        ],
+        version: PI_SNAPSHOT_VERSION,
+      },
+      streamFn: scripted([turn([{ type: "text", text: "## Goal\nName them." }], "stop")]),
+    });
+
+    // A summary is a request of its own, so it waits for a provider exactly as
+    // a message does — and the transcript stands untouched while it waits.
+    session.compact?.();
+    expect(session.snapshot().messages).toHaveLength(4);
+    expect(session.snapshot().pickerOpen).toBe(true);
+
+    session.selectProvider?.(FREE);
+    await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
+    session.selectModel?.(MODEL);
+
+    await waitFor(() => expect(session.snapshot().messages).toHaveLength(3));
+    expect(session.snapshot().messages[0].parts[0]).toMatchObject({
+      kind: "element",
+      name: "checkpoint",
+    });
+    expect(session.snapshot().usage?.compacting).toBeUndefined();
+  });
+
+  it("compacts by itself when a turn leaves the window nearly spent", async () => {
+    const old = "a".repeat(60_000);
+    const recent = "b".repeat(90_000);
+    // The turn that lands reports a window as good as spent, which is where pi
+    // would compact and so where this does.
+    const full = turn([{ type: "text", text: "Two plans." }], "stop");
+    full.usage = { ...full.usage, input: 250_000, totalTokens: 250_000 };
+
+    const session = piSession({
+      provider: FREE,
+      snapshot: {
+        messages: [
+          { role: "user", content: old, timestamp: 0 },
+          turn([{ type: "text", text: old }], "stop"),
+          { role: "user", content: recent, timestamp: 0 },
+        ],
+        version: PI_SNAPSHOT_VERSION,
+      },
+      streamFn: scripted([full, turn([{ type: "text", text: "## Goal\nName them." }], "stop")]),
+    });
+    await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
+    session.selectModel?.(MODEL);
+
+    // Nothing yet: a conversation opened at its limit is one somebody may only
+    // want to read.
+    expect(session.snapshot().messages[0].parts[0]).not.toMatchObject({ name: "checkpoint" });
+
+    session.send("and the tools?");
+    // The turn, then the summary it earned, with no second click.
+    await waitFor(() =>
+      expect(session.snapshot().messages[0].parts[0]).toMatchObject({
+        kind: "element",
+        name: "checkpoint",
+      }),
+    );
+    await waitFor(() => expect(session.snapshot().isStreaming).toBe(false));
+    // And once: the summary is not written again over the same answer.
+    const checkpoints = session
+      .snapshot()
+      .messages.filter((message) => message.parts[0]?.kind === "element");
+    expect(checkpoints).toHaveLength(1);
+  });
+
+  it("compacts and runs the turn again when it did not fit the window", async () => {
+    const old = "a".repeat(60_000);
+    const recent = "b".repeat(90_000);
+    let asked = 0;
+    // The first turn overruns the window — Chrome's own wording for it — the
+    // second is the summary, and the third is the turn once there is room.
+    const streamFn: StreamFn = (model, context, options) => {
+      asked += 1;
+      if (asked === 1) throw new Error("The conversation is too long for Gemini Nano.");
+      return scripted([
+        turn([{ type: "text", text: asked === 2 ? "## Goal\nName them." : "Two plans." }], "stop"),
+      ])(model, context, options);
+    };
+
+    const session = piSession({
+      provider: FREE,
+      snapshot: {
+        messages: [
+          { role: "user", content: old, timestamp: 0 },
+          turn([{ type: "text", text: old }], "stop"),
+          { role: "user", content: recent, timestamp: 0 },
+          turn([{ type: "text", text: "The last one." }], "stop"),
+        ],
+        version: PI_SNAPSHOT_VERSION,
+      },
+      streamFn,
+    });
+    await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
+    session.selectModel?.(MODEL);
+
+    session.send("and the tools?");
+    await waitFor(() =>
+      expect(session.snapshot().messages[0].parts[0]).toMatchObject({ name: "checkpoint" }),
+    );
+    await waitFor(() => expect(session.snapshot().isStreaming).toBe(false));
+
+    // The message a person sent is answered rather than left under an error.
+    expect(session.snapshot().error).toBeUndefined();
+    expect(session.snapshot().messages.at(-1)?.parts[0]).toEqual({
+      kind: "text",
+      text: "Two plans.",
+    });
+  });
+
+  it("leaves the conversation alone where a host says not to compact it", async () => {
+    const old = "a".repeat(60_000);
+    const full = turn([{ type: "text", text: "Two plans." }], "stop");
+    full.usage = { ...full.usage, input: 250_000, totalTokens: 250_000 };
+
+    const session = piSession({
+      autoCompact: false,
+      provider: FREE,
+      snapshot: {
+        messages: [
+          { role: "user", content: old, timestamp: 0 },
+          turn([{ type: "text", text: old }], "stop"),
+          { role: "user", content: "b".repeat(90_000), timestamp: 0 },
+        ],
+        version: PI_SNAPSHOT_VERSION,
+      },
+      streamFn: scripted([full]),
+    });
+    await waitFor(() => expect(session.snapshot().models?.length).toBeGreaterThan(0));
+    session.selectModel?.(MODEL);
+
+    session.send("and the tools?");
+    await waitFor(() => expect(session.snapshot().isStreaming).toBe(false));
+    expect(session.snapshot().messages[0].parts[0]).not.toMatchObject({ name: "checkpoint" });
+    // The meter still says so, and the button is still there.
+    expect(session.snapshot().usage?.nearLimit).toBe(true);
   });
 
   it("leaves the page shut when the provider itself is down", async () => {

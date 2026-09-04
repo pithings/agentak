@@ -1,11 +1,12 @@
-import type { AgentTool, StreamFn } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage, StopReason } from "@earendil-works/pi-ai";
+import type { AgentMessage, AgentTool, StreamFn } from "@earendil-works/pi-agent-core";
+import type { AssistantMessage, Context, StopReason } from "@earendil-works/pi-ai";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
 
 import { createAgent } from "../../src/pi/agent.ts";
+import { DEFAULT_MODEL } from "../../src/pi/providers/models.ts";
 import type { AnyModel } from "../../src/pi/providers.ts";
 import { useAgent } from "../../src/pi/chat/use-agent.ts";
 import type { ViewToolPart } from "../../src/types.ts";
@@ -330,5 +331,127 @@ describe("the wired agent", () => {
     act(() => result.current.reset());
     expect(result.current.messages).toEqual([]);
     expect(result.current.usage).toBeUndefined();
+  });
+});
+
+/** A window small enough that a handful of turns fills it. */
+const small: AnyModel = { ...DEFAULT_MODEL, contextWindow: 4_000 };
+
+/**
+ * A conversation whose first turns fall behind a compaction's cut point: four
+ * long ones the summary replaces, then a last one long enough to be the whole
+ * of what a 4k window keeps.
+ */
+const old = "a".repeat(2_000);
+const recent = "b".repeat(4_200);
+const before = (): AgentMessage[] => [
+  { role: "user", content: old, timestamp: 0 },
+  turn([{ type: "text", text: old }], "stop"),
+  { role: "user", content: old, timestamp: 0 },
+  turn([{ type: "text", text: old }], "stop"),
+  { role: "user", content: recent, timestamp: 0 },
+  turn([{ type: "text", text: "The last one." }], "stop"),
+];
+
+describe("compaction", () => {
+  /** The agent is built on the transcript to compact, and answers are scripted. */
+  const opened = (script: AssistantMessage[], seen: Context[] = []) => {
+    const replay = scripted(script);
+    const runtime = createAgent({
+      apiKey: "test-key",
+      messages: before(),
+      model: small,
+      streamFn: (model, context, options) => {
+        seen.push(context);
+        return replay(model, context, options);
+      },
+    });
+    return renderHook(() => useAgent(runtime));
+  };
+
+  it("replaces the turns behind the cut with a checkpoint", async () => {
+    const { result } = opened([turn([{ type: "text", text: "## Goal\nName them." }], "stop")]);
+
+    act(() => result.current.compact());
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+
+    const [first] = result.current.messages;
+    expect(first.parts[0]).toMatchObject({ kind: "element", name: "checkpoint" });
+    expect(result.current.messages).toHaveLength(3);
+    // The last turn was recent, so it is still there in full.
+    expect(result.current.messages.at(-1)?.parts[0]).toEqual({
+      kind: "text",
+      text: "The last one.",
+    });
+  });
+
+  it("sends the summary to the model in place of the turns it replaced", async () => {
+    const seen: Context[] = [];
+    const { result } = opened(
+      [
+        turn([{ type: "text", text: "## Goal\nName them." }], "stop"),
+        turn([{ type: "text", text: "Two plans." }], "stop"),
+      ],
+      seen,
+    );
+
+    act(() => result.current.compact());
+    await waitFor(() => expect(result.current.messages).toHaveLength(3));
+
+    act(() => result.current.send("and now?"));
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+
+    // The turn after the compaction: the summary reads as the history it
+    // stands for, and the turns it replaced are gone.
+    const sent = JSON.stringify(seen.at(-1)?.messages);
+    expect(sent).toContain("## Goal");
+    expect(sent).toContain("compacted into the following summary");
+    expect(sent).not.toContain("aaaa");
+  });
+
+  it("says a compaction is running, and holds the transcript while it is", async () => {
+    const { result } = opened([turn([{ type: "text", text: "summary" }], "stop")]);
+
+    act(() => result.current.compact());
+    expect(result.current.usage?.compacting).toBe(true);
+    expect(result.current.isStreaming).toBe(true);
+
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+    expect(result.current.usage?.compacting).toBeUndefined();
+  });
+
+  it("keeps a message typed while the summary was being written", async () => {
+    const { result } = opened([
+      turn([{ type: "text", text: "## Goal\nName them." }], "stop"),
+      turn([{ type: "text", text: "Two plans." }], "stop"),
+    ]);
+
+    act(() => result.current.compact());
+    act(() => result.current.send("and now?"));
+    // It waits, because the transcript it would be sent into is being replaced.
+    expect(result.current.queued.map((item) => item.text)).toEqual(["and now?"]);
+
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+    expect(result.current.queued).toEqual([]);
+    // The checkpoint, the turn it kept, then the message and its answer.
+    expect(result.current.messages.map((message) => message.role)).toEqual([
+      "assistant",
+      "user",
+      "assistant",
+      "user",
+      "assistant",
+    ]);
+  });
+
+  it("leaves a short conversation exactly as it was", async () => {
+    const { result } = setup([answerTurn]);
+
+    act(() => result.current.send("hello"));
+    await waitFor(() => expect(result.current.messages).toHaveLength(2));
+
+    act(() => result.current.compact());
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+    expect(result.current.messages).toHaveLength(2);
+    expect(result.current.messages[0].parts[0]).toEqual({ kind: "text", text: "hello" });
   });
 });

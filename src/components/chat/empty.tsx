@@ -13,8 +13,8 @@ import { ChatPrompts, type ChatPromptsProps } from "./prompts.tsx";
 import type { ChatAgent, ChatEmptyItem } from "./types.ts";
 import { Element } from "../elements.tsx";
 import { Button } from "../ui/button.tsx";
-import { BotIcon, SlidersIcon } from "../../lib/icons.tsx";
-import { reset, u } from "../../styles/base.ts";
+import { AgentakIcon, SlidersIcon } from "../../lib/icons.tsx";
+import { reset } from "../../styles/base.ts";
 import { sx, type Sx } from "../../styles/sx.ts";
 
 const S = {
@@ -23,6 +23,25 @@ const S = {
     flexDirection: "column",
     gap: "1rem",
   },
+  // Who made the surface, over everything the surface is for. It is a credit
+  // and not a message: the smallest type here, muted, and one line, so it costs
+  // the greeting under it almost nothing.
+  credit: {
+    display: "inline-flex",
+    // The column's own 1rem is a row's worth of room, and this is a line of
+    // small print, not a row: it takes a little more air over it and gives back
+    // most of what sat under it, so the greeting stays the first thing read.
+    marginTop: "0.25rem",
+    marginBottom: "-0.5rem",
+    alignSelf: "center",
+    alignItems: "center",
+    gap: "0.25rem",
+    color: "var(--muted-foreground)",
+    fontSize: "0.6875rem",
+  },
+  // The mark stands in the line as a word of it, before the name, so it takes
+  // the line's own height and not the 16px every other icon is drawn at.
+  mark: { width: "0.875rem", height: "0.875rem" },
   // The greeting fills the box when it is all there is. With a launcher or the
   // agent card under it, it takes only the room it needs — a full-height
   // greeting would push everything after it under the fold.
@@ -88,11 +107,21 @@ export function ChatEmpty({
 
   return (
     <div style={S.empty}>
+      <a
+        href="https://agentak.dev"
+        rel="noreferrer noopener"
+        style={sx(reset.link, S.credit)}
+        target="_blank"
+      >
+        <AgentakIcon style={S.mark} />
+        Agentak
+      </a>
+      {/* The credit above is the name and the mark, so the greeting is the one
+          line that says what the chat is for. */}
       <ConversationEmptyState
         description="Ask about the current page, or anything else."
-        icon={<BotIcon style={u.iconLg} />}
         style={alone ? undefined : S.greeting}
-        title="agentak"
+        title=""
       />
       {onPickModel && <PickHint onOpen={onPickModel} />}
       <ChatItems items={items} />

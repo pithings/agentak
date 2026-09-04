@@ -238,6 +238,39 @@ describe("toContextUsage", () => {
     expect(toContextUsage([full], model)?.nearLimit).toBe(true);
   });
 
+  it("estimates the window a compaction just left, and reads the next answer", () => {
+    // The turns a compaction keeps carry the numbers of the context they were
+    // part of, and that context is gone.
+    const summary: AgentMessage = {
+      role: "compactionSummary",
+      summary: "…",
+      tokensBefore: 200_000,
+      timestamp: 10,
+    };
+    const kept = assistant([{ type: "text", text: "The last one." }]);
+
+    const after = toContextUsage([summary, kept], model);
+    expect(after?.usedTokens).toBeLessThan(100);
+    expect(after?.nearLimit).toBe(false);
+
+    // The next answer is the first number a provider gives about the context
+    // that is now being sent, so the estimate steps aside for it.
+    const answered = { ...assistant([]), timestamp: 20 } as AgentMessage;
+    expect(toContextUsage([summary, kept, answered], model)?.usedTokens).toBe(1350);
+  });
+
+  it("offers a compaction only once turns sit behind what one would keep", () => {
+    // A window this size keeps 20k tokens of recent turns, so a conversation
+    // smaller than that is one a compaction would leave exactly as it is.
+    expect(toContextUsage([assistant([])], model)?.canCompact).toBe(false);
+
+    const long = assistant([]);
+    if (long.role === "assistant") {
+      long.usage = usage({ cacheRead: 0, cacheWrite: 0, input: 20_001, output: 0 });
+    }
+    expect(toContextUsage([long], model)?.canCompact).toBe(true);
+  });
+
   it("does not warn from the first turn on a window smaller than pi's reserve", () => {
     // Gemini Nano's 9k window: the fixed 16k reserve would put the threshold
     // below zero, so half the window is the reserve instead.

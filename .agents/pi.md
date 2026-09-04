@@ -23,8 +23,9 @@ already covered by a gateway without a product reason.
 - Vercel's Anthropic endpoint rejects SDK headers and omits CORS headers on a bad-key 401.
   Preserve `vercelFetch()`: filter to the preflight allow-list, move the key to Bearer
   authorization, and probe `/v1/models` after an opaque failed request to recover status.
-- Chrome Prompt and wllama are text-only local APIs. wllama allows one loaded model, is
-  unavailable on phones, and needs a host-supplied source under MV3.
+- Chrome Prompt and wllama are text-only local APIs. wllama allows one loaded model and
+  needs a host-supplied source under MV3. It is offered on phones too; the row states the
+  download size.
 - wllama tool-call tags can split across chunks. Preserve its incremental parser and
   provider-shaped call IDs.
 - Chrome Prompt and wllama report their one-time download as thinking carrying
@@ -101,5 +102,34 @@ idle, so wait for idle before the final redraw. Cache both agent and session sna
 `notify()` invalidates them.
 
 Usage field names differ between Pi and the UI. Keep cache writes folded into cached input
-and reasoning priced as output. Conversation compaction is not implemented; `nearLimit`
-only warns.
+and reasoning priced as output.
+
+## Compaction
+
+`chat/compaction.ts` drives Pi's own compaction helpers from a message list. The helpers
+want harness session entries, so the transcript is mapped to one straight line of them,
+and they want a `Models`, so a one-method shim wraps the model's stream function.
+
+- A compaction is one request outside the loop, like a title. The transcript never carries
+  the question, and the summary replaces the messages behind Pi's cut point.
+- `createAgent` must keep Pi's `convertToLlm`. The default drops `compactionSummary`, so
+  the summary would show in the transcript and never reach the model.
+- Cap both compaction settings against the window — a 9k model holds neither Pi's 16k
+  reserve nor its 20k recent budget. `toContextUsage` warns on the same settings.
+- Summarize at thinking level `off`. The summary is written out of the same allowance a
+  thinking budget is taken from.
+- The store treats it as a third kind of run: `busy()` covers it, `stop()` and a swapped
+  conversation abort it, and a failure lands in the error row. The transcript is replaced
+  only after the summary lands.
+- A conversation smaller than `keepRecentTokens` has nothing behind the cut, and
+  `compactMessages` answers `undefined`. `usage.canCompact` says so from arithmetic alone,
+  so the button is never a click that runs a request and changes nothing.
+- The turns a compaction keeps carry the usage of a context that no longer exists, so a
+  turn counts as this window's only where it was written after the summary was —
+  `answeredTurn()`. Without that the meter would not move after a compaction and an
+  automatic one would write a second summary at once.
+- `maybeCompact()` fires only where a run has just settled, so opening a stored
+  conversation costs no request, and only once per answer
+  (`answeredSinceCompaction()`) — that guard is what makes the overrun path safe, since a
+  retry that fails the same way cannot ask for another summary. `isContextSpent()` reads
+  the provider's sentence, because most of them carry no status a browser can read.

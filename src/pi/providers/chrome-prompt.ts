@@ -9,9 +9,13 @@
  * last one. A session is built per turn and destroyed after it: pi's transcript
  * is what the conversation is, and it can be edited or restored between turns.
  *
+ * Tools are the one thing the api does not carry and this module adds. Gemini
+ * is trained on a Python language for them, so the tools go into the system
+ * turn as declarations and a call comes back as text, which `chrome-tools.ts`
+ * writes and reads. What the model calls, pi's loop runs.
+ *
  * What Gemini Nano does not do, and this module therefore does not offer:
- * tool calls, images, thinking, and a cap on the answer. A turn that carries
- * tools is answered from the chat alone and says so in `diagnostics`.
+ * images, thinking, and a cap on the answer.
  */
 
 import { lazyStream } from "@earendil-works/pi-ai/api/lazy";
@@ -26,6 +30,7 @@ import type {
   SimpleStreamOptions,
   TextContent,
   ThinkingContent,
+  ToolCall,
 } from "@earendil-works/pi-ai";
 
 import {
@@ -35,10 +40,14 @@ import {
   promptApi,
   type PromptTurn,
 } from "./on-device.ts";
+import { readAnswer, renderCall, toolGuide } from "./chrome-tools.ts";
 import { progressMarker } from "../../lib/progress.ts";
 
 /** Chrome's own default. Sent only to complete the pair a temperature needs. */
 const DEFAULT_TOP_K = 3;
+
+/** What is said where the whole answer was a call that could not be read. */
+const NO_ANSWER = "I could not make that call. Ask me again, in other words.";
 
 /** How often the download is asked how far it has come. */
 const PROGRESS_MS = 500;
@@ -57,11 +66,24 @@ const textOf = (content: Message["content"]): string =>
         .join("")
         .trim();
 
-/** A message the model must read as something a person said. */
-const asUser = (message: Message): string =>
-  message.role === "toolResult"
-    ? `Result of ${message.toolName}:\n${textOf(message.content)}`
-    : textOf(message.content);
+/**
+ * A message as the one turn of text this api takes.
+ *
+ * A tool result is what a person says next, in the words the system turn told
+ * the model to expect. A call the model made is written back the way it wrote
+ * it, so a history that used a tool still reads as one conversation.
+ */
+const asTurn = (message: Message): string => {
+  if (message.role === "toolResult") {
+    return `Result of ${message.toolName}:\n${textOf(message.content)}`;
+  }
+  if (message.role !== "assistant") return textOf(message.content);
+
+  const calls = Array.isArray(message.content)
+    ? message.content.filter((part) => part.type === "toolCall").map(renderCall)
+    : [];
+  return [textOf(message.content), ...calls].filter(Boolean).join("\n\n");
+};
 
 /**
  * pi's context as the api takes it: the system prompt and the history up front,
@@ -74,7 +96,7 @@ const asUser = (message: Message): string =>
 export function toTurns(context: Context): { initialPrompts: PromptTurn[]; prompt: string } {
   const history = [...context.messages];
   const answering = history.pop();
-  const prompt = answering && answering.role !== "assistant" ? asUser(answering) : "";
+  const prompt = answering && answering.role !== "assistant" ? asTurn(answering) : "";
   if (!prompt) throw new Error("The last message must be the one to answer.");
 
   const initialPrompts: PromptTurn[] = [];
@@ -86,11 +108,14 @@ export function toTurns(context: Context): { initialPrompts: PromptTurn[]; promp
     else initialPrompts.push({ role, content });
   };
 
-  if (context.systemPrompt) {
-    initialPrompts.push({ role: "system", content: context.systemPrompt });
-  }
+  // `system` may only be the first turn, so the tools are the end of that one
+  // turn — after the host's own prompt, which is what they serve.
+  const system = [context.systemPrompt, context.tools?.length ? toolGuide(context.tools) : ""]
+    .filter(Boolean)
+    .join("\n\n");
+  if (system) initialPrompts.push({ role: "system", content: system });
   for (const message of history) {
-    say(message.role === "assistant" ? "assistant" : "user", asUser(message));
+    say(message.role === "assistant" ? "assistant" : "user", asTurn(message));
   }
 
   return { initialPrompts, prompt };
@@ -169,21 +194,6 @@ async function* run(
     stopReason: "pending",
     timestamp: Date.now(),
   };
-
-  // The loop offers its tools to every model. This one has no way to call them,
-  // and the turn is answered without them rather than failed.
-  if (context.tools?.length) {
-    output.diagnostics = [
-      {
-        type: "unsupported",
-        timestamp: Date.now(),
-        details: {
-          message: "Gemini Nano has no tool calls. The turn was answered from the chat alone.",
-          tools: context.tools.map((tool) => tool.name),
-        },
-      },
-    ];
-  }
 
   let session: PromptSession | undefined;
   try {
@@ -269,25 +279,84 @@ async function* run(
     session = await opening;
     const before = used(session);
 
-    const block: TextContent = { type: "text", text: "" };
-    const index = output.content.push(block) - 1;
-    yield { type: "text_start", contentIndex: index, partial: output };
+    /** The text block being written, where the answer is in the middle of one. */
+    let block: TextContent | undefined;
+    let index = -1;
+    const close = function* () {
+      if (!block) return;
+      yield {
+        type: "text_end" as const,
+        contentIndex: index,
+        content: block.text,
+        partial: output,
+      };
+      block = undefined;
+    };
 
+    let called: ToolCall | undefined;
+    const report = { dropped: false };
     const stream = session.promptStreaming(prompt, { signal: options?.signal });
-    for await (const delta of chunks(stream)) {
-      block.text += delta;
-      yield { type: "text_delta", contentIndex: index, delta, partial: output };
+
+    for await (const piece of readAnswer(chunks(stream), context.tools ?? [], report)) {
+      if (piece.type === "text") {
+        if (!block) {
+          block = { type: "text", text: "" };
+          index = output.content.push(block) - 1;
+          yield { type: "text_start", contentIndex: index, partial: output };
+        }
+        block.text += piece.text;
+        yield { type: "text_delta", contentIndex: index, delta: piece.text, partial: output };
+        continue;
+      }
+
+      yield* close();
+      called = {
+        type: "toolCall",
+        id: `nano_${Date.now().toString(36)}_${output.content.length}`,
+        name: piece.call.name,
+        arguments: piece.call.arguments,
+      };
+      const at = output.content.push(called) - 1;
+      const delta = JSON.stringify(called.arguments);
+      yield { type: "toolcall_start", contentIndex: at, partial: output };
+      yield { type: "toolcall_delta", contentIndex: at, delta, partial: output };
+      yield { type: "toolcall_end", contentIndex: at, toolCall: called, partial: output };
     }
 
-    yield { type: "text_end", contentIndex: index, content: block.text, partial: output };
+    // A block that held no call the turn carries was taken out. Where it was
+    // the whole answer, the turn ends on a line rather than an empty bubble.
+    if (report.dropped && !called && !block?.text.trim()) {
+      if (!block) {
+        block = { type: "text", text: "" };
+        index = output.content.push(block) - 1;
+        yield { type: "text_start", contentIndex: index, partial: output };
+      }
+      block.text += NO_ANSWER;
+      yield { type: "text_delta", contentIndex: index, delta: NO_ANSWER, partial: output };
+    }
+    yield* close();
+
+    if (report.dropped) {
+      output.diagnostics = [
+        {
+          type: "unsupported",
+          timestamp: Date.now(),
+          details: {
+            message: "A block the model wrote was not a call this turn carries, and was left out.",
+            tools: context.tools?.map((tool) => tool.name) ?? [],
+          },
+        },
+      ];
+    }
 
     // An estimate: the count is the session's own, not Gemini Nano's tokenizer.
     const after = used(session);
     output.usage.input = before;
     output.usage.output = Math.max(0, after - before);
     output.usage.totalTokens = after;
-    output.stopReason = "stop";
-    yield { type: "done", reason: "stop", message: output };
+    const reason = called ? "toolUse" : "stop";
+    output.stopReason = reason;
+    yield { type: "done", reason, message: output };
   } catch (error) {
     const aborted = options?.signal?.aborted || (error as { name?: string })?.name === "AbortError";
     output.stopReason = aborted ? "aborted" : "error";

@@ -121,6 +121,7 @@ export function AgentChat({
       historyOpen={historyOpen}
       linkBase={linkBase}
       onCallTool={session.callTool && ((name) => session.callTool?.(name))}
+      onCompact={session.compact && (() => session.compact?.())}
       onDequeue={session.dequeue && ((id) => session.dequeue?.(id))}
       onDismissError={session.dismissError && (() => session.dismissError?.())}
       onForgetConversation={

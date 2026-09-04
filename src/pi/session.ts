@@ -21,7 +21,13 @@ import { isSecretStorage, type SealedState, type SecretStorage } from "./storage
 import { createChoices, type PiChoices, type PiStorage } from "./storage.ts";
 import { createAgentStore } from "./chat.ts";
 import { generateTitle, titleRequest, toTitle } from "./chat/title.ts";
-import { piMessageIndex, piUserText, toViewMessages } from "./chat/transcript.ts";
+import {
+  answeredSinceCompaction,
+  piMessageIndex,
+  piUserText,
+  toViewMessages,
+} from "./chat/transcript.ts";
+import { isContextSpent } from "./chat/errors.ts";
 import { documentTools } from "./tools/webmcp.ts";
 import type { ApprovalPolicy } from "./tools/approvals.ts";
 import type {
@@ -73,6 +79,18 @@ export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "message
   /** Name the conversation with the model rather than the first message. */
   generateTitle?: boolean;
   /**
+   * Summarize the conversation by itself when its window is nearly spent, and
+   * again when a turn fails because it was not spent but overrun.
+   *
+   * On by default, and the one request this session makes unasked: what it
+   * costs is a summary, and what it saves is the conversation — a window that
+   * fills is a chat that answers nothing more until somebody starts a new one.
+   * It runs after a turn settles, once per answer, and never while anything
+   * else holds the transcript. `false` leaves the meter's own button as the
+   * only way, which is a person deciding each time.
+   */
+  autoCompact?: boolean;
+  /**
    * Offer the model whatever tools the current page publishes — WebMCP, on
    * `document.modelContext`. `true` reads this document, which is the whole of
    * what a page needs; a `PageTools` of your own reads somewhere else, which is
@@ -100,10 +118,11 @@ export interface PiSessionOptions extends Omit<AgentOptions, "apiKey" | "message
 }
 
 /**
- * One thing asked of the agent: a message to send, or a tool to run. What is
- * held while nothing can answer yet, and what `flush()` then hands the store.
+ * One thing asked of the agent: a message to send, a tool to run, or the
+ * conversation summarized. What is held while nothing can answer yet, and what
+ * `flush()` then hands the store.
  */
-type PendingAsk = { text: string } | { tool: string };
+type PendingAsk = { text: string } | { tool: string } | { compact: true };
 
 /**
  * A session this module made, and so one its caller ends.
@@ -258,6 +277,7 @@ const ANSWERED_ON_SETTINGS = new Set([401, 402, 403, 404]);
 export function createPiSession(options: PiSessionOptions = {}): PiSession {
   const {
     apiKey,
+    autoCompact: compacting,
     provider: openOn,
     generateTitle: named,
     history: keeping,
@@ -320,7 +340,7 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   /** What the last ask came back with, where it was not a key. */
   let lockError: string | undefined;
   let providerId: string | undefined;
-  let preferences: ChatSessionOptions = { generateTitle: named };
+  let preferences: ChatSessionOptions = { autoCompact: compacting ?? true, generateTitle: named };
   /**
    * The stored choices, until they land: the model waits for its catalog, and
    * the level for the model. Spent once, because a pick after that is the
@@ -374,9 +394,11 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    * Asked before a provider was chosen, or before the keys were unlocked. It
    * goes as soon as something can answer.
    *
-   * Either of the two ways of asking: a message, or a tool a person picked. A
-   * tool waits for the same thing a message does, because running one is only
-   * half of it — the model is what reads the result, and there is no model yet.
+   * Any of the three ways of asking: a message, a tool a person picked, or a
+   * compaction. A tool waits for the same thing a message does, because running
+   * one is only half of it — the model is what reads the result, and there is no
+   * model yet. A compaction is a request of its own, so it waits for a provider
+   * and a key exactly as a message does.
    */
   let pending: PendingAsk | undefined;
   let pickerOpen = false;
@@ -518,8 +540,11 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   };
 
   /** What the store does with an ask, once something can answer it. */
-  const perform = (ask: PendingAsk) =>
-    "text" in ask ? store.send(ask.text) : store.callTool(ask.tool);
+  const perform = (ask: PendingAsk) => {
+    if ("text" in ask) store.send(ask.text);
+    else if ("tool" in ask) store.callTool(ask.tool);
+    else store.compact();
+  };
 
   /**
    * Ask, or hold it until something can answer. The question is the menu
@@ -527,8 +552,9 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
    * rather than answering from a provider nobody picked.
    *
    * Every way of asking goes through here — the composer, a rewind running a
-   * message again, and a tool picked from the composer's own list — so a chat
-   * that lost its key mid-conversation holds any of them the same way.
+   * message again, a tool picked from the composer's own list, and the meter's
+   * own compact button — so a chat that lost its key mid-conversation holds any
+   * of them the same way.
    */
   const ask = (request: PendingAsk) => {
     // A key that is only locked is a key: the click behind this ask is the
@@ -636,6 +662,40 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
       keep();
       notify();
     });
+  };
+
+  /**
+   * Summarize the conversation, because the window is nearly spent or a turn
+   * has already fallen off the end of it.
+   *
+   * The one request this session makes unasked, and it is made where the
+   * alternative is a conversation that cannot go on: the meter at pi's own
+   * threshold, or a provider saying the request did not fit. A turn that failed
+   * that way is run again once the summary has landed, so the message a person
+   * sent is answered rather than lost.
+   *
+   * Once per answer. `answeredSinceCompaction` is the whole of the guard: a
+   * summary that freed less than it hoped, and a retry that failed the same way
+   * again, both leave the transcript with no answer since the last summary, and
+   * nothing here writes a second one over it. The meter's button is still
+   * there, which is a person deciding to spend the request.
+   */
+  const maybeCompact = () => {
+    if (!preferences.autoCompact || !ready()) return;
+    const { error, errorStatus, isStreaming, usage } = store.snapshot();
+    // A turn, a tool a person ran, or a compaction already under way.
+    if (isStreaming || usage?.compacting) return;
+    if (!answeredSinceCompaction(runtime.agent.state.messages)) return;
+
+    // The turn that did not fit: the meter never saw it coming, because the
+    // message that overran the window is not in any number a provider sent
+    // back. Worth trying whatever the meter says — `compact()` is a no-op where
+    // there is nothing behind the cut.
+    if (isContextSpent(error, errorStatus)) {
+      store.compact(() => store.retry());
+      return;
+    }
+    if (usage?.nearLimit && usage.canCompact) store.compact();
   };
 
   /**
@@ -828,9 +888,21 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
   // and a second session on the same store unlocking it.
   const offLock = secrets?.lock.subscribe(notify);
 
+  /** Whether the loop was running when the store last said anything. */
+  let running = false;
+
   const offStore = store.subscribe(() => {
+    const { isStreaming } = store.snapshot();
+    // A run that has just ended — a turn, a tool, or a compaction. The one
+    // moment an automatic compaction is decided, so opening a stored
+    // conversation that was left at its limit costs no request until the person
+    // says something into it.
+    const settled = running && !isStreaming;
+    running = isStreaming;
+
     maybeTitle();
     askOnFailure();
+    if (settled) maybeCompact();
     // Written when the loop settles rather than on every event: a streamed
     // answer notifies per token, and each write is the whole transcript.
     if (!runtime.agent.state.isStreaming) keep();
@@ -896,6 +968,16 @@ export function createPiSession(options: PiSessionOptions = {}): PiSession {
      * about the result, which is the half that makes it worth running here.
      */
     callTool: (name) => ask({ tool: name }),
+
+    /**
+     * Summarize the turns so far, from the meter that says the window is nearly
+     * spent. It is one more request of the provider the conversation runs on, so
+     * it waits for a key exactly as a message does.
+     *
+     * What comes back is stored where this conversation is stored: the store
+     * writes when the loop settles, and a swapped transcript settles at once.
+     */
+    compact: () => ask({ compact: true }),
 
     stop: () => store.stop(),
 

@@ -2,6 +2,7 @@
 import {
   Context,
   ContextCacheUsage,
+  ContextCompact,
   ContextContent,
   ContextContentBody,
   ContextContentFooter,
@@ -61,6 +62,17 @@ export interface ChatBarProps extends ChatSettingsProps {
   /** The context meter, at the trailing end. Omitted, the bar carries none. */
   usage?: ChatUsage;
   /**
+   * Summarize the conversation so far, from inside the meter. Omitted, the
+   * panel is a reading alone — a harness that cannot compact offers no button
+   * for it.
+   */
+  onCompact?: () => void;
+  /**
+   * A turn or a tool is running. The compact button waits for it: a summary is
+   * written from a transcript nothing else is holding.
+   */
+  busy?: boolean;
+  /**
    * What stands in front of a tool call. Omitted, the bar shows no such button:
    * a harness with no tools has nothing to gate, and one that gates nothing has
    * no switch to offer.
@@ -94,6 +106,8 @@ export function ChatBar({
   style,
   toolPolicy,
   onToolPolicyChange,
+  onCompact,
+  busy,
   ...settings
 }: ChatBarProps) {
   const choices = Boolean(settings.providers?.length || settings.models?.length);
@@ -145,6 +159,12 @@ export function ChatBar({
           <ContextTrigger />
           <ContextContent style={S.usagePanel}>
             <ContextContentHeader />
+            <ContextCompact
+              busy={busy}
+              canCompact={usage.canCompact}
+              onCompact={onCompact}
+              running={usage.compacting}
+            />
             {usage.usage && (
               <ContextContentBody>
                 <ContextInputUsage />

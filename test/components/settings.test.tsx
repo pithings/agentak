@@ -330,7 +330,7 @@ describe("Chat", () => {
     );
 
     // The greeting stands in for the transcript: both are the conversation.
-    expect(screen.getByText("agentak")).toBeTruthy();
+    expect(screen.getByText("Agentak")).toBeTruthy();
 
     // One way in: the bar's trigger, which names what is running and shuts
     // again the page it opened. Found by its tooltip, because the name it
@@ -339,17 +339,17 @@ describe("Chat", () => {
     fireEvent.click(trigger());
     expect(screen.getByText("Provider")).toBeTruthy();
     fireEvent.click(trigger());
-    expect(screen.getByText("agentak")).toBeTruthy();
+    expect(screen.getByText("Agentak")).toBeTruthy();
 
     fireEvent.click(trigger());
-    expect(screen.queryByText("agentak")).toBeNull();
+    expect(screen.queryByText("Agentak")).toBeNull();
     expect(screen.getByText("Settings")).toBeTruthy();
     expect(screen.getByText("Provider")).toBeTruthy();
     // One title bar: the way back replaces the new-conversation button.
     expect(screen.queryByRole("button", { name: "New conversation" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.getByText("agentak")).toBeTruthy();
+    expect(screen.getByText("Agentak")).toBeTruthy();
     expect(screen.getByText("A conversation")).toBeTruthy();
   });
 
@@ -376,7 +376,7 @@ describe("Chat", () => {
 
     expect(chosen).toEqual(["gpt-5-mini"]);
     // Back to the conversation, with the cursor where the next message goes.
-    expect(screen.getByText("agentak")).toBeTruthy();
+    expect(screen.getByText("Agentak")).toBeTruthy();
     expect(document.activeElement).toBe(container.querySelector("textarea"));
   });
 
@@ -510,6 +510,6 @@ describe("Chat", () => {
     fireEvent.keyDown(field, { key: "Enter" });
     expect(sent).toEqual(["hello"]);
     expect(open).toEqual([true, false]);
-    expect(screen.getByText("agentak")).toBeTruthy();
+    expect(screen.getByText("Agentak")).toBeTruthy();
   });
 });

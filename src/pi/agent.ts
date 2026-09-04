@@ -4,6 +4,7 @@ import {
   Agent,
   type AgentMessage,
   type AgentTool,
+  convertToLlm,
   type StreamFn,
   type ThinkingLevel,
 } from "@earendil-works/pi-agent-core";
@@ -81,6 +82,12 @@ export function createAgent({
   const gate = createApprovalGate(approvals, approvalFor);
 
   const agent = new Agent({
+    // A summary is a message of its own — `role: "compactionSummary"` — and
+    // pi's default conversion knows the three roles a provider takes and drops
+    // it. This one writes it out as the text it stands for, so a compacted
+    // conversation reads to the model as the summary of what was said before
+    // it. See `chat/compaction.ts`.
+    convertToLlm,
     initialState: {
       systemPrompt,
       model,

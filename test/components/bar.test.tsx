@@ -86,6 +86,47 @@ describe("ChatBar", () => {
     expect(screen.queryByRole("button", { name: /Bypass/ })).toBeNull();
   });
 
+  it("offers a compaction inside the meter, and only where one is offered", () => {
+    const asked: number[] = [];
+    const usage = { maxTokens: 200_000, nearLimit: true, usedTokens: 190_000 };
+
+    const { rerender } = render(bar({ usage }));
+    fireEvent.click(screen.getByRole("img", { name: /%/ }).closest("button") as HTMLButtonElement);
+    // A harness that cannot compact shows no button for it.
+    expect(screen.queryByRole("button", { name: "Compact" })).toBeNull();
+
+    rerender(bar({ onCompact: () => asked.push(1), usage }));
+    fireEvent.click(screen.getByRole("button", { name: "Compact" }));
+    expect(asked).toEqual([1]);
+  });
+
+  it("says why it waits where a compaction would change nothing", () => {
+    render(
+      bar({
+        onCompact: () => {},
+        usage: { canCompact: false, maxTokens: 200_000, usedTokens: 1_000 },
+      }),
+    );
+    fireEvent.click(screen.getByRole("img", { name: /%/ }).closest("button") as HTMLButtonElement);
+
+    // Offered and not hidden, so the panel says what the button is for — and
+    // disabled, so a click is never a click that does nothing.
+    expect(screen.getByRole("button", { name: "Compact" })).toHaveProperty("disabled", true);
+    expect(screen.getByText(/Nothing to compact/)).toBeTruthy();
+  });
+
+  it("waits for the turn, and says so while a compaction runs", () => {
+    const compact = { maxTokens: 200_000, usedTokens: 190_000 };
+
+    const { rerender } = render(bar({ busy: true, onCompact: () => {}, usage: compact }));
+    fireEvent.click(screen.getByRole("img", { name: /%/ }).closest("button") as HTMLButtonElement);
+    expect(screen.getByRole("button", { name: "Compact" })).toHaveProperty("disabled", true);
+
+    rerender(bar({ onCompact: () => {}, usage: { ...compact, compacting: true } }));
+    const running = screen.getByRole("button", { name: "Compacting…" });
+    expect(running).toHaveProperty("disabled", true);
+  });
+
   it("says so in the meter when the window is nearly spent", () => {
     const meter = (nearLimit: boolean) =>
       bar({ usage: { maxTokens: 200_000, nearLimit, usedTokens: 190_000 } });

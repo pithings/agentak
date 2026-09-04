@@ -33,7 +33,8 @@ session-owned, host-owned, or callback-owned. Keep the exhaustiveness guards and
   model-call approval gate, but the harness must append call and result before continuing
   the model.
 - `thinkingLevels` reports the selected model's supported subset, not a global scale.
-- `usage.nearLimit` is only a warning; compaction belongs to the harness.
+- `usage.nearLimit` is only a warning. `compact()` is what answers it, and the harness owns
+  what a compaction is; `usage.compacting` reports one running.
 
 ## Ownership and bundles
 

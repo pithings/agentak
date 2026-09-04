@@ -464,6 +464,43 @@ export const PanelRightCloseIcon = (props: IconProps) => (
 );
 
 /**
+ * The agentak mark — `assets/agentak.svg`, in ink of its own no more.
+ *
+ * The file it is traced from carries a `<style>`: a scheme-swapped ink and a
+ * blink. Neither survives here. This library ships no stylesheet, and a
+ * `<style>` inside an inline svg is a stylesheet — one that would reach the
+ * host page's own `#agentak` and keyframes. So the ink is `currentColor`, which
+ * is what every other icon here paints with, and the eyes hold still.
+ *
+ * Its frame is the drawing's own, not the 24px grid above: the ears fall
+ * outside a `0 0 24 24` box, and refitting the geometry would redraw the logo.
+ * `width`/`height` still answer to `size`, so it sits in a row of icons.
+ */
+export const AgentakIcon = ({ size = 24, className, ...props }: IconProps) => (
+  <svg
+    aria-hidden="true"
+    className={className}
+    fill="none"
+    height={size}
+    stroke="currentColor"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width={3.2}
+    viewBox="6 6.5 52 52"
+    width={size}
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <rect height="35" rx="12" width="30" x="17" y="15" />
+    <path d="M11.5 30q-4 6 0 13" />
+    <path d="M52.5 30q4 6 0 13" />
+    <path d="M29 38q3 3.5 6 0" />
+    <circle cx="26" cy="31" fill="currentColor" r="2.4" stroke="none" />
+    <circle cx="38" cy="31" fill="currentColor" r="2.4" stroke="none" />
+  </svg>
+);
+
+/**
  * A host's own geometry, in the frame the built-in icons are drawn in.
  *
  * A definition names an icon this library ships, or carries the path data of
@@ -540,6 +577,7 @@ const ICONS: ((props: IconProps) => JSX.Element)[] = [
   PlugIcon,
   SlidersIcon,
   PanelRightCloseIcon,
+  AgentakIcon,
 ];
 for (const component of ICONS) (component as IconComponent).isIcon = true;
 // The host's own geometry is one of them too, so a button sizes it the same.

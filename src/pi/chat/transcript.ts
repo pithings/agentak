@@ -1,6 +1,11 @@
 // Docs: @docs/4.agents/2.pi/8.runtime-behavior.md
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import { DEFAULT_COMPACTION_SETTINGS, shouldCompact } from "@earendil-works/pi-agent-core";
+import {
+  type CompactionSettings,
+  DEFAULT_COMPACTION_SETTINGS,
+  estimateTokens,
+  shouldCompact,
+} from "@earendil-works/pi-agent-core";
 import type { ImageContent, TextContent, Usage } from "@earendil-works/pi-ai";
 
 import type { ApprovalRequest } from "../tools/approvals.ts";
@@ -147,8 +152,8 @@ export function toViewMessages(
         break;
       }
 
-      // Written by a host that compacts or branches the transcript. The loop
-      // here does neither yet, so these arrive only from outside.
+      // A summary standing where turns used to be: `compact()` writes the
+      // first, and a host that branches the transcript writes the second.
       case "compactionSummary":
       case "branchSummary": {
         view.push({
@@ -210,19 +215,85 @@ export interface ContextUsageView {
    * which is the window less the room a summary needs.
    */
   nearLimit: boolean;
+  /**
+   * A compaction is running: the summary that replaces the turns so far is
+   * being written. Nothing else may be asked of the loop while it is.
+   */
+  compacting?: boolean;
+  /**
+   * There are turns behind what a compaction would keep, so one would leave a
+   * shorter conversation than it read.
+   *
+   * False is a conversation whose every turn is a recent one — a compaction
+   * would summarize nothing and change nothing. The button reads this rather
+   * than running a request to find out, because the answer is arithmetic.
+   */
+  canCompact: boolean;
 }
 
 const EMPTY_COSTS = { input: 0, output: 0, cache: 0, total: 0 };
 
 /**
- * pi keeps a fixed 16k for a summary — more than a small window holds. Gemini
- * Nano has 9k, so the plain threshold sits below zero and every turn reads as
- * near the limit. The reserve is capped at half the window instead.
+ * What a compaction keeps and what it leaves room for, for a window this size.
+ *
+ * pi's own numbers are written for a coding harness on a large model: 16k held
+ * back for the summary, 20k of recent turns kept. A browser runs on whatever the
+ * visitor picked, and Gemini Nano's whole window is 9k — the plain reserve sits
+ * below zero there, so every turn reads as near the limit, and the recent turns
+ * alone would fill the window again. Both are capped against the window: half of
+ * it for the summary, a quarter of it kept.
+ *
+ * It lives here rather than in `compaction.ts` because the meter warns on the
+ * same numbers, and warning is what a chat does long before it compacts.
  */
-const compactionSettings = (contextWindow: number) => ({
+export const compactionSettings = (contextWindow: number): CompactionSettings => ({
   ...DEFAULT_COMPACTION_SETTINGS,
+  keepRecentTokens: Math.min(
+    DEFAULT_COMPACTION_SETTINGS.keepRecentTokens,
+    Math.floor(contextWindow / 4),
+  ),
   reserveTokens: Math.min(DEFAULT_COMPACTION_SETTINGS.reserveTokens, Math.floor(contextWindow / 2)),
 });
+
+/** The last compaction in a transcript, and where it sits. */
+const lastCompaction = (messages: AgentMessage[]) => {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index];
+    if (message.role === "compactionSummary") return { at: index, message };
+  }
+  return undefined;
+};
+
+/**
+ * The last turn this window was answered by, if there is one.
+ *
+ * A compaction keeps the recent turns, and those carry the usage of the
+ * requests they were part of — requests over a context that no longer exists.
+ * So a turn counts as this window's own only where it was written after the
+ * summary was: everything kept predates it, and the next answer is the first
+ * number a provider gives about the context that is now being sent.
+ */
+const answeredTurn = (messages: AgentMessage[]) => {
+  const compaction = lastCompaction(messages);
+  for (let index = messages.length - 1; index > (compaction?.at ?? -1); index--) {
+    const message = messages[index];
+    if (message.role !== "assistant" || !message.usage) continue;
+    if (compaction && message.timestamp <= compaction.message.timestamp) continue;
+    return message;
+  }
+  return undefined;
+};
+
+/**
+ * Whether this window has been answered — a turn since the last compaction.
+ *
+ * What an automatic compaction waits for: one summary per answer, so a
+ * compaction that freed less than it hoped is not written a second time over
+ * the same conversation, and a turn that failed on the way back is not answered
+ * by summarizing it again.
+ */
+export const answeredSinceCompaction = (messages: AgentMessage[]): boolean =>
+  answeredTurn(messages) !== undefined;
 
 /** pi reports cache writes as their own bucket; the panel has one cache row. */
 const contextTokens = (usage: Usage) => usage.input + usage.cacheRead + usage.cacheWrite;
@@ -236,14 +307,19 @@ const contextTokens = (usage: Usage) => usage.input + usage.cacheRead + usage.ca
  *
  * pi prices reasoning tokens as output, so the reasoning row carries no cost of
  * its own; its tokens are already inside `outputTokens`.
+ *
+ * A compaction leaves a window no provider has counted yet: the turns it kept
+ * carry the numbers of the context they were part of, and that context is gone.
+ * The meter estimates it until the next answer arrives with a real one, so a
+ * compaction shows as the drop it is rather than as nothing at all.
  */
 export function toContextUsage(
   messages: AgentMessage[],
   model: AnyModel,
 ): ContextUsageView | undefined {
   const turns = messages.filter((message) => message.role === "assistant" && message.usage);
-  const last = turns.at(-1);
-  if (!last || last.role !== "assistant") return undefined;
+  if (turns.length === 0) return undefined;
+  const answered = answeredTurn(messages);
 
   const totals = turns.reduce(
     (sum, message) => {
@@ -266,19 +342,28 @@ export function toContextUsage(
     { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0, cost: EMPTY_COSTS },
   );
 
-  const usedTokens = contextTokens(last.usage) + last.usage.output;
+  const compaction = lastCompaction(messages);
+  const usedTokens = answered
+    ? contextTokens(answered.usage) + answered.usage.output
+    : // Just compacted: the summary and what it kept, by pi's own character
+      // estimate. Nothing has been sent since, so there is no better number.
+      messages
+        .slice(compaction?.at ?? 0)
+        .reduce((sum, message) => sum + estimateTokens(message), 0);
+  const settings = compactionSettings(model.contextWindow);
 
   return {
     usedTokens,
+    // Against what a compaction keeps, not against the window: the cut leaves
+    // the recent turns whole, so a conversation smaller than that budget is one
+    // where every turn is recent and there is nothing behind the cut to
+    // summarize. See `compaction.ts`.
+    canCompact: usedTokens > settings.keepRecentTokens,
     maxTokens: model.contextWindow,
     modelId: model.id,
-    // The same call the harness compacts on, so the warning stands exactly
-    // where a compaction would run — see `.agents/session.md`.
-    nearLimit: shouldCompact(
-      usedTokens,
-      model.contextWindow,
-      compactionSettings(model.contextWindow),
-    ),
+    // The same call a compaction is decided on, and the same settings, so the
+    // warning stands exactly where `compact()` would run — see `compaction.ts`.
+    nearLimit: shouldCompact(usedTokens, model.contextWindow, settings),
     usage: {
       inputTokens: totals.input,
       outputTokens: totals.output,

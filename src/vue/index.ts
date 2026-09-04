@@ -42,6 +42,7 @@ const REQUIRED = { type: null, required: true } as const;
 
 const PANEL_PROPS: Required<ComponentObjectPropsOptions<ChatPanelProps>> = {
   actions: null,
+  autoCompact: FLAG,
   autoFocus: FLAG,
   emptyItems: null,
   generateTitle: FLAG,
@@ -69,6 +70,7 @@ const VIEW_PROPS: Required<ComponentObjectPropsOptions<ChatViewProps>> = {
   models: null,
   modelsLoading: FLAG,
   onCallTool: null,
+  onCompact: null,
   onDequeue: null,
   onDismissError: null,
   onForgetConversation: null,

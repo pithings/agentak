@@ -106,6 +106,14 @@ describe("usablePiMessages", () => {
     expect(usablePiMessages(messages)).toEqual(messages.slice(0, 3));
   });
 
+  it("keeps a compaction summary, which is a turn the model reads", () => {
+    const messages = [
+      { role: "compactionSummary" as const, summary: "…", tokensBefore: 4_000, timestamp: 0 },
+      asked("and now?"),
+    ];
+    expect(usablePiMessages(messages)).toBe(messages);
+  });
+
   it("drops a turn that ended in an error", () => {
     expect(usablePiMessages([asked("what is this page?"), failed])).toEqual([
       asked("what is this page?"),

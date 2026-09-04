@@ -131,20 +131,17 @@ describe("useWllamaSource", () => {
     delete (globalThis as { Worker?: unknown }).Worker;
   });
 
-  it("offers no row on a phone, whatever the phone can load", () => {
+  it("offers the row on a phone, on the terms every other device gets", () => {
     globalThis.Worker = class {} as unknown as typeof Worker;
     expect(wllamaSupported()).toBe(true);
 
-    // A coarse pointer over a screen the size of the device, which is the one
-    // thing a host cannot answer for by shipping its own build.
+    // A coarse pointer over a screen the size of the device. The download and
+    // the answer cost more here, and the row says the weight, but the device is
+    // not what decides.
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("coarse") }));
     vi.stubGlobal("screen", { width: 390 });
-    expect(wllamaSupported()).toBe(false);
+    expect(wllamaSupported()).toBe(true);
     useWllamaSource({ module: async () => ({}) });
-    expect(wllamaSupported()).toBe(false);
-
-    // A laptop with a touch display is not one.
-    vi.stubGlobal("screen", { width: 1512 });
     expect(wllamaSupported()).toBe(true);
 
     vi.unstubAllGlobals();

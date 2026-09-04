@@ -74,10 +74,17 @@ export type ChatPropsAccountedFor = Exhausted<
 export interface ChatSessionOptions {
   /** Ask the model to name the conversation. It costs one request. */
   generateTitle?: boolean;
+  /**
+   * Let the harness summarize the conversation by itself when the window is
+   * nearly spent, rather than waiting to be asked from the meter. What a
+   * harness that cannot compact does with this is nothing.
+   */
+  autoCompact?: boolean;
 }
 
 /** The same keys at runtime, so `AgentChat` forwards by list, not by hand. */
 export const CHAT_SESSION_OPTIONS = [
+  "autoCompact",
   "generateTitle",
 ] as const satisfies readonly (keyof ChatSessionOptions)[];
 
@@ -128,6 +135,17 @@ export interface ChatSession {
    * one only writes the name into the message.
    */
   callTool?(name: string): void;
+
+  /**
+   * Summarize the conversation so far and carry on from the summary, so one
+   * that filled the model's window is not one that has to end.
+   *
+   * Pairs with `usage`: the meter is where it is asked for, and without this
+   * the meter only warns. The harness decides what is summarized and what is
+   * kept whole; the transcript keeps a checkpoint where the turns used to be,
+   * and `usage.compacting` says one is running.
+   */
+  compact?(): void;
 
   /**
    * Answer a tool confirmation, by tool call id. Without it, nothing is gated.

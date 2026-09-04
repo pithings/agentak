@@ -1,4 +1,4 @@
-import type { AssistantMessageEvent, Context, Model } from "@earendil-works/pi-ai";
+import type { AssistantMessageEvent, Context, Model, ToolCall } from "@earendil-works/pi-ai";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { streamSimple, toTurns } from "../../src/pi/providers/chrome-prompt.ts";
@@ -18,9 +18,10 @@ const user = (text: string): Context["messages"][number] => ({
   timestamp: 0,
 });
 
-const assistant = (text: string): Context["messages"][number] => ({
+/** An answer, with the calls it made where it made any. */
+const assistant = (text: string, calls: ToolCall[] = []): Context["messages"][number] => ({
   role: "assistant",
-  content: [{ type: "text", text }],
+  content: [{ type: "text", text }, ...calls],
   api: "chrome-prompt",
   provider: "chrome-ai",
   model: ON_DEVICE_MODEL_ID,
@@ -90,6 +91,19 @@ const stub = (over: Partial<Fake> = {}): Fake => {
   return fake;
 };
 
+const TOOLS: Context["tools"] = [
+  { name: "get_current_page", description: "the page", parameters: { type: "object" } as any },
+  {
+    name: "search_docs",
+    description: "search",
+    parameters: {
+      type: "object",
+      properties: { query: { type: "string" }, limit: { type: "integer" } },
+      required: ["query"],
+    } as any,
+  },
+];
+
 const collect = async (context: Context): Promise<AssistantMessageEvent[]> => {
   const events: AssistantMessageEvent[] = [];
   const stream = streamSimple(MODEL as Model<"chrome-prompt">, context);
@@ -138,6 +152,54 @@ describe("toTurns", () => {
       { role: "user", content: "read it\n\nResult of read_page:\n<h1>Title</h1>" },
     ]);
     expect(prompt).toBe("now summarise");
+  });
+
+  it("declares the tools, and how to call one, after the host's own prompt", () => {
+    const { initialPrompts } = toTurns({
+      systemPrompt: "call get_current_page first",
+      messages: [user("what is this page?")],
+      tools: TOOLS,
+    });
+
+    expect(initialPrompts).toHaveLength(1);
+    const system = initialPrompts[0];
+    expect(system.role).toBe("system");
+    expect(system.content.startsWith("call get_current_page first")).toBe(true);
+    expect(system.content).toContain("```tool_code");
+    expect(system.content).toContain("def search_docs(query: str, limit: int = None):");
+  });
+
+  it("writes a call the model made back the way it wrote it", () => {
+    const { initialPrompts, prompt } = toTurns({
+      messages: [
+        user("what is this page?"),
+        assistant("Looking.", [
+          { type: "toolCall", id: "1", name: "search_docs", arguments: { query: "WebMCP" } },
+        ]),
+        {
+          role: "toolResult",
+          toolCallId: "1",
+          toolName: "search_docs",
+          content: [{ type: "text", text: "one page" }],
+          isError: false,
+          timestamp: 0,
+        },
+      ],
+      tools: TOOLS,
+    });
+
+    expect(initialPrompts.at(-1)).toEqual({
+      role: "assistant",
+      content: 'Looking.\n\n```tool_code\nprint(default_api.search_docs(query="WebMCP"))\n```',
+    });
+    // The words the system turn told the model to expect back.
+    expect(prompt).toBe("Result of search_docs:\none page");
+  });
+
+  it("leaves the system turn alone where the turn carries no tools", () => {
+    const { initialPrompts } = toTurns({ systemPrompt: "be brief", messages: [user("hi")] });
+
+    expect(initialPrompts).toEqual([{ role: "system", content: "be brief" }]);
   });
 
   it("refuses a context with nothing to answer", () => {
@@ -190,15 +252,86 @@ describe("streamSimple", () => {
     expect(fake.prompts).toEqual(["hello"]);
   });
 
-  it("says the tools went unused rather than failing the turn", async () => {
-    stub();
-    const events = await collect({
-      messages: [user("read this page")],
-      tools: [{ name: "read_page", description: "read it", parameters: { type: "object" } as any }],
+  it("turns a fenced call into a call the loop can run", async () => {
+    stub({
+      chunks: [
+        "Let me look.\n",
+        "```tool_",
+        'code\nprint(default_api.search_docs(query="WebMCP", limit=3))\n``',
+        // Whatever the model writes after a call is the result it wishes it
+        // had. The turn ends at the call, so none of this is read.
+        "`\nResult: three pages.",
+      ],
     });
+    const events = await collect({ messages: [user("what is WebMCP?")], tools: TOOLS });
+
+    expect(events.map((event) => event.type)).toEqual([
+      "start",
+      "text_start",
+      "text_delta",
+      "text_end",
+      "toolcall_start",
+      "toolcall_delta",
+      "toolcall_end",
+      "done",
+    ]);
 
     const done = events.at(-1) as Extract<AssistantMessageEvent, { type: "done" }>;
-    expect(done.message.diagnostics?.[0].details?.tools).toEqual(["read_page"]);
+    expect(done.reason).toBe("toolUse");
+    expect(done.message.stopReason).toBe("toolUse");
+    expect(done.message.content).toEqual([
+      { type: "text", text: "Let me look.\n" },
+      {
+        type: "toolCall",
+        id: expect.stringContaining("nano_"),
+        name: "search_docs",
+        arguments: { query: "WebMCP", limit: 3 },
+      },
+    ]);
+  });
+
+  it("takes a call the model wrote without a fence", async () => {
+    stub({ chunks: ['print(search_docs(query="WebMCP page tools"))'] });
+    const events = await collect({ messages: [user("what is WebMCP?")], tools: TOOLS });
+
+    const done = events.at(-1) as Extract<AssistantMessageEvent, { type: "done" }>;
+    expect(done.reason).toBe("toolUse");
+    expect(done.message.content).toEqual([
+      {
+        type: "toolCall",
+        id: expect.stringContaining("nano_"),
+        name: "search_docs",
+        arguments: { query: "WebMCP page tools" },
+      },
+    ]);
+  });
+
+  it("leaves out a result the model invented, and says so", async () => {
+    stub({
+      chunks: ["```tool_outputs\nthree pages\n```\nThere are three pages about it."],
+    });
+    const events = await collect({ messages: [user("what is WebMCP?")], tools: TOOLS });
+
+    const done = events.at(-1) as Extract<AssistantMessageEvent, { type: "done" }>;
+    expect(done.reason).toBe("stop");
+    expect(done.message.content).toEqual([
+      { type: "text", text: "There are three pages about it." },
+    ]);
+    expect(done.message.diagnostics?.[0].details?.tools).toEqual([
+      "get_current_page",
+      "search_docs",
+    ]);
+  });
+
+  it("answers where the whole turn was a call it could not read", async () => {
+    stub({ chunks: ["```tool_code\nprint(default_api.open_the_pod_bay())\n```"] });
+    const events = await collect({ messages: [user("what is WebMCP?")], tools: TOOLS });
+
+    const done = events.at(-1) as Extract<AssistantMessageEvent, { type: "done" }>;
+    expect(done.reason).toBe("stop");
+    expect(done.message.content).toEqual([
+      { type: "text", text: "I could not make that call. Ask me again, in other words." },
+    ]);
   });
 
   it("ends the turn with a message a person can act on", async () => {

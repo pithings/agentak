@@ -198,6 +198,13 @@ export interface ChatProps extends ChatComposerProps, ChatHistoryProps {
   /** The context meter, in the bar under the composer. Omitted, there is none. */
   usage?: ChatUsage;
   /**
+   * Summarize the conversation so far, from inside that meter: the harness
+   * replaces the turns with one summary and the chat carries on under it.
+   * Omitted, the meter only reads — the answer to a spent window is then a new
+   * conversation.
+   */
+  onCompact?: () => void;
+  /**
    * Whether a tool call is confirmed before it runs, in the same bar. Omitted,
    * the bar shows no such button: a harness with no tools has nothing to gate.
    */
@@ -252,6 +259,7 @@ export function Chat({
   onRetryFrom,
   linkBase,
   usage,
+  onCompact,
   toolPolicy,
   onToolPolicyChange,
   actions,
@@ -493,6 +501,10 @@ export function Chat({
 
           <ChatBar
             {...composer}
+            // A summary is written from a transcript nothing else is holding,
+            // so the button waits for whatever is running.
+            busy={isStreaming}
+            onCompact={onCompact}
             // The trigger is a toggle here: it names the model on the way to the
             // page, and closes the page it opened.
             onPickerOpenChange={showSettings}

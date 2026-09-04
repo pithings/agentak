@@ -95,6 +95,21 @@ const forStatus = (status: number): string => {
 };
 
 /**
+ * A window that would not hold the request, however the provider said so.
+ *
+ * Every provider words it differently and most carry no status a browser can
+ * read — Chrome's own api throws a `QuotaExceededError` the module turns into a
+ * sentence — so this reads the sentence. It decides one thing: whether a
+ * compaction is worth trying before the turn is given up on, so a wrong guess
+ * costs one summary and never a wrong answer.
+ */
+const SPENT_WINDOW =
+  /too long|context (?:length|window)|maximum context|context limit|token limit|quota exceeded/i;
+
+export const isContextSpent = (error?: string, status?: number): boolean =>
+  status === 413 || (error !== undefined && SPENT_WINDOW.test(error));
+
+/**
  * The message the chat shows for a failed turn. Anything unrecognised passes
  * through, so a provider that explains itself is still read word for word.
  */

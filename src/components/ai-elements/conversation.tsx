@@ -136,7 +136,7 @@ export const ConversationEmptyState = ({
       <>
         {icon && <div style={u.muted}>{icon}</div>}
         <div>
-          <h3 style={sx(reset.text, S.emptyTitle)}>{title}</h3>
+          {title && <h3 style={sx(reset.text, S.emptyTitle)}>{title}</h3>}
           {description && <p style={sx(reset.text, S.emptyText)}>{description}</p>}
         </div>
       </>

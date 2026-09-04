@@ -3,7 +3,7 @@ import { cloneElement, createContext, isValidElement, toChildArray } from "preac
 import { useCallback, useContext, useEffect, useMemo, useRef } from "preact/hooks";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible.tsx";
-import { buttonSx } from "../ui/button.tsx";
+import { Button, buttonSx } from "../ui/button.tsx";
 import { useControllableState } from "../../lib/use-controllable-state.ts";
 import { useInteraction } from "../../lib/use-interaction.ts";
 import { reset, u } from "../../styles/base.ts";
@@ -100,6 +100,22 @@ const S = {
   contextMeterFill: {
     background: "var(--primary)",
     transition: "width var(--transition)",
+  },
+  // A block of its own under the meter, so the reading stays a reading and the
+  // one thing to do about it sits under the words that say to do it.
+  //
+  // A column and not a row: the panel is 15rem wide, the line wraps at that
+  // width whatever it says, and a button beside a wrapped line is a button in a
+  // column of its own two words wide. Under it, the words keep the width and
+  // the button keeps its shape.
+  contextCompact: {
+    boxSizing: "border-box",
+    display: "flex",
+    width: "100%",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: "0.5rem",
+    padding: "0.75rem",
   },
   contextBody: {
     boxSizing: "border-box",
@@ -423,13 +439,76 @@ export const ContextContentHeader = ({ style, children, ...props }: ContextConte
               })}
             />
           </div>
-          {/* Nothing here compacts a conversation yet, so the answer is a new
-              one — say that, rather than only that the window is nearly gone. */}
-          {nearLimit && (
-            <p style={sx(reset.text, S.contextNear)}>
-              Near the context limit. Start a new conversation soon.
-            </p>
-          )}
+          {/* The reading, and nothing about what to do with it: what answers a
+              full window is the surface's own — `ContextCompact` where the
+              harness summarizes, a new conversation where it does not. */}
+          {nearLimit && <p style={sx(reset.text, S.contextNear)}>Near the context limit.</p>}
+        </>
+      )}
+    </div>
+  );
+};
+
+export type ContextCompactProps = WithSx<
+  ComponentProps<"div"> & {
+    /**
+     * Summarize the conversation and carry on from the summary. Without it the
+     * part draws nothing: a harness that cannot compact offers no button for it.
+     */
+    onCompact?: () => void;
+    /** One is running. The button says so, and waits for it. */
+    running?: boolean;
+    /** Something else holds the conversation — a turn, or a tool. */
+    busy?: boolean;
+    /**
+     * A compaction would leave a shorter conversation than it read. `false`
+     * says every turn is one it would keep: the button is offered and says why
+     * it waits, rather than being a click that does nothing.
+     */
+    canCompact?: boolean;
+  }
+>;
+
+/**
+ * What to do about a spent window, under the reading that says it is spent.
+ *
+ * The meter reports and this acts, so the two are separate parts: a surface
+ * whose harness summarizes composes this into the panel, and one whose harness
+ * does not leaves it out and says nothing it cannot do.
+ */
+export const ContextCompact = ({
+  onCompact,
+  running,
+  busy,
+  canCompact = true,
+  style,
+  children,
+  ...props
+}: ContextCompactProps) => {
+  const { nearLimit } = useContextValue();
+  if (!onCompact) return null;
+
+  return (
+    <div data-slot="context-compact" style={sx(S.contextCompact, style)} {...props}>
+      {children ?? (
+        <>
+          <p style={sx(reset.text, u.muted)}>
+            {!canCompact
+              ? "Nothing to compact: every turn is a recent one."
+              : nearLimit
+                ? "Summarize the turns so far to free the window."
+                : "Summarize the turns so far."}
+          </p>
+          <Button
+            disabled={busy || running || !canCompact}
+            onClick={onCompact}
+            size="xs"
+            // The panel opens over the composer's form: a bare button submits it.
+            type="button"
+            variant="outline"
+          >
+            {running ? "Compacting…" : "Compact"}
+          </Button>
         </>
       )}
     </div>

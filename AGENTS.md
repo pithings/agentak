@@ -44,6 +44,12 @@ active-tab following, per-site history, badge colors, `chrome:` tool failures, b
 wllama/OPFS, and WebAuthn PRF device lock. The panel's wllama worker and device-lock
 user-gesture flow are the highest-risk paths.
 
-Conversation compaction is not implemented. The context meter only warns with
-`shouldCompact()`. The panel currently reads the active tab but cannot navigate or operate
+Gemini Nano calls tools through the prompt: declarations in the system turn, and a
+`tool_code` block read back out of the answer. No real model has been checked against it,
+so how often a small model writes a call the parser can read is unknown.
+
+Compaction runs from the meter's button, from `ChatSession.compact()`, and by itself when
+the window is nearly spent or a turn was refused for overrunning it. None of it has had a
+real-provider check — the overrun path least of all, since it is a provider's own wording
+that decides. The panel currently reads the active tab but cannot navigate or operate
 other tabs.

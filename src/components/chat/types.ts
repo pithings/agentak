@@ -65,6 +65,17 @@ export interface ChatUsage {
    * fit. The meter says so; a harness decides where the line is.
    */
   nearLimit?: boolean;
+  /**
+   * A compaction is running: the harness is writing the summary that replaces
+   * the turns so far. The meter's own button waits while it does.
+   */
+  compacting?: boolean;
+  /**
+   * A compaction would shorten this conversation. `false` says every turn is
+   * one a compaction would keep, so the button says so and waits rather than
+   * running a request that changes nothing. Absent, the button is offered.
+   */
+  canCompact?: boolean;
 }
 
 /** The agent behind the chat, shown before the first message. */
